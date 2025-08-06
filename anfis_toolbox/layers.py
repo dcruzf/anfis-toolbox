@@ -184,3 +184,113 @@ class NormalizationLayer:
                     dL_dw[b, i] += dL_dnorm_w[b, j] * grad
 
         return dL_dw
+
+
+class ConsequentLayer:
+    """Consequent layer for ANFIS (Adaptive Neuro-Fuzzy Inference System).
+
+    This layer implements the consequent part of fuzzy rules in ANFIS.
+    Each rule has a linear consequent function of the form:
+    f_i(x) = p_i * x_1 + q_i * x_2 + ... + r_i (TSK model)
+
+    The final output is computed as a weighted sum:
+    y = Σ(w_i * f_i(x)) where w_i are normalized rule weights
+
+    Attributes:
+        n_rules (int): Number of fuzzy rules.
+        n_inputs (int): Number of input variables.
+        parameters (np.ndarray): Linear parameters for each rule with shape (n_rules, n_inputs + 1).
+                                Each row contains [p_i, q_i, ..., r_i] for rule i.
+        gradients (np.ndarray): Accumulated gradients for parameters.
+        last (dict): Cache of last forward pass computations for backward pass.
+    """
+
+    def __init__(self, n_rules: int, n_inputs: int):
+        """Initializes the consequent layer with random linear parameters.
+
+        Parameters:
+            n_rules (int): Number of fuzzy rules.
+            n_inputs (int): Number of input variables.
+        """
+        # Each rule has (n_inputs + 1) parameters: p_i, q_i, ..., r_i (including bias)
+        self.n_rules = n_rules
+        self.n_inputs = n_inputs
+        self.parameters = np.random.randn(n_rules, n_inputs + 1)
+        self.gradients = np.zeros_like(self.parameters)
+        self.last = {}
+
+    def forward(self, x: np.ndarray, norm_w: np.ndarray) -> np.ndarray:
+        """Performs forward pass to compute the final ANFIS output.
+
+        Parameters:
+            x (np.ndarray): Input data with shape (batch_size, n_inputs).
+            norm_w (np.ndarray): Normalized rule weights with shape (batch_size, n_rules).
+
+        Returns:
+            np.ndarray: Final ANFIS output with shape (batch_size, 1).
+        """
+        batch_size = x.shape[0]
+
+        # Augment input with bias term (column of ones)
+        X_aug = np.hstack([x, np.ones((batch_size, 1))])  # (batch_size, n_inputs + 1)
+
+        # Compute consequent function f_i(x) for each rule
+        # f[b, i] = p_i * x[b, 0] + q_i * x[b, 1] + ... + r_i
+        f = X_aug @ self.parameters.T  # (batch_size, n_rules)
+
+        # Compute final output as weighted sum: y = Σ(w_i * f_i(x))
+        y_hat = np.sum(norm_w * f, axis=1, keepdims=True)  # (batch_size, 1)
+
+        # Cache values for backward pass
+        self.last = {"X_aug": X_aug, "norm_w": norm_w, "f": f}
+
+        return y_hat
+
+    def backward(self, dL_dy: np.ndarray):
+        """Performs backward pass to compute gradients for parameters and inputs.
+
+        Parameters:
+            dL_dy (np.ndarray): Gradient of loss with respect to layer output.
+                               Shape: (batch_size, 1)
+
+        Returns:
+            tuple: (dL_dnorm_w, dL_dx) where:
+                - dL_dnorm_w: Gradient w.r.t. normalized weights, shape (batch_size, n_rules)
+                - dL_dx: Gradient w.r.t. input x, shape (batch_size, n_inputs)
+        """
+        X_aug = self.last["X_aug"]  # (batch_size, n_inputs + 1)
+        norm_w = self.last["norm_w"]  # (batch_size, n_rules)
+        f = self.last["f"]  # (batch_size, n_rules)
+
+        batch_size = X_aug.shape[0]
+
+        # Compute gradients for consequent parameters
+        self.gradients = np.zeros_like(self.parameters)
+
+        for i in range(self.n_rules):
+            # Gradient of y_hat w.r.t. parameters of rule i: norm_w_i * x_aug
+            for b in range(batch_size):
+                self.gradients[i] += dL_dy[b, 0] * norm_w[b, i] * X_aug[b]
+
+        # Compute gradient of loss w.r.t. normalized weights
+        # dy/dnorm_w_i = f_i(x), so dL/dnorm_w_i = dL/dy * f_i(x)
+        dL_dnorm_w = dL_dy * f  # (batch_size, n_rules)
+
+        # Compute gradient of loss w.r.t. input x (for backpropagation to previous layers)
+        dL_dx = np.zeros((batch_size, self.n_inputs))
+
+        for b in range(batch_size):
+            for i in range(self.n_rules):
+                # dy/dx = norm_w_i * parameters_i[:-1] (excluding bias term)
+                dL_dx[b] += dL_dy[b, 0] * norm_w[b, i] * self.parameters[i, :-1]
+
+        return dL_dnorm_w, dL_dx
+
+    def reset(self):
+        """Resets gradients and cached values.
+
+        Returns:
+            None
+        """
+        self.gradients = np.zeros_like(self.parameters)
+        self.last = {}

@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from anfis_toolbox.layers import NormalizationLayer, RuleLayer
+from anfis_toolbox.layers import ConsequentLayer, NormalizationLayer, RuleLayer
 from anfis_toolbox.membership import GaussianMF
 
 
@@ -90,3 +90,49 @@ def test_normalization_backward():
         numerical[0, i] = (loss_pos - loss_neg) / (2 * epsilon)
 
     np.testing.assert_allclose(dL_dw, numerical, rtol=1e-4, atol=1e-6)
+
+
+def test_consequent_forward_shape():
+    layer = ConsequentLayer(n_rules=3, n_inputs=2)
+    x = np.array([[1.0, 2.0]])
+    norm_w = np.array([[0.2, 0.3, 0.5]])
+
+    y_hat = layer.forward(x, norm_w)
+
+    assert y_hat.shape == (1, 1)
+
+
+def test_consequent_backward_gradients():
+    np.random.seed(0)
+    n_rules = 3
+    n_inputs = 2
+    batch_size = 1
+
+    layer = ConsequentLayer(n_rules=n_rules, n_inputs=n_inputs)
+    x = np.random.randn(batch_size, n_inputs)
+    norm_w = np.random.rand(batch_size, n_rules)
+    norm_w /= norm_w.sum(axis=1, keepdims=True)  # garantir normalização
+
+    y_hat = layer.forward(x, norm_w)
+    dL_dy = np.ones_like(y_hat)  # gradiente da perda em relação à saída
+
+    dL_dnorm_w, dL_dx = layer.backward(dL_dy)
+
+    # Verificação numérica dos gradientes dos parâmetros
+    epsilon = 1e-5
+    numerical_grad = np.zeros_like(layer.parameters)
+
+    for i in range(n_rules):
+        for j in range(n_inputs + 1):
+            original = layer.parameters[i, j]
+
+            layer.parameters[i, j] = original + epsilon
+            y_pos = layer.forward(x, norm_w)
+
+            layer.parameters[i, j] = original - epsilon
+            y_neg = layer.forward(x, norm_w)
+
+            numerical_grad[i, j] = (y_pos - y_neg).squeeze() / (2 * epsilon)
+            layer.parameters[i, j] = original  # restaurar
+
+    np.testing.assert_allclose(layer.gradients, numerical_grad, rtol=1e-4, atol=1e-6)
