@@ -16,6 +16,7 @@ rebuild-lockfiles: .uv
 .PHONY: install ## Install the package, dependencies, and pre-commit for local development
 install: .uv
 	uv sync
+	uv tool install hatch
 	uvx pre-commit install
 	uvx pre-commit autoupdate
 
@@ -29,9 +30,18 @@ lint: .uv
 	uvx ruff check $(sources)
 	uvx ruff format --check $(sources)
 
+.PHONY: .hatch  ## Check that hatch is installed
+.hatch:
+	@uv tool run hatch --version || echo 'Please install hatch: uv tool install hatch'
+
 .PHONY: test ## Run tests
-test: .uv
-	uv run pytest --cov=$(project_dir) --cov-report=term-missing
+test: .hatch
+	uv tool run hatch run test:test
+
+.PHONY: test-cov ## Run tests with coverage
+test-cov: .hatch
+	uv tool run hatch run test:test-cov
+	uv tool run hatch run test:cov-report
 
 .PHONY: lf ## Run last failed tests
 lf: .uv

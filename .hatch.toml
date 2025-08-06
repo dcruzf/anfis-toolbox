@@ -1,0 +1,7 @@
+# Hatch configuration file
+[envs]
+installer = "uv"
+
+# Optional: Configure UV-specific settings
+[envs.env-vars]
+UV_CACHE_DIR = "{root}/.uv-cache"

@@ -11,13 +11,43 @@ license = { text = "MIT" }
 dependencies = [
     "numpy>=1.24.4",
 ]
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 
 [tool.hatch.version]
 path = 'anfis_toolbox/__init__.py'
 
+[tool.hatch.envs.default]
+installer = "uv"
+
+[tool.hatch.build.targets.wheel]
+packages = ["anfis_toolbox"]
+
 [tool.hatch.build.targets.sdist]
 include = ["/README.md", "/Makefile", "/anfis_toolbox", "/tests"]
+
+[tool.hatch.envs.test]
+installer = "uv"
+dependencies = [
+    "coverage[toml]>=7.6.1",
+    "pytest>=7.0.0",
+    "pytest-cov>=5.0.0",
+]
+
+[tool.hatch.envs.test.scripts]
+test = "pytest {args:tests}"
+test-cov = "coverage run -m pytest {args:tests}"
+cov-report = [
+    "- coverage combine",
+    "coverage report",
+]
+cov-html = [
+    "- coverage combine",
+    "coverage html",
+]
+
+# Test matrix for multiple Python versions
+[[tool.hatch.envs.test.matrix]]
+python = ["3.9", "3.10", "3.11", "3.12", "3.13"]
 
 [tool.ruff]
 line-length = 120
@@ -38,7 +68,7 @@ select = [
 ]
 ignore = ['D100', 'D104']
 pydocstyle = { convention = 'google' }
-isort = { known-first-party = ['anfis', 'tests'] }
+isort = { known-first-party = ['anfis_toolbox', 'tests'] }
 
 [tool.ruff.lint.per-file-ignores]
 'tests/*' = ['D']
@@ -48,9 +78,6 @@ testpaths = 'tests'
 xfail_strict = true
 
 [tool.coverage.run]
-source = ['anfis']
+source = ['anfis_toolbox']
 branch = true
 relative_files = true
-
-[dependency-groups]
-dev = ["coverage>=7.6.1", "pytest-cov>=5.0.0"]
