@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from anfis_toolbox.layers import RuleLayer
+from anfis_toolbox.layers import NormalizationLayer, RuleLayer
 from anfis_toolbox.membership import GaussianMF
 
 
@@ -52,3 +52,41 @@ def test_rule_layer_backward(simple_rule_layer):
             assert "sigma" in mf.gradients
             assert np.isscalar(mf.gradients["mean"])
             assert np.isscalar(mf.gradients["sigma"])
+
+
+def test_normalization_forward():
+    layer = NormalizationLayer()
+    w = np.array([[1.0, 2.0, 3.0]])
+    norm = layer.forward(w)
+
+    expected = w / np.sum(w, axis=1, keepdims=True)
+    np.testing.assert_allclose(norm, expected, rtol=1e-6)
+
+
+def test_normalization_backward():
+    layer = NormalizationLayer()
+    w = np.array([[1.0, 2.0, 3.0]])
+    layer.forward(w)
+
+    dL_dnorm = np.array([[1.0, 0.0, 0.0]])  # só a primeira saída tem gradiente
+    dL_dw = layer.backward(dL_dnorm)
+
+    # Verifica numericamente o gradiente com diferença finita
+    epsilon = 1e-5
+    numerical = np.zeros_like(w)
+
+    for i in range(w.shape[1]):
+        w_pos = w.copy()
+        w_neg = w.copy()
+        w_pos[0, i] += epsilon
+        w_neg[0, i] -= epsilon
+
+        out_pos = w_pos / np.sum(w_pos, axis=1, keepdims=True)
+        out_neg = w_neg / np.sum(w_neg, axis=1, keepdims=True)
+
+        loss_pos = out_pos[0, 0]  # como dL/dnorm = [1, 0, 0]
+        loss_neg = out_neg[0, 0]
+
+        numerical[0, i] = (loss_pos - loss_neg) / (2 * epsilon)
+
+    np.testing.assert_allclose(dL_dw, numerical, rtol=1e-4, atol=1e-6)

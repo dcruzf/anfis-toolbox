@@ -110,3 +110,77 @@ class RuleLayer:
         for name in self.input_names:
             for idx, mf in enumerate(self.input_mfs[name]):
                 mf.backward(dmu[name][idx])
+
+
+class NormalizationLayer:
+    """Normalization layer for ANFIS (Adaptive Neuro-Fuzzy Inference System).
+
+    This layer normalizes the rule strengths (firing strengths) to ensure
+    they sum to 1.0 for each sample in the batch. This is a crucial step
+    in ANFIS as it converts rule strengths to normalized rule weights.
+
+    The normalization formula is: norm_w_i = w_i / sum(w_j for all j)
+
+    Attributes:
+        last (dict): Cache of last forward pass computations for backward pass.
+    """
+
+    def __init__(self):
+        """Initializes the normalization layer."""
+        self.last = {}
+
+    def forward(self, w: np.ndarray) -> np.ndarray:
+        """Performs forward pass to normalize rule weights.
+
+        Parameters:
+            w (np.ndarray): Rule strengths with shape (batch_size, n_rules).
+
+        Returns:
+            np.ndarray: Normalized rule weights with shape (batch_size, n_rules).
+                       Each row sums to 1.0.
+        """
+        # Add small epsilon to avoid division by zero
+        sum_w = np.sum(w, axis=1, keepdims=True) + 1e-8
+        norm_w = w / sum_w
+
+        # Cache values for backward pass
+        self.last = {"w": w, "sum_w": sum_w, "norm_w": norm_w}
+        return norm_w
+
+    def backward(self, dL_dnorm_w: np.ndarray) -> np.ndarray:
+        """Performs backward pass to compute gradients for original rule weights.
+
+        The gradient computation uses the quotient rule for derivatives:
+        If norm_w_i = w_i / sum_w, then:
+        - d(norm_w_i)/d(w_i) = (sum_w - w_i) / sum_w²
+        - d(norm_w_i)/d(w_j) = -w_j / sum_w² for j ≠ i
+
+        Parameters:
+            dL_dnorm_w (np.ndarray): Gradient of loss with respect to normalized weights.
+                                    Shape: (batch_size, n_rules)
+
+        Returns:
+            np.ndarray: Gradient of loss with respect to original weights.
+                       Shape: (batch_size, n_rules)
+        """
+        w = self.last["w"]
+        sum_w = self.last["sum_w"]
+
+        batch_size, n_rules = w.shape
+        dL_dw = np.zeros_like(w)
+
+        # Compute gradients using the quotient rule
+        for b in range(batch_size):
+            for i in range(n_rules):
+                for j in range(n_rules):
+                    if i == j:
+                        # Derivative of w_i / sum_w with respect to w_i
+                        grad = (sum_w[b, 0] - w[b, i]) / (sum_w[b, 0] ** 2)
+                    else:
+                        # Derivative of w_i / sum_w with respect to w_j (j ≠ i)
+                        grad = -w[b, j] / (sum_w[b, 0] ** 2)
+
+                    # Apply chain rule: dL/dw = dL/dnorm_w * dnorm_w/dw
+                    dL_dw[b, i] += dL_dnorm_w[b, j] * grad
+
+        return dL_dw
