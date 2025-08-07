@@ -3,24 +3,26 @@ from itertools import product
 import numpy as np
 
 
-class RuleLayer:
-    """Rule layer for ANFIS (Adaptive Neuro-Fuzzy Inference System).
+class MembershipLayer:
+    """Membership layer for ANFIS (Adaptive Neuro-Fuzzy Inference System).
 
-    This layer computes the rule strengths (firing strengths) by applying
-    the T-norm (typically product) operation to the membership degrees of
-    all input variables for each rule.
+    This is the first layer of ANFIS that applies membership functions to
+    input variables. Each input variable has multiple membership functions
+    that transform crisp input values into fuzzy membership degrees.
+
+    This layer serves as the fuzzification stage, converting crisp inputs
+    into fuzzy sets that can be processed by subsequent ANFIS layers.
 
     Attributes:
         input_mfs (dict): Dictionary mapping input names to lists of membership functions.
         input_names (list): List of input variable names.
         n_inputs (int): Number of input variables.
         mf_per_input (list): Number of membership functions per input.
-        rules (list): List of all possible rule combinations.
         last (dict): Cache of last forward pass computations for backward pass.
     """
 
     def __init__(self, input_mfs: dict):
-        """Initializes the rule layer with input membership functions.
+        """Initializes the membership layer with input membership functions.
 
         Parameters:
             input_mfs (dict): Dictionary mapping input names to lists of membership functions.
@@ -30,28 +32,120 @@ class RuleLayer:
         self.input_names = list(input_mfs.keys())
         self.n_inputs = len(input_mfs)
         self.mf_per_input = [len(mfs) for mfs in input_mfs.values()]
-        # Generate all possible rule combinations (Cartesian product)
-        self.rules = list(product(*[range(n) for n in self.mf_per_input]))
         self.last = {}
 
-    def forward(self, x: np.ndarray) -> np.ndarray:
-        """Performs forward pass to compute rule strengths.
+    def forward(self, x: np.ndarray) -> dict:
+        """Performs forward pass to compute membership degrees for all inputs.
 
         Parameters:
             x (np.ndarray): Input data with shape (batch_size, n_inputs).
 
         Returns:
-            np.ndarray: Rule strengths with shape (batch_size, n_rules).
+            dict: Dictionary mapping input names to membership degree arrays.
+                 Format: {input_name: np.ndarray with shape (batch_size, n_mfs)}
         """
-        mu = []  # Membership degrees for each MF of each input
+        _batch_size = x.shape[0]
+        membership_outputs = {}
 
         # Compute membership degrees for each input variable
         for i, name in enumerate(self.input_names):
             mfs = self.input_mfs[name]
+            # Apply each membership function to the i-th input
+            mu_values = []
+            for mf in mfs:
+                mu = mf(x[:, i])  # (batch_size,)
+                mu_values.append(mu)
+
             # Stack membership values for all MFs of this input
-            mu_i = np.stack([mf(x[:, i]) for mf in mfs], axis=-1)  # (batch, n_mfs)
-            mu.append(mu_i)
-        mu = np.stack(mu, axis=1)  # (batch, n_inputs, n_mfs)
+            membership_outputs[name] = np.stack(mu_values, axis=-1)  # (batch_size, n_mfs)
+
+        # Cache values for backward pass
+        self.last = {"x": x, "membership_outputs": membership_outputs}
+
+        return membership_outputs
+
+    def backward(self, gradients: dict):
+        """Performs backward pass to compute gradients for membership functions.
+
+        Parameters:
+            gradients (dict): Dictionary mapping input names to gradient arrays.
+                             Format: {input_name: np.ndarray with shape (batch_size, n_mfs)}
+
+        Returns:
+            None: Gradients are accumulated in the membership functions.
+        """
+        # Propagate gradients to each membership function
+        for name in self.input_names:
+            mfs = self.input_mfs[name]
+            grad_array = gradients[name]  # (batch_size, n_mfs)
+
+            for mf_idx, mf in enumerate(mfs):
+                # Extract gradient for this specific membership function
+                mf_gradient = grad_array[:, mf_idx]  # (batch_size,)
+                # Propagate gradient to the membership function
+                mf.backward(mf_gradient)
+
+    def reset(self):
+        """Resets all membership functions to their initial state.
+
+        Returns:
+            None
+        """
+        for name in self.input_names:
+            for mf in self.input_mfs[name]:
+                mf.reset()
+        self.last = {}
+
+
+class RuleLayer:
+    """Rule layer for ANFIS (Adaptive Neuro-Fuzzy Inference System).
+
+    This layer computes the rule strengths (firing strengths) by applying
+    the T-norm (typically product) operation to the membership degrees of
+    all input variables for each rule.
+
+    This is the second layer of ANFIS that takes membership degrees from
+    the MembershipLayer and computes rule activations.
+
+    Attributes:
+        input_names (list): List of input variable names.
+        n_inputs (int): Number of input variables.
+        mf_per_input (list): Number of membership functions per input.
+        rules (list): List of all possible rule combinations.
+        last (dict): Cache of last forward pass computations for backward pass.
+    """
+
+    def __init__(self, input_names: list, mf_per_input: list):
+        """Initializes the rule layer with input configuration.
+
+        Parameters:
+            input_names (list): List of input variable names.
+            mf_per_input (list): Number of membership functions per input variable.
+        """
+        self.input_names = input_names
+        self.n_inputs = len(input_names)
+        self.mf_per_input = mf_per_input
+        # Generate all possible rule combinations (Cartesian product)
+        self.rules = list(product(*[range(n) for n in self.mf_per_input]))
+        self.last = {}
+
+    def forward(self, membership_outputs: dict) -> np.ndarray:
+        """Performs forward pass to compute rule strengths.
+
+        Parameters:
+            membership_outputs (dict): Dictionary mapping input names to membership degree arrays.
+                                     Format: {input_name: np.ndarray with shape (batch_size, n_mfs)}
+
+        Returns:
+            np.ndarray: Rule strengths with shape (batch_size, n_rules).
+        """
+        # Convert membership outputs to array format for easier processing
+        mu_list = []
+        for name in self.input_names:
+            mu_list.append(membership_outputs[name])  # (batch_size, n_mfs)
+        mu = np.stack(mu_list, axis=1)  # (batch_size, n_inputs, n_mfs)
+
+        _batch_size = mu.shape[0]
 
         # Compute rule activations (firing strengths)
         rule_activations = []
@@ -59,19 +153,19 @@ class RuleLayer:
             rule_mu = []
             # Get membership degree for each input in this rule
             for input_idx, mf_idx in enumerate(rule):
-                rule_mu.append(mu[:, input_idx, mf_idx])  # (batch,)
+                rule_mu.append(mu[:, input_idx, mf_idx])  # (batch_size,)
             # Apply T-norm (product) to get rule strength
-            rule_strength = np.prod(rule_mu, axis=0)  # (batch,)
+            rule_strength = np.prod(rule_mu, axis=0)  # (batch_size,)
             rule_activations.append(rule_strength)
 
-        rule_activations = np.stack(rule_activations, axis=1)  # (batch, n_rules)
+        rule_activations = np.stack(rule_activations, axis=1)  # (batch_size, n_rules)
 
         # Cache values for backward pass
-        self.last = {"x": x, "mu": mu, "rule_activations": rule_activations}
+        self.last = {"membership_outputs": membership_outputs, "mu": mu, "rule_activations": rule_activations}
 
         return rule_activations
 
-    def backward(self, dL_dw: np.ndarray):
+    def backward(self, dL_dw: np.ndarray) -> dict:
         """Performs backward pass to compute gradients for membership functions.
 
         Parameters:
@@ -79,13 +173,17 @@ class RuleLayer:
                                Shape: (batch_size, n_rules)
 
         Returns:
-            None: Gradients are accumulated in the membership functions.
+            dict: Dictionary mapping input names to gradient arrays for membership functions.
+                 Format: {input_name: np.ndarray with shape (batch_size, n_mfs)}
         """
         batch_size = dL_dw.shape[0]
-        mu = self.last["mu"]  # (batch, n_inputs, n_mfs)
+        mu = self.last["mu"]  # (batch_size, n_inputs, n_mfs)
 
-        # Initialize gradient accumulators for each membership function
-        dmu = {name: [np.zeros(batch_size) for _ in self.input_mfs[name]] for name in self.input_names}
+        # Initialize gradient accumulators for each input's membership functions
+        gradients = {}
+        for i, name in enumerate(self.input_names):
+            n_mfs = self.mf_per_input[i]
+            gradients[name] = np.zeros((batch_size, n_mfs))
 
         # Compute gradients for each rule
         for rule_idx, rule in enumerate(self.rules):
@@ -104,12 +202,9 @@ class RuleLayer:
                 partial = np.prod(other_factors, axis=0) if other_factors else np.ones(batch_size)
 
                 # Apply chain rule: dL/dmu = dL/dw * dw/dmu
-                dmu[name][mf_idx] += dL_dw[:, rule_idx] * partial
+                gradients[name][:, mf_idx] += dL_dw[:, rule_idx] * partial
 
-        # Propagate gradients to each membership function
-        for name in self.input_names:
-            for idx, mf in enumerate(self.input_mfs[name]):
-                mf.backward(dmu[name][idx])
+        return gradients
 
 
 class NormalizationLayer:
