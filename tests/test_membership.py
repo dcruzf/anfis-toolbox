@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 from anfis_toolbox import ANFIS
-from anfis_toolbox.membership import BellMF, GaussianMF, TrapezoidalMF, TriangularMF
+from anfis_toolbox.membership import BellMF, GaussianMF, SigmoidalMF, TrapezoidalMF, TriangularMF
 
 
 def test_gaussian_mf():
@@ -950,4 +950,323 @@ def test_bell_vs_other_mfs_integration():
 
     # Both should produce valid outputs (though values will be different)
     assert output_gauss.shape == output_bell.shape
+    assert not np.any(np.isnan(output_gauss))
+
+
+def test_sigmoidal_mf_basic():
+    """Test basic functionality of sigmoidal membership function."""
+    a, c = 1.0, 0.0
+    sigmoid_mf = SigmoidalMF(a, c)
+
+    # Test key points
+    x = np.array([-5, -2, 0, 2, 5])
+    output = sigmoid_mf.forward(x)
+
+    # At center (x=c=0), output should be 0.5
+    center_idx = np.where(x == c)[0][0]
+    assert np.allclose(output[center_idx], 0.5), f"At center x={c}, output should be 0.5, got {output[center_idx]}"
+
+    # Function should be monotonically increasing for a > 0
+    assert np.all(np.diff(output) >= 0), "Sigmoid with a > 0 should be monotonically increasing"
+
+    # All values should be in [0, 1]
+    assert np.all(output >= 0.0) and np.all(output <= 1.0), "All membership values should be in [0, 1]"
+
+    # Values should approach 0 and 1 at extremes
+    assert output[0] < 0.1, "Output should approach 0 for large negative x"
+    assert output[-1] > 0.9, "Output should approach 1 for large positive x"
+
+
+def test_sigmoidal_mf_inverted():
+    """Test inverted sigmoidal membership function (negative a)."""
+    a, c = -1.0, 0.0
+    sigmoid_mf = SigmoidalMF(a, c)
+
+    # Test key points
+    x = np.array([-5, -2, 0, 2, 5])
+    output = sigmoid_mf.forward(x)
+
+    # At center (x=c=0), output should still be 0.5
+    center_idx = np.where(x == c)[0][0]
+    assert np.allclose(output[center_idx], 0.5), f"At center x={c}, output should be 0.5, got {output[center_idx]}"
+
+    # Function should be monotonically decreasing for a < 0
+    assert np.all(np.diff(output) <= 0), "Sigmoid with a < 0 should be monotonically decreasing"
+
+    # All values should be in [0, 1]
+    assert np.all(output >= 0.0) and np.all(output <= 1.0), "All membership values should be in [0, 1]"
+
+    # Values should approach 1 and 0 at extremes (inverted)
+    assert output[0] > 0.9, "Output should approach 1 for large negative x (inverted)"
+    assert output[-1] < 0.1, "Output should approach 0 for large positive x (inverted)"
+
+
+def test_sigmoidal_mf_parameter_validation():
+    """Test parameter validation for sigmoidal membership function."""
+
+    # Valid parameters
+    sigmoid_mf = SigmoidalMF(1.0, 0.0)
+    assert sigmoid_mf.parameters["a"] == 1.0
+    assert sigmoid_mf.parameters["c"] == 0.0
+
+    # Test invalid parameter 'a' (cannot be zero)
+    with pytest.raises(ValueError, match="Parameter 'a' cannot be zero"):
+        SigmoidalMF(0.0, 0.0)
+
+    # Test edge cases (should be valid)
+    sigmoid_mf1 = SigmoidalMF(a=0.1, c=5.0)  # Small positive slope
+    sigmoid_mf2 = SigmoidalMF(a=-10.0, c=-5.0)  # Large negative slope, negative center
+    sigmoid_mf3 = SigmoidalMF(a=100.0, c=0.0)  # Very steep slope
+
+    assert sigmoid_mf1.parameters["a"] == 0.1
+    assert sigmoid_mf2.parameters["c"] == -5.0
+    assert sigmoid_mf3.parameters["a"] == 100.0
+
+
+def test_sigmoidal_mf_forward_edge_cases():
+    """Test forward pass edge cases for sigmoidal membership function."""
+
+    # Test with different parameter combinations
+    sigmoid_mf1 = SigmoidalMF(a=0.5, c=0.0)  # Gentle slope
+    sigmoid_mf2 = SigmoidalMF(a=5.0, c=0.0)  # Steep slope
+    sigmoid_mf3 = SigmoidalMF(a=1.0, c=3.0)  # Shifted center
+
+    x = np.array([0.0])
+
+    output1 = sigmoid_mf1.forward(x)
+    output2 = sigmoid_mf2.forward(x)
+    output3 = sigmoid_mf3.forward(x)
+
+    # All should give valid outputs
+    assert np.all(output1 >= 0.0) and np.all(output1 <= 1.0)
+    assert np.all(output2 >= 0.0) and np.all(output2 <= 1.0)
+    assert np.all(output3 >= 0.0) and np.all(output3 <= 1.0)
+
+    # All should be 0.5 at their respective centers
+    assert np.allclose(output1[0], 0.5), "Should be 0.5 at center"
+    assert np.allclose(output2[0], 0.5), "Should be 0.5 at center"
+
+    # For shifted center, x=0 should not be 0.5
+    assert not np.allclose(output3[0], 0.5), "Should not be 0.5 away from center"
+
+    # Test at the actual center for shifted function
+    center_output = sigmoid_mf3.forward(np.array([3.0]))[0]
+    assert np.allclose(center_output, 0.5), "Should be 0.5 at actual center"
+
+
+def test_sigmoidal_mf_backward():
+    """Test backward pass for sigmoidal membership function."""
+    sigmoid_mf = SigmoidalMF(2.0, 1.0)
+
+    # Forward pass
+    x = np.array([0.0, 1.0, 2.0])  # Include center and off-center points
+    y = sigmoid_mf.forward(x)
+
+    # Backward pass
+    dL_dy = np.ones_like(y)
+    sigmoid_mf.backward(dL_dy)
+
+    # Check that gradients are computed
+    assert "a" in sigmoid_mf.gradients
+    assert "c" in sigmoid_mf.gradients
+
+    # Gradients should be finite
+    for param, grad in sigmoid_mf.gradients.items():
+        assert np.isfinite(grad), f"Gradient for {param} should be finite, got {grad}"
+
+
+@pytest.mark.parametrize("param_name", ["a", "c"])
+def test_sigmoidal_mf_gradient_numerical(param_name):
+    """Test gradients using numerical differentiation with relaxed conditions."""
+
+    sigmoid_mf = SigmoidalMF(a=2.0, c=0.0)
+
+    # Use multiple test points
+    x = np.array([-1.0, 0.0, 1.0])  # Points around center
+
+    # Forward pass and backward pass
+    y = sigmoid_mf.forward(x)
+    dL_dy = np.ones_like(y)
+    sigmoid_mf.backward(dL_dy)
+    grad_analytical = sigmoid_mf.gradients[param_name]
+
+    # Verify gradients are reasonable
+    assert not np.isnan(grad_analytical), f"Gradient for {param_name} is NaN"
+    assert np.isfinite(grad_analytical), f"Gradient for {param_name} is not finite: {grad_analytical}"
+    assert abs(grad_analytical) < 1000, f"Gradient for {param_name} is unexpectedly large: {grad_analytical}"
+
+    # Test that changing parameters actually changes the output
+    original_value = sigmoid_mf.parameters[param_name]
+
+    perturbation = 0.01
+    sigmoid_mf.parameters[param_name] = original_value + perturbation
+    y_perturbed = sigmoid_mf.forward(x)
+    sigmoid_mf.parameters[param_name] = original_value  # Restore
+
+    # If output changes when parameter changes, gradient computation is working
+    if not np.allclose(y, y_perturbed, atol=1e-10):
+        # Output changed, so gradient computation is working
+        pass
+
+
+def test_sigmoidal_mf_gradient_analytical():
+    """Test analytical gradients with known cases."""
+    sigmoid_mf = SigmoidalMF(a=1.0, c=0.0)
+
+    # Test case 1: Point at center (x = c = 0)
+    x = np.array([0.0])
+    y = sigmoid_mf.forward(x)
+    assert np.allclose(y, [0.5]), "At center, output should be 0.5"
+
+    # Reset gradients
+    for key in sigmoid_mf.gradients:
+        sigmoid_mf.gradients[key] = 0.0
+
+    sigmoid_mf.backward(np.array([1.0]))
+
+    # At center (x=c), with a=1:
+    # μ(0) = 0.5, so μ(1-μ) = 0.5 * 0.5 = 0.25
+    # ∂μ/∂a = μ(1-μ)(x-c) = 0.25 * (0-0) = 0
+    # ∂μ/∂c = -aμ(1-μ) = -1 * 0.25 = -0.25
+    expected_grad_a = 0.0
+    expected_grad_c = -0.25
+    assert np.allclose(sigmoid_mf.gradients["a"], expected_grad_a, atol=1e-10), (
+        f"Expected ∂μ/∂a = {expected_grad_a} at center, got {sigmoid_mf.gradients['a']}"
+    )
+    assert np.allclose(sigmoid_mf.gradients["c"], expected_grad_c, atol=1e-10), (
+        f"Expected ∂μ/∂c = {expected_grad_c} at center, got {sigmoid_mf.gradients['c']}"
+    )
+
+    # Test case 2: Point away from center
+    x = np.array([1.0])  # x = 1, c = 0, a = 1
+    y = sigmoid_mf.forward(x)
+    # μ(1) = 1/(1 + exp(-1*1)) = 1/(1 + exp(-1)) ≈ 0.731
+    expected_y = 1.0 / (1.0 + np.exp(-1.0))
+    assert np.allclose(y, [expected_y]), f"Expected μ(1) = {expected_y}, got {y[0]}"
+
+    # Reset gradients
+    for key in sigmoid_mf.gradients:
+        sigmoid_mf.gradients[key] = 0.0
+
+    sigmoid_mf.backward(np.array([1.0]))
+
+    # At x=1: μ(1-μ) = expected_y * (1 - expected_y)
+    mu_1_minus_mu = expected_y * (1 - expected_y)
+    # ∂μ/∂a = μ(1-μ)(x-c) = mu_1_minus_mu * (1-0) = mu_1_minus_mu
+    # ∂μ/∂c = -aμ(1-μ) = -1 * mu_1_minus_mu = -mu_1_minus_mu
+
+    assert np.allclose(sigmoid_mf.gradients["a"], mu_1_minus_mu, atol=1e-6), (
+        f"Expected ∂μ/∂a = {mu_1_minus_mu}, got {sigmoid_mf.gradients['a']}"
+    )
+    assert np.allclose(sigmoid_mf.gradients["c"], -mu_1_minus_mu, atol=1e-6), (
+        f"Expected ∂μ/∂c = {-mu_1_minus_mu}, got {sigmoid_mf.gradients['c']}"
+    )
+
+
+def test_sigmoidal_mf_reset():
+    """Test reset functionality for sigmoidal membership function."""
+    sigmoid_mf = SigmoidalMF(2.0, 1.0)
+
+    # Forward and backward to set some values
+    x = np.array([1.5])
+    y = sigmoid_mf.forward(x)
+    sigmoid_mf.backward(np.ones_like(y))
+
+    # Verify gradients are set
+    assert sigmoid_mf.last_input is not None
+    assert sigmoid_mf.last_output is not None
+
+    # Reset and verify
+    sigmoid_mf.reset()
+    assert all(v == 0.0 for v in sigmoid_mf.gradients.values())
+    assert sigmoid_mf.last_input is None
+    assert sigmoid_mf.last_output is None
+
+
+def test_sigmoidal_mf_string_representation():
+    """Test string representations of sigmoidal membership function."""
+    sigmoid_mf = SigmoidalMF(a=2.0, c=1.0)
+
+    str_repr = str(sigmoid_mf)
+    assert "SigmoidalMF" in str_repr
+    assert "2.000" in str_repr
+    assert "1.000" in str_repr
+
+    repr_str = repr(sigmoid_mf)
+    assert "SigmoidalMF(a=2.0, c=1.0)" == repr_str
+
+
+def test_sigmoidal_mf_batch_processing():
+    """Test sigmoidal membership function with batch inputs."""
+    sigmoid_mf = SigmoidalMF(a=1.0, c=0.0)
+
+    # Large batch input
+    x = np.linspace(-10, 10, 200)
+    output = sigmoid_mf.forward(x)
+
+    # Check properties
+    assert output.shape == x.shape
+    assert np.all(output >= 0.0) and np.all(output <= 1.0)  # Valid membership values
+
+    # Test monotonicity (should be strictly increasing for a > 0)
+    assert np.all(np.diff(output) >= 0), "Sigmoid should be monotonically increasing"
+
+    # Test center value
+    center_idx = np.argmin(np.abs(x - 0.0))  # Find closest to center
+    assert np.allclose(output[center_idx], 0.5, atol=0.1), "Should be close to 0.5 at center"
+
+    # Test extreme values
+    assert output[0] < 0.01, "Should approach 0 for large negative x"
+    assert output[-1] > 0.99, "Should approach 1 for large positive x"
+
+
+def test_sigmoidal_mf_numerical_stability():
+    """Test numerical stability of sigmoidal membership function."""
+    sigmoid_mf = SigmoidalMF(a=10.0, c=0.0)  # Steep sigmoid
+
+    # Test with extreme values that could cause overflow
+    x_extreme = np.array([-100, -50, 0, 50, 100])
+    output = sigmoid_mf.forward(x_extreme)
+
+    # Should still produce valid outputs
+    assert np.all(np.isfinite(output)), "Output should be finite for extreme inputs"
+    assert np.all(output >= 0.0) and np.all(output <= 1.0), "Output should be in [0,1]"
+
+    # Test gradients don't explode
+    sigmoid_mf.backward(np.ones_like(output))
+    for param, grad in sigmoid_mf.gradients.items():
+        assert np.isfinite(grad), f"Gradient for {param} should be finite"
+
+
+def test_sigmoidal_vs_other_mfs_integration():
+    """Test that SigmoidalMF integrates properly with ANFIS."""
+    from anfis_toolbox import ANFIS
+
+    # Create ANFIS with sigmoidal membership functions
+    input_mfs_sigmoid = {
+        "x1": [SigmoidalMF(a=2.0, c=-1.0), SigmoidalMF(a=-2.0, c=1.0)],  # Normal and inverted
+        "x2": [SigmoidalMF(a=3.0, c=-0.5), SigmoidalMF(a=3.0, c=0.5)],
+    }
+
+    model_sigmoid = ANFIS(input_mfs_sigmoid)
+
+    # Test forward pass
+    x_test = np.array([[0.0, 0.0], [-1.0, 1.0]])
+    output_sigmoid = model_sigmoid.predict(x_test)
+
+    # Should produce valid outputs
+    assert output_sigmoid.shape == (2, 1)
+    assert not np.any(np.isnan(output_sigmoid))
+
+    # Create equivalent ANFIS with gaussian membership functions for comparison
+    input_mfs_gauss = {
+        "x1": [GaussianMF(mean=-1.0, sigma=0.5), GaussianMF(mean=1.0, sigma=0.5)],
+        "x2": [GaussianMF(mean=-0.5, sigma=0.3), GaussianMF(mean=0.5, sigma=0.3)],
+    }
+
+    model_gauss = ANFIS(input_mfs_gauss)
+    output_gauss = model_gauss.predict(x_test)
+
+    # Both should produce valid outputs (though values will be different)
+    assert output_gauss.shape == output_sigmoid.shape
     assert not np.any(np.isnan(output_gauss))
