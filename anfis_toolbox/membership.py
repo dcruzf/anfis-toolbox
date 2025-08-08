@@ -317,3 +317,181 @@ class TriangularMF(MembershipFunction):
     def __repr__(self) -> str:
         """Returns detailed representation of the triangular membership function."""
         return f"TriangularMF(a={self.parameters['a']}, b={self.parameters['b']}, c={self.parameters['c']})"
+
+
+class TrapezoidalMF(MembershipFunction):
+    """Trapezoidal Membership Function.
+
+    Implements a trapezoidal membership function using piecewise linear segments:
+    μ(x) = { 0,           x ≤ a or x ≥ d
+           { (x-a)/(b-a), a < x < b
+           { 1,           b ≤ x ≤ c
+           { (d-x)/(d-c), c < x < d
+
+    This function is commonly used in fuzzy logic systems when you need a plateau
+    region of full membership, providing robustness to noise and uncertainty.
+
+    Parameters:
+        a (float): Left base point of the trapezoid (lower support bound).
+        b (float): Left peak point (start of plateau where μ(x) = 1).
+        c (float): Right peak point (end of plateau where μ(x) = 1).
+        d (float): Right base point of the trapezoid (upper support bound).
+
+    Note:
+        Parameters must satisfy: a ≤ b ≤ c ≤ d for a valid trapezoidal function.
+    """
+
+    def __init__(self, a: float, b: float, c: float, d: float):
+        """Initializes the Trapezoidal membership function with four control points.
+
+        Parameters:
+            a (float): Left base point (μ(a) = 0).
+            b (float): Left peak point (μ(b) = 1, start of plateau).
+            c (float): Right peak point (μ(c) = 1, end of plateau).
+            d (float): Right base point (μ(d) = 0).
+
+        Raises:
+            ValueError: If parameters don't satisfy a ≤ b ≤ c ≤ d.
+        """
+        super().__init__()
+
+        # Validate parameters
+        if not (a <= b <= c <= d):
+            raise ValueError(f"Trapezoidal MF parameters must satisfy a ≤ b ≤ c ≤ d, got a={a}, b={b}, c={c}, d={d}")
+
+        if a == d:
+            raise ValueError("Parameters 'a' and 'd' cannot be equal (zero width trapezoid)")
+
+        self.parameters = {"a": float(a), "b": float(b), "c": float(c), "d": float(d)}
+        # Initialize gradients to zero for all parameters
+        self.gradients = dict.fromkeys(self.parameters.keys(), 0.0)
+
+    def forward(self, x: np.ndarray) -> np.ndarray:
+        """Computes the trapezoidal membership values for the input x.
+
+        Parameters:
+            x (np.ndarray): Input array for which the membership values are to be computed.
+
+        Returns:
+            np.ndarray: Output array containing the trapezoidal membership values.
+        """
+        a = self.parameters["a"]
+        b = self.parameters["b"]
+        c = self.parameters["c"]
+        d = self.parameters["d"]
+
+        self.last_input = x
+
+        # Initialize output with zeros
+        output = np.zeros_like(x)
+
+        # Left slope: (x - a) / (b - a) for a < x < b
+        if b > a:  # Avoid division by zero
+            left_mask = (x > a) & (x < b)
+            output[left_mask] = (x[left_mask] - a) / (b - a)
+
+        # Plateau: μ(x) = 1 for b ≤ x ≤ c
+        plateau_mask = (x >= b) & (x <= c)
+        output[plateau_mask] = 1.0
+
+        # Right slope: (d - x) / (d - c) for c < x < d
+        if d > c:  # Avoid division by zero
+            right_mask = (x > c) & (x < d)
+            output[right_mask] = (d - x[right_mask]) / (d - c)
+
+        # Values outside [a, d] are already zero
+
+        self.last_output = output
+        return output
+
+    def backward(self, dL_dy: np.ndarray):
+        """Computes the gradients for the parameters based on the loss gradient.
+
+        The gradients are computed analytically for the piecewise linear function:
+        - ∂μ/∂a: Affects the left slope
+        - ∂μ/∂b: Affects the left slope and plateau transition
+        - ∂μ/∂c: Affects the right slope and plateau transition
+        - ∂μ/∂d: Affects the right slope
+
+        Parameters:
+            dL_dy (np.ndarray): The gradient of the loss with respect to the output of this layer.
+
+        Returns:
+            None: Gradients are accumulated in self.gradients.
+        """
+        a = self.parameters["a"]
+        b = self.parameters["b"]
+        c = self.parameters["c"]
+        d = self.parameters["d"]
+
+        x = self.last_input
+
+        # Initialize gradients
+        dL_da = 0.0
+        dL_db = 0.0
+        dL_dc = 0.0
+        dL_dd = 0.0
+
+        # Left slope region: a < x < b, μ(x) = (x-a)/(b-a)
+        if b > a:
+            left_mask = (x > a) & (x < b)
+            if np.any(left_mask):
+                x_left = x[left_mask]
+                dL_dy_left = dL_dy[left_mask]
+
+                # ∂μ/∂a = -1/(b-a) for left slope
+                dmu_da_left = -1.0 / (b - a)
+                dL_da += np.sum(dL_dy_left * dmu_da_left)
+
+                # ∂μ/∂b = -(x-a)/(b-a)² for left slope
+                dmu_db_left = -(x_left - a) / ((b - a) ** 2)
+                dL_db += np.sum(dL_dy_left * dmu_db_left)
+
+        # Plateau region: b ≤ x ≤ c, μ(x) = 1
+        # No gradients for plateau region (constant function)
+
+        # Right slope region: c < x < d, μ(x) = (d-x)/(d-c)
+        if d > c:
+            right_mask = (x > c) & (x < d)
+            if np.any(right_mask):
+                x_right = x[right_mask]
+                dL_dy_right = dL_dy[right_mask]
+
+                # ∂μ/∂c = (x-d)/(d-c)² for right slope
+                dmu_dc_right = (x_right - d) / ((d - c) ** 2)
+                dL_dc += np.sum(dL_dy_right * dmu_dc_right)
+
+                # ∂μ/∂d = (x-c)/(d-c)² for right slope (derivative of (d-x)/(d-c) w.r.t. d)
+                dmu_dd_right = (x_right - c) / ((d - c) ** 2)
+                dL_dd += np.sum(dL_dy_right * dmu_dd_right)
+
+        # Update gradients (accumulate for batch processing)
+        self.gradients["a"] += dL_da
+        self.gradients["b"] += dL_db
+        self.gradients["c"] += dL_dc
+        self.gradients["d"] += dL_dd
+
+    def reset(self):
+        """Resets gradients to zero.
+
+        This method should be called before each training step to clear
+        accumulated gradients from previous iterations.
+        """
+        for key in self.gradients:
+            self.gradients[key] = 0.0
+        self.last_input = None
+        self.last_output = None
+
+    def __str__(self) -> str:
+        """Returns string representation of the trapezoidal membership function."""
+        return (
+            f"TrapezoidalMF(a={self.parameters['a']:.3f}, b={self.parameters['b']:.3f}, "
+            f"c={self.parameters['c']:.3f}, d={self.parameters['d']:.3f})"
+        )
+
+    def __repr__(self) -> str:
+        """Returns detailed representation of the trapezoidal membership function."""
+        return (
+            f"TrapezoidalMF(a={self.parameters['a']}, b={self.parameters['b']}, "
+            f"c={self.parameters['c']}, d={self.parameters['d']})"
+        )
