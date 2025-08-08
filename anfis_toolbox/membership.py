@@ -684,3 +684,151 @@ class BellMF(MembershipFunction):
     def __repr__(self) -> str:
         """Returns detailed representation of the bell membership function."""
         return f"BellMF(a={self.parameters['a']}, b={self.parameters['b']}, c={self.parameters['c']})"
+
+
+class SigmoidalMF(MembershipFunction):
+    """Sigmoidal Membership Function.
+
+    Implements a sigmoidal (S-shaped) membership function using the formula:
+    μ(x) = 1 / (1 + exp(-a(x - c)))
+
+    This function provides a smooth S-shaped curve that transitions from 0 to 1.
+    It's particularly useful for modeling gradual transitions and is commonly
+    used in neural networks and fuzzy systems.
+
+    Parameters:
+        a (float): Slope parameter. Controls the steepness of the sigmoid.
+                   - Positive values: standard sigmoid (0 → 1 as x increases)
+                   - Negative values: inverted sigmoid (1 → 0 as x increases)
+                   - Larger |a|: steeper transition
+        c (float): Center parameter. Controls the inflection point where μ(c) = 0.5.
+
+    Note:
+        Parameter 'a' cannot be zero (would result in constant function).
+    """
+
+    def __init__(self, a: float = 1.0, c: float = 0.0):
+        """Initializes the Sigmoidal membership function with two control parameters.
+
+        Parameters:
+            a (float): Slope parameter (cannot be zero). Defaults to 1.0.
+            c (float): Center parameter (inflection point). Defaults to 0.0.
+
+        Raises:
+            ValueError: If parameter 'a' is zero.
+        """
+        super().__init__()
+
+        # Validate parameters
+        if a == 0:
+            raise ValueError(f"Parameter 'a' cannot be zero, got a={a}")
+
+        self.parameters = {"a": float(a), "c": float(c)}
+        # Initialize gradients to zero for all parameters
+        self.gradients = dict.fromkeys(self.parameters.keys(), 0.0)
+
+    def forward(self, x: np.ndarray) -> np.ndarray:
+        """Computes the sigmoidal membership values for the input x.
+
+        Parameters:
+            x (np.ndarray): Input array for which the membership values are to be computed.
+
+        Returns:
+            np.ndarray: Output array containing the sigmoidal membership values.
+        """
+        a = self.parameters["a"]
+        c = self.parameters["c"]
+
+        self.last_input = x
+
+        # Compute the sigmoid function: μ(x) = 1 / (1 + exp(-a(x - c)))
+        # To avoid numerical overflow, we use a stable implementation
+
+        # Compute a(x - c) (note: not -a(x - c))
+        z = a * (x - c)
+
+        # Use stable sigmoid implementation to avoid overflow
+        # Standard sigmoid: σ(z) = 1 / (1 + exp(-z))
+        # For numerical stability:
+        # If z >= 0: σ(z) = 1 / (1 + exp(-z))
+        # If z < 0: σ(z) = exp(z) / (1 + exp(z))
+
+        output = np.zeros_like(x, dtype=float)
+
+        # Case 1: z >= 0 (standard case)
+        mask_pos = z >= 0
+        if np.any(mask_pos):
+            output[mask_pos] = 1.0 / (1.0 + np.exp(-z[mask_pos]))
+
+        # Case 2: z < 0 (to avoid exp overflow)
+        mask_neg = z < 0
+        if np.any(mask_neg):
+            exp_z = np.exp(z[mask_neg])
+            output[mask_neg] = exp_z / (1.0 + exp_z)
+
+        self.last_output = output
+        return output
+
+    def backward(self, dL_dy: np.ndarray):
+        """Computes the gradients for the parameters based on the loss gradient.
+
+        The gradients are computed analytically:
+        - ∂μ/∂a: Affects the steepness of the sigmoid
+        - ∂μ/∂c: Affects the center position of the sigmoid
+
+        For the sigmoid function μ(x) = 1/(1 + exp(-a(x-c))), the derivatives are:
+        - ∂μ/∂a = μ(x)(1-μ(x))(x-c)
+        - ∂μ/∂c = -aμ(x)(1-μ(x))
+
+        Parameters:
+            dL_dy (np.ndarray): The gradient of the loss with respect to the output of this layer.
+
+        Returns:
+            None: Gradients are accumulated in self.gradients.
+        """
+        a = self.parameters["a"]
+        c = self.parameters["c"]
+
+        x = self.last_input
+        y = self.last_output  # This is μ(x)
+
+        # For sigmoid: ∂μ/∂z = μ(1-μ) where z = -a(x-c)
+        # This is a fundamental property of the sigmoid function
+        dmu_dz = y * (1.0 - y)
+
+        # Chain rule: ∂L/∂param = ∂L/∂μ × ∂μ/∂z × ∂z/∂param
+
+        # For z = a(x-c):
+        # ∂z/∂a = (x-c)
+        # ∂z/∂c = -a
+
+        # Gradient w.r.t. 'a'
+        dz_da = x - c
+        dL_da = np.sum(dL_dy * dmu_dz * dz_da)
+
+        # Gradient w.r.t. 'c'
+        dz_dc = -a
+        dL_dc = np.sum(dL_dy * dmu_dz * dz_dc)
+
+        # Update gradients (accumulate for batch processing)
+        self.gradients["a"] += dL_da
+        self.gradients["c"] += dL_dc
+
+    def reset(self):
+        """Resets gradients to zero.
+
+        This method should be called before each training step to clear
+        accumulated gradients from previous iterations.
+        """
+        for key in self.gradients:
+            self.gradients[key] = 0.0
+        self.last_input = None
+        self.last_output = None
+
+    def __str__(self) -> str:
+        """Returns string representation of the sigmoidal membership function."""
+        return f"SigmoidalMF(a={self.parameters['a']:.3f}, c={self.parameters['c']:.3f})"
+
+    def __repr__(self) -> str:
+        """Returns detailed representation of the sigmoidal membership function."""
+        return f"SigmoidalMF(a={self.parameters['a']}, c={self.parameters['c']})"
