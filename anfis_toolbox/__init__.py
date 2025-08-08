@@ -4,13 +4,14 @@ __version__ = "0.1.0"
 
 from .layers import ConsequentLayer, MembershipLayer, NormalizationLayer, RuleLayer
 from .logging_config import disable_training_logs, enable_training_logs, setup_logging
-from .membership import GaussianMF, MembershipFunction
+from .membership import GaussianMF, MembershipFunction, TriangularMF
 from .model import ANFIS
 
 __all__ = [
     "ANFIS",
     "MembershipFunction",
     "GaussianMF",
+    "TriangularMF",
     "MembershipLayer",
     "RuleLayer",
     "NormalizationLayer",
