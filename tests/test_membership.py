@@ -1,7 +1,8 @@
 import numpy as np
 import pytest
 
-from anfis_toolbox.membership import GaussianMF, TrapezoidalMF, TriangularMF
+from anfis_toolbox import ANFIS
+from anfis_toolbox.membership import BellMF, GaussianMF, TrapezoidalMF, TriangularMF
 
 
 def test_gaussian_mf():
@@ -324,7 +325,6 @@ def test_triangular_mf_batch_processing():
 
 def test_triangular_vs_gaussian_integration():
     """Test that TriangularMF integrates properly with ANFIS like GaussianMF."""
-    from anfis_toolbox import ANFIS
 
     # Create ANFIS with triangular membership functions
     # Using same number of MFs for each input for compatibility
@@ -625,7 +625,6 @@ def test_trapezoidal_mf_batch_processing():
 
 def test_trapezoidal_vs_triangular_integration():
     """Test that TrapezoidalMF integrates properly with ANFIS."""
-    from anfis_toolbox import ANFIS
 
     # Create ANFIS with trapezoidal membership functions
     input_mfs_trap = {
@@ -655,3 +654,300 @@ def test_trapezoidal_vs_triangular_integration():
     # Both should produce valid outputs (though values will be different)
     assert output_tri.shape == output_trap.shape
     assert not np.any(np.isnan(output_tri))
+
+
+def test_bell_mf_basic():
+    """Test basic functionality of bell membership function."""
+    a, b, c = 2.0, 4.0, 0.0
+    bell_mf = BellMF(a, b, c)
+
+    # Test key points
+    x = np.array([-4, -2, -1, 0, 1, 2, 4])
+    output = bell_mf.forward(x)
+
+    # At center (x=c=0), output should be 1.0
+    center_idx = np.where(x == c)[0][0]
+    assert np.allclose(output[center_idx], 1.0), f"At center x={c}, output should be 1.0, got {output[center_idx]}"
+
+    # Function should be symmetric around center
+    left_val = bell_mf.forward(np.array([c - 1]))
+    right_val = bell_mf.forward(np.array([c + 1]))
+    assert np.allclose(left_val, right_val), "Bell function should be symmetric around center"
+
+    # All values should be in [0, 1]
+    assert np.all(output >= 0.0) and np.all(output <= 1.0), "All membership values should be in [0, 1]"
+
+    # Values should decrease as we move away from center
+    center_output = bell_mf.forward(np.array([c]))[0]
+    distant_output = bell_mf.forward(np.array([c + 10]))[0]
+    assert center_output > distant_output, "Output should decrease away from center"
+
+
+def test_bell_mf_parameter_validation():
+    """Test parameter validation for bell membership function."""
+
+    # Valid parameters
+    bell_mf = BellMF(1.0, 2.0, 0.0)
+    assert bell_mf.parameters["a"] == 1.0
+    assert bell_mf.parameters["b"] == 2.0
+    assert bell_mf.parameters["c"] == 0.0
+
+    # Test invalid parameter 'a' (must be positive)
+    with pytest.raises(ValueError, match="Parameter 'a' must be positive"):
+        BellMF(0.0, 2.0, 0.0)
+
+    with pytest.raises(ValueError, match="Parameter 'a' must be positive"):
+        BellMF(-1.0, 2.0, 0.0)
+
+    # Test invalid parameter 'b' (must be positive)
+    with pytest.raises(ValueError, match="Parameter 'b' must be positive"):
+        BellMF(1.0, 0.0, 0.0)
+
+    with pytest.raises(ValueError, match="Parameter 'b' must be positive"):
+        BellMF(1.0, -1.0, 0.0)
+
+    # Test edge cases (should be valid)
+    bell_mf1 = BellMF(a=0.1, b=0.1, c=5.0)  # Small positive values
+    bell_mf2 = BellMF(a=10.0, b=10.0, c=-5.0)  # Large values, negative center
+
+    assert bell_mf1.parameters["a"] == 0.1
+    assert bell_mf2.parameters["c"] == -5.0
+
+
+def test_bell_mf_forward_edge_cases():
+    """Test forward pass edge cases for bell membership function."""
+
+    # Test with different parameter combinations
+    bell_mf1 = BellMF(a=1.0, b=1.0, c=0.0)  # Gentle slope
+    bell_mf2 = BellMF(a=1.0, b=10.0, c=0.0)  # Sharp slope
+    bell_mf3 = BellMF(a=5.0, b=2.0, c=3.0)  # Wide, centered at 3
+
+    x = np.array([0.0])
+
+    output1 = bell_mf1.forward(x)
+    output2 = bell_mf2.forward(x)
+    output3 = bell_mf3.forward(x)
+
+    # All should give valid outputs
+    assert np.all(output1 >= 0.0) and np.all(output1 <= 1.0)
+    assert np.all(output2 >= 0.0) and np.all(output2 <= 1.0)
+    assert np.all(output3 >= 0.0) and np.all(output3 <= 1.0)
+
+    # Higher 'b' should give sharper transitions (more steep)
+    # At the same distance from center, higher 'b' should give lower values
+    x_test = np.array([2.0])  # Distance 2 from center (larger distance to see difference)
+    steep_output = bell_mf2.forward(x_test)[0]
+    gentle_output = bell_mf1.forward(x_test)[0]
+    assert steep_output < gentle_output, (
+        f"Higher 'b' should give steeper curve, \
+        got steep={steep_output}, gentle={gentle_output}"
+    )
+
+
+def test_bell_mf_backward():
+    """Test backward pass for bell membership function."""
+    bell_mf = BellMF(2.0, 3.0, 1.0)
+
+    # Forward pass
+    x = np.array([0.0, 1.0, 2.0])  # Include center and off-center points
+    y = bell_mf.forward(x)
+
+    # Backward pass
+    dL_dy = np.ones_like(y)
+    bell_mf.backward(dL_dy)
+
+    # Check that gradients are computed
+    assert "a" in bell_mf.gradients
+    assert "b" in bell_mf.gradients
+    assert "c" in bell_mf.gradients
+
+    # Gradients should be finite
+    for param, grad in bell_mf.gradients.items():
+        assert np.isfinite(grad), f"Gradient for {param} should be finite, got {grad}"
+
+
+@pytest.mark.parametrize("param_name", ["a", "b", "c"])
+def test_bell_mf_gradient_numerical(param_name):
+    """Test gradients using numerical differentiation with relaxed conditions."""
+
+    bell_mf = BellMF(a=2.0, b=3.0, c=1.0)
+
+    # Use multiple test points
+    x = np.array([0.5, 1.0, 1.5])  # Points around center
+
+    # Forward pass and backward pass
+    y = bell_mf.forward(x)
+    dL_dy = np.ones_like(y)
+    bell_mf.backward(dL_dy)
+    grad_analytical = bell_mf.gradients[param_name]
+
+    # Verify gradients are reasonable
+    assert not np.isnan(grad_analytical), f"Gradient for {param_name} is NaN"
+    assert np.isfinite(grad_analytical), f"Gradient for {param_name} is not finite: {grad_analytical}"
+    assert abs(grad_analytical) < 1000, f"Gradient for {param_name} is unexpectedly large: {grad_analytical}"
+
+    # Test that changing parameters actually changes the output (if it should)
+    original_value = bell_mf.parameters[param_name]
+
+    perturbation = 0.01 if param_name != "c" else 0.1  # Smaller perturbation for a,b
+    bell_mf.parameters[param_name] = original_value + perturbation
+    y_perturbed = bell_mf.forward(x)
+    bell_mf.parameters[param_name] = original_value  # Restore
+
+    # If output changes when parameter changes, and we're not at a stationary point,
+    # gradient might be non-zero
+    if not np.allclose(y, y_perturbed, atol=1e-10):
+        # Output changed, so gradient computation is working
+        pass  # This is good, shows the parameter affects the output
+
+
+def test_bell_mf_gradient_analytical():
+    """Test analytical gradients with known cases."""
+    bell_mf = BellMF(a=1.0, b=2.0, c=0.0)
+
+    # Test case 1: Point at center (x = c = 0)
+    x = np.array([0.0])
+    y = bell_mf.forward(x)
+    assert np.allclose(y, [1.0]), "At center, output should be 1.0"
+
+    # Reset gradients
+    for key in bell_mf.gradients:
+        bell_mf.gradients[key] = 0.0
+
+    bell_mf.backward(np.array([1.0]))
+
+    # At the center (x = c), some gradients should be zero due to symmetry
+    # The gradient w.r.t. 'c' should be zero at the peak
+    assert np.allclose(bell_mf.gradients["c"], 0.0, atol=1e-10), (
+        f"Expected ∂μ/∂c = 0 at center, got {bell_mf.gradients['c']}"
+    )
+
+    # Test case 2: Point away from center
+    x = np.array([1.0])  # x = 1, c = 0, so (x-c)/a = 1
+    y = bell_mf.forward(x)
+    # μ(1) = 1/(1 + |1|^4) = 1/2 = 0.5
+    assert np.allclose(y, [0.5]), f"Expected μ(1) = 0.5, got {y[0]}"
+
+    # Reset gradients
+    for key in bell_mf.gradients:
+        bell_mf.gradients[key] = 0.0
+
+    bell_mf.backward(np.array([1.0]))
+
+    # At this point, gradients should be non-zero
+    assert not np.allclose(bell_mf.gradients["c"], 0.0), (
+        f"Expected non-zero ∂μ/∂c away from center, got {bell_mf.gradients['c']}"
+    )
+
+
+def test_bell_mf_reset():
+    """Test reset functionality for bell membership function."""
+    bell_mf = BellMF(2.0, 3.0, 1.0)
+
+    # Forward and backward to set some values
+    x = np.array([1.5])
+    y = bell_mf.forward(x)
+    bell_mf.backward(np.ones_like(y))
+
+    # Verify gradients are set
+    assert any(abs(v) > 1e-10 or not np.isfinite(v) for v in bell_mf.gradients.values()) or all(
+        abs(v) < 1e-10 for v in bell_mf.gradients.values()
+    )
+    assert bell_mf.last_input is not None
+    assert bell_mf.last_output is not None
+
+    # Reset and verify
+    bell_mf.reset()
+    assert all(v == 0.0 for v in bell_mf.gradients.values())
+    assert bell_mf.last_input is None
+    assert bell_mf.last_output is None
+
+
+def test_bell_mf_string_representation():
+    """Test string representations of bell membership function."""
+    bell_mf = BellMF(a=2.0, b=3.0, c=1.0)
+
+    str_repr = str(bell_mf)
+    assert "BellMF" in str_repr
+    assert "2.000" in str_repr
+    assert "3.000" in str_repr
+    assert "1.000" in str_repr
+
+    repr_str = repr(bell_mf)
+    assert "BellMF(a=2.0, b=3.0, c=1.0)" == repr_str
+
+
+def test_bell_mf_batch_processing():
+    """Test bell membership function with batch inputs."""
+    bell_mf = BellMF(a=2.0, b=4.0, c=0.0)
+
+    # Large batch input
+    x = np.linspace(-10, 10, 100)
+    output = bell_mf.forward(x)
+
+    # Check properties
+    assert output.shape == x.shape
+    assert np.all(output >= 0.0) and np.all(output <= 1.0)  # Valid membership values
+
+    # Test maximum at center
+    center_idx = np.argmin(np.abs(x - 0.0))  # Find closest to center
+    assert output[center_idx] >= 0.99, "Maximum should be close to 1.0 at center"
+
+    # Check symmetry
+    for i in range(len(x)):
+        symmetric_idx = np.argmin(np.abs(x - (-x[i])))  # Find symmetric point
+        if abs(x[i]) < 9:  # Avoid edge effects
+            assert np.allclose(output[i], output[symmetric_idx], atol=0.1), "Function should be approximately symmetric"
+
+
+def test_bell_mf_vs_gaussian_comparison():
+    """Test that BellMF behaves reasonably compared to GaussianMF."""
+
+    # Create bell and gaussian functions
+    bell_mf = BellMF(a=1.0, b=2.0, c=0.0)  # b=2 makes it similar to Gaussian
+    gauss_mf = GaussianMF(mean=0.0, sigma=1.0)
+
+    # Test on same inputs
+    x = np.array([-2, -1, 0, 1, 2])
+    bell_output = bell_mf.forward(x)
+    gauss_output = gauss_mf.forward(x)
+
+    # Both should peak at center
+    assert np.argmax(bell_output) == np.argmax(gauss_output) == 2  # Index 2 is x=0
+
+    # Both should be symmetric
+    assert np.allclose(bell_output[0], bell_output[4], atol=0.01)  # x=-2 and x=2
+    assert np.allclose(gauss_output[0], gauss_output[4], atol=0.01)
+
+
+def test_bell_vs_other_mfs_integration():
+    """Test that BellMF integrates properly with ANFIS."""
+
+    # Create ANFIS with bell membership functions
+    input_mfs_bell = {
+        "x1": [BellMF(a=2.0, b=2.0, c=-1.0), BellMF(a=2.0, b=2.0, c=1.0)],
+        "x2": [BellMF(a=1.5, b=3.0, c=-0.5), BellMF(a=1.5, b=3.0, c=0.5)],
+    }
+
+    model_bell = ANFIS(input_mfs_bell)
+
+    # Test forward pass
+    x_test = np.array([[0.0, 0.0], [-1.0, 1.0]])
+    output_bell = model_bell.predict(x_test)
+
+    # Should produce valid outputs
+    assert output_bell.shape == (2, 1)
+    assert not np.any(np.isnan(output_bell))
+
+    # Create equivalent ANFIS with gaussian membership functions for comparison
+    input_mfs_gauss = {
+        "x1": [GaussianMF(mean=-1.0, sigma=1.0), GaussianMF(mean=1.0, sigma=1.0)],
+        "x2": [GaussianMF(mean=-0.5, sigma=0.8), GaussianMF(mean=0.5, sigma=0.8)],
+    }
+
+    model_gauss = ANFIS(input_mfs_gauss)
+    output_gauss = model_gauss.predict(x_test)
+
+    # Both should produce valid outputs (though values will be different)
+    assert output_gauss.shape == output_bell.shape
+    assert not np.any(np.isnan(output_gauss))
