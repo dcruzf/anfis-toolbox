@@ -495,3 +495,192 @@ class TrapezoidalMF(MembershipFunction):
             f"TrapezoidalMF(a={self.parameters['a']}, b={self.parameters['b']}, "
             f"c={self.parameters['c']}, d={self.parameters['d']})"
         )
+
+
+class BellMF(MembershipFunction):
+    """Bell-shaped (Generalized Bell) Membership Function.
+
+    Implements a bell-shaped membership function using the formula:
+    μ(x) = 1 / (1 + |((x - c) / a)|^(2b))
+
+    This function is a generalization of the Gaussian function and provides
+    more flexibility in controlling the shape through the 'b' parameter.
+    It's particularly useful when you need asymmetric membership functions
+    or want to fine-tune the slope characteristics.
+
+    Parameters:
+        a (float): Width parameter (positive). Controls the width of the curve.
+        b (float): Slope parameter (positive). Controls the steepness of the curve.
+        c (float): Center parameter. Controls the center position of the curve.
+
+    Note:
+        Parameters 'a' and 'b' must be positive for a valid bell function.
+    """
+
+    def __init__(self, a: float = 1.0, b: float = 2.0, c: float = 0.0):
+        """Initializes the Bell membership function with three control parameters.
+
+        Parameters:
+            a (float): Width parameter (must be positive). Defaults to 1.0.
+            b (float): Slope parameter (must be positive). Defaults to 2.0.
+            c (float): Center parameter. Defaults to 0.0.
+
+        Raises:
+            ValueError: If parameters 'a' or 'b' are not positive.
+        """
+        super().__init__()
+
+        # Validate parameters
+        if a <= 0:
+            raise ValueError(f"Parameter 'a' must be positive, got a={a}")
+
+        if b <= 0:
+            raise ValueError(f"Parameter 'b' must be positive, got b={b}")
+
+        self.parameters = {"a": float(a), "b": float(b), "c": float(c)}
+        # Initialize gradients to zero for all parameters
+        self.gradients = dict.fromkeys(self.parameters.keys(), 0.0)
+
+    def forward(self, x: np.ndarray) -> np.ndarray:
+        """Computes the bell membership values for the input x.
+
+        Parameters:
+            x (np.ndarray): Input array for which the membership values are to be computed.
+
+        Returns:
+            np.ndarray: Output array containing the bell membership values.
+        """
+        a = self.parameters["a"]
+        b = self.parameters["b"]
+        c = self.parameters["c"]
+
+        self.last_input = x
+
+        # Compute the bell function: μ(x) = 1 / (1 + |((x - c) / a)|^(2b))
+        # To avoid numerical issues, we use the absolute value and handle edge cases
+
+        # Compute (x - c) / a
+        normalized = (x - c) / a
+
+        # Compute |normalized|^(2b)
+        # Use np.abs to handle negative values properly
+        abs_normalized = np.abs(normalized)
+
+        # Handle the case where abs_normalized is very close to zero
+        with np.errstate(divide="ignore", invalid="ignore"):
+            power_term = np.power(abs_normalized, 2 * b)
+            # Replace any inf or nan with a very large number to make output close to 0
+            power_term = np.where(np.isfinite(power_term), power_term, 1e10)
+
+        # Compute the final result
+        output = 1.0 / (1.0 + power_term)
+
+        self.last_output = output
+        return output
+
+    def backward(self, dL_dy: np.ndarray):
+        """Computes the gradients for the parameters based on the loss gradient.
+
+        The gradients are computed analytically:
+        - ∂μ/∂a: Affects the width of the curve
+        - ∂μ/∂b: Affects the steepness of the curve
+        - ∂μ/∂c: Affects the center position of the curve
+
+        Parameters:
+            dL_dy (np.ndarray): The gradient of the loss with respect to the output of this layer.
+
+        Returns:
+            None: Gradients are accumulated in self.gradients.
+        """
+        a = self.parameters["a"]
+        b = self.parameters["b"]
+        c = self.parameters["c"]
+
+        x = self.last_input
+        y = self.last_output  # This is μ(x)
+
+        # Intermediate calculations
+        normalized = (x - c) / a
+        abs_normalized = np.abs(normalized)
+
+        # Avoid division by zero and numerical issues
+        # Only compute gradients where abs_normalized > epsilon
+        epsilon = 1e-12
+        valid_mask = abs_normalized > epsilon
+
+        if not np.any(valid_mask):
+            # If all values are at the peak (x ≈ c), gradients are zero
+            return
+
+        # Initialize gradients
+        dL_da = 0.0
+        dL_db = 0.0
+        dL_dc = 0.0
+
+        # Only compute where we have valid values
+        x_valid = x[valid_mask]
+        y_valid = y[valid_mask]
+        dL_dy_valid = dL_dy[valid_mask]
+        normalized_valid = (x_valid - c) / a
+        abs_normalized_valid = np.abs(normalized_valid)
+
+        # Power term: |normalized|^(2b)
+        power_term_valid = np.power(abs_normalized_valid, 2 * b)
+
+        # For the bell function μ = 1/(1 + z) where z = |normalized|^(2b)
+        # ∂μ/∂z = -1/(1 + z)² = -μ²
+        dmu_dz = -y_valid * y_valid
+
+        # Chain rule: ∂L/∂param = ∂L/∂μ × ∂μ/∂z × ∂z/∂param
+
+        # ∂z/∂a = ∂(|normalized|^(2b))/∂a
+        # = 2b × |normalized|^(2b-1) × ∂|normalized|/∂a
+        # = 2b × |normalized|^(2b-1) × sign(normalized) × ∂normalized/∂a
+        # = 2b × |normalized|^(2b-1) × sign(normalized) × (-(x-c)/a²)
+        # = -2b × |normalized|^(2b-1) × sign(normalized) × (x-c)/a²
+
+        sign_normalized = np.sign(normalized_valid)
+        dz_da = -2 * b * np.power(abs_normalized_valid, 2 * b - 1) * sign_normalized * (x_valid - c) / (a * a)
+        dL_da += np.sum(dL_dy_valid * dmu_dz * dz_da)
+
+        # ∂z/∂b = ∂(|normalized|^(2b))/∂b
+        # = |normalized|^(2b) × ln(|normalized|) × 2
+        # But ln(|normalized|) can be problematic near zero, so we use a safe version
+        with np.errstate(divide="ignore", invalid="ignore"):
+            ln_abs_normalized = np.log(abs_normalized_valid)
+            ln_abs_normalized = np.where(np.isfinite(ln_abs_normalized), ln_abs_normalized, 0.0)
+
+        dz_db = 2 * power_term_valid * ln_abs_normalized
+        dL_db += np.sum(dL_dy_valid * dmu_dz * dz_db)
+
+        # ∂z/∂c = ∂(|normalized|^(2b))/∂c
+        # = 2b × |normalized|^(2b-1) × sign(normalized) × ∂normalized/∂c
+        # = 2b × |normalized|^(2b-1) × sign(normalized) × (-1/a)
+        # = -2b × |normalized|^(2b-1) × sign(normalized) / a
+
+        dz_dc = -2 * b * np.power(abs_normalized_valid, 2 * b - 1) * sign_normalized / a
+        dL_dc += np.sum(dL_dy_valid * dmu_dz * dz_dc)
+
+        # Update gradients (accumulate for batch processing)
+        self.gradients["a"] += dL_da
+        self.gradients["b"] += dL_db
+        self.gradients["c"] += dL_dc
+
+    def reset(self):
+        """Resets gradients to zero.
+
+        This method should be called before each training step to clear
+        accumulated gradients from previous iterations.
+        """
+        for key in self.gradients:
+            self.gradients[key] = 0.0
+        self.last_input = None
+        self.last_output = None
+
+    def __str__(self) -> str:
+        """Returns string representation of the bell membership function."""
+        return f"BellMF(a={self.parameters['a']:.3f}, b={self.parameters['b']:.3f}, c={self.parameters['c']:.3f})"
+
+    def __repr__(self) -> str:
+        """Returns detailed representation of the bell membership function."""
+        return f"BellMF(a={self.parameters['a']}, b={self.parameters['b']}, c={self.parameters['c']})"
