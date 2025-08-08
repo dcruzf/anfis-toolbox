@@ -261,7 +261,64 @@ def test_anfis_edge_cases():
     assert np.isfinite(loss)
 
 
-def test_anfis_logging_configuration():
+def test_anfis_hybrid_algorithm():
+    """Test ANFIS hybrid learning algorithm (original Jang 1993)."""
+    # Create simple ANFIS model
+    input_mfs = {
+        "x1": [GaussianMF(mean=-1.0, sigma=1.0), GaussianMF(mean=1.0, sigma=1.0)],
+        "x2": [GaussianMF(mean=-1.0, sigma=1.0), GaussianMF(mean=1.0, sigma=1.0)],
+    }
+    model = ANFIS(input_mfs)
+
+    # Create simple training data
+    np.random.seed(42)
+    x = np.random.randn(20, 2)
+    y = np.sum(x, axis=1, keepdims=True) + 0.1 * np.random.randn(20, 1)
+
+    # Test hybrid training step
+    loss = model.hybrid_train_step(x, y, learning_rate=0.1)
+    assert np.isfinite(loss)
+    assert loss >= 0
+
+    # Test hybrid training over multiple epochs
+    losses = model.fit_hybrid(x, y, epochs=10, learning_rate=0.1, verbose=False)
+
+    assert len(losses) == 10
+    assert all(np.isfinite(loss) and loss >= 0 for loss in losses)
+
+    # Should show some improvement
+    assert losses[-1] <= losses[0] + 1e-6  # Allow for slight numerical variations
+
+
+def test_anfis_hybrid_vs_backprop_comparison():
+    """Test that both hybrid and backprop algorithms work on same data."""
+    input_mfs = {"x": [GaussianMF(mean=-1.0, sigma=1.0), GaussianMF(mean=1.0, sigma=1.0)]}
+
+    # Create identical models
+    model_hybrid = ANFIS(input_mfs)
+    model_backprop = ANFIS({"x": [GaussianMF(mean=-1.0, sigma=1.0), GaussianMF(mean=1.0, sigma=1.0)]})
+
+    # Simple quadratic function
+    x = np.array([[-2], [-1], [0], [1], [2]], dtype=float)
+    y = x**2
+
+    # Train both models
+    losses_hybrid = model_hybrid.fit_hybrid(x, y, epochs=20, learning_rate=0.1, verbose=False)
+    losses_backprop = model_backprop.fit(x, y, epochs=20, learning_rate=0.1, verbose=False)
+
+    # Both should converge
+    assert losses_hybrid[-1] < losses_hybrid[0]
+    assert losses_backprop[-1] < losses_backprop[0]
+
+    # Both should make reasonable predictions
+    x_test = np.array([[0.5], [1.5]])
+    y_pred_hybrid = model_hybrid.predict(x_test)
+    y_pred_backprop = model_backprop.predict(x_test)
+
+    assert y_pred_hybrid.shape == (2, 1)
+    assert y_pred_backprop.shape == (2, 1)
+    assert np.all(np.isfinite(y_pred_hybrid))
+    assert np.all(np.isfinite(y_pred_backprop))
     """Test ANFIS logging configuration."""
     from anfis_toolbox import disable_training_logs, enable_training_logs, setup_logging
 
