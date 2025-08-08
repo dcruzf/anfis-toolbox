@@ -196,6 +196,111 @@ def example_parameter_inspection():
     return model
 
 
+def example_hybrid_vs_backprop():
+    """Example: Compare original hybrid algorithm vs pure backpropagation."""
+    print("=" * 60)
+    print("Example 4: Hybrid Algorithm vs Pure Backpropagation")
+    print("=" * 60)
+
+    # Create a simple 2D test function
+    def target_function(x1, x2):
+        return np.sin(x1) * np.cos(x2) + 0.5 * x1 * x2
+
+    # Generate training data
+    np.random.seed(42)
+    n_samples = 100
+    x1_train = np.random.uniform(-2, 2, n_samples)
+    x2_train = np.random.uniform(-2, 2, n_samples)
+    x_train = np.column_stack([x1_train, x2_train])
+    y_train = target_function(x1_train, x2_train).reshape(-1, 1)
+
+    # Test data
+    x1_test = np.linspace(-2, 2, 20)
+    x2_test = np.linspace(-2, 2, 20)
+    X1, X2 = np.meshgrid(x1_test, x2_test)
+    x_test = np.column_stack([X1.ravel(), X2.ravel()])
+    y_test = target_function(x_test[:, 0], x_test[:, 1]).reshape(-1, 1)
+
+    # Define identical membership functions for both models
+    input_mfs = {
+        'x1': [GaussianMF(mean=-1.0, sigma=0.8), GaussianMF(mean=0.0, sigma=0.8), GaussianMF(mean=1.0, sigma=0.8)],
+        'x2': [GaussianMF(mean=-1.0, sigma=0.8), GaussianMF(mean=0.0, sigma=0.8), GaussianMF(mean=1.0, sigma=0.8)]
+    }
+
+    print("\\n" + "="*40)
+    print("Testing Original Hybrid Algorithm (Jang 1993)")
+    print("="*40)
+
+    # Train with hybrid algorithm
+    model_hybrid = ANFIS(input_mfs)
+    import time
+
+    enable_training_logs()
+    start_time = time.time()
+    losses_hybrid = model_hybrid.fit_hybrid(x_train, y_train, epochs=50, learning_rate=0.01, verbose=True)
+    hybrid_time = time.time() - start_time
+
+    # Test hybrid model
+    y_pred_hybrid = model_hybrid.predict(x_test)
+    rmse_hybrid = np.sqrt(np.mean((y_pred_hybrid - y_test) ** 2))
+
+    print("\\n" + "="*40)
+    print("Testing Pure Backpropagation (Modern)")
+    print("="*40)
+
+    # Reset membership functions for fair comparison
+    input_mfs_bp = {
+        'x1': [GaussianMF(mean=-1.0, sigma=0.8), GaussianMF(mean=0.0, sigma=0.8), GaussianMF(mean=1.0, sigma=0.8)],
+        'x2': [GaussianMF(mean=-1.0, sigma=0.8), GaussianMF(mean=0.0, sigma=0.8), GaussianMF(mean=1.0, sigma=0.8)]
+    }
+
+    # Train with pure backpropagation
+    model_backprop = ANFIS(input_mfs_bp)
+    start_time = time.time()
+    losses_backprop = model_backprop.fit(x_train, y_train, epochs=50, learning_rate=0.01, verbose=True)
+    backprop_time = time.time() - start_time
+
+    # Test backpropagation model
+    y_pred_backprop = model_backprop.predict(x_test)
+    rmse_backprop = np.sqrt(np.mean((y_pred_backprop - y_test) ** 2))
+
+    print("\\n" + "="*60)
+    print("COMPARISON RESULTS")
+    print("="*60)
+    print(f"Hybrid Algorithm (Original ANFIS):")
+    print(f"  - Final Loss: {losses_hybrid[-1]:.6f}")
+    print(f"  - Test RMSE: {rmse_hybrid:.6f}")
+    print(f"  - Training Time: {hybrid_time:.3f} seconds")
+    print(f"  - Loss Reduction: {losses_hybrid[0]:.6f} -> {losses_hybrid[-1]:.6f}")
+
+    print(f"\\nPure Backpropagation (Modern):")
+    print(f"  - Final Loss: {losses_backprop[-1]:.6f}")
+    print(f"  - Test RMSE: {rmse_backprop:.6f}")
+    print(f"  - Training Time: {backprop_time:.3f} seconds")
+    print(f"  - Loss Reduction: {losses_backprop[0]:.6f} -> {losses_backprop[-1]:.6f}")
+
+    print(f"\\nComparison:")
+    if rmse_hybrid < rmse_backprop:
+        print(f"  ✅ Hybrid algorithm achieved better accuracy ({rmse_hybrid:.6f} vs {rmse_backprop:.6f})")
+    else:
+        print(f"  ✅ Backpropagation achieved better accuracy ({rmse_backprop:.6f} vs {rmse_hybrid:.6f})")
+
+    if hybrid_time < backprop_time:
+        print(f"  ⚡ Hybrid algorithm was faster ({hybrid_time:.3f}s vs {backprop_time:.3f}s)")
+    else:
+        print(f"  ⚡ Backpropagation was faster ({backprop_time:.3f}s vs {hybrid_time:.3f}s)")
+
+    convergence_hybrid = abs(losses_hybrid[-1] - losses_hybrid[-10]) if len(losses_hybrid) >= 10 else abs(losses_hybrid[-1] - losses_hybrid[0])
+    convergence_backprop = abs(losses_backprop[-1] - losses_backprop[-10]) if len(losses_backprop) >= 10 else abs(losses_backprop[-1] - losses_backprop[0])
+
+    if convergence_hybrid < convergence_backprop:
+        print(f"  🎯 Hybrid algorithm converged better (change: {convergence_hybrid:.6f} vs {convergence_backprop:.6f})")
+    else:
+        print(f"  🎯 Backpropagation converged better (change: {convergence_backprop:.6f} vs {convergence_hybrid:.6f})")
+
+    return model_hybrid, model_backprop, losses_hybrid, losses_backprop
+
+
 def main():
     """Run all examples."""
     print("ANFIS Toolbox Examples")
@@ -206,6 +311,7 @@ def main():
         model1 = example_1d_function()
         model2 = example_2d_function()
         model3 = example_parameter_inspection()
+        model_hybrid, model_backprop, losses_hybrid, losses_backprop = example_hybrid_vs_backprop()
 
         print("\\n" + "="*60)
         print("All examples completed successfully!")
