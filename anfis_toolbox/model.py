@@ -222,8 +222,135 @@ class ANFIS:
                 for param_name, gradient in mf.gradients.items():
                     mf.parameters[param_name] -= learning_rate * gradient
 
+    def hybrid_train_step(self, x: np.ndarray, y: np.ndarray, learning_rate: float = 0.01) -> float:
+        """Performs one training step using the original ANFIS hybrid learning algorithm.
+
+        This implements the original algorithm from Jang (1993) which alternates between:
+        1. Forward pass: Least squares method (LSM) for consequent parameters
+        2. Backward pass: Backpropagation for antecedent (membership function) parameters
+
+        Parameters:
+            x (np.ndarray): Input data with shape (batch_size, n_inputs).
+            y (np.ndarray): Target data with shape (batch_size, 1).
+            learning_rate (float): Learning rate for membership function parameters.
+
+        Returns:
+            float: Mean squared error loss for this training step.
+        """
+        batch_size = x.shape[0]
+
+        # Reset gradients from previous step
+        self.reset_gradients()
+
+        # === FORWARD PASS ===
+        # Layer 1: Fuzzification
+        membership_outputs = self.membership_layer.forward(x)
+
+        # Layer 2: Rule strength computation
+        rule_strengths = self.rule_layer.forward(membership_outputs)
+
+        # Layer 3: Normalization
+        normalized_weights = self.normalization_layer.forward(rule_strengths)
+
+        # === LEAST SQUARES METHOD FOR CONSEQUENT PARAMETERS ===
+        # Build the design matrix A for least squares: A * theta = y
+        # Each row corresponds to one sample, each column to one consequent parameter
+        A = np.zeros((batch_size, self.n_rules * (self.n_inputs + 1)))
+
+        for i in range(batch_size):
+            for j in range(self.n_rules):
+                # For each rule j, the contribution is w_j * [x1, x2, ..., xn, 1]
+                start_idx = j * (self.n_inputs + 1)
+                end_idx = start_idx + self.n_inputs + 1
+
+                # w_j * [x_i1, x_i2, ..., x_in, 1]
+                A[i, start_idx:end_idx] = normalized_weights[i, j] * np.concatenate([x[i], [1.0]])
+
+        # Solve least squares: theta = (A^T A)^(-1) A^T y
+        try:
+            # Add small regularization for numerical stability
+            regularization = 1e-6 * np.eye(A.shape[1])
+            ATA_reg = A.T @ A + regularization
+            theta = np.linalg.solve(ATA_reg, A.T @ y.flatten())
+
+            # Update consequent parameters
+            self.consequent_layer.parameters = theta.reshape(self.n_rules, self.n_inputs + 1)
+
+        except np.linalg.LinAlgError:
+            # Fallback to pseudo-inverse if matrix is singular
+            logger.warning("Matrix singular in LSM, using pseudo-inverse")
+            theta = np.linalg.pinv(A) @ y.flatten()
+            self.consequent_layer.parameters = theta.reshape(self.n_rules, self.n_inputs + 1)
+
+        # Compute output with updated consequent parameters
+        y_pred = self.consequent_layer.forward(x, normalized_weights)
+
+        # Compute loss
+        loss = np.mean((y_pred - y) ** 2)
+
+        # === BACKWARD PASS FOR MEMBERSHIP FUNCTION PARAMETERS ===
+        # Use backpropagation to update antecedent parameters
+        dL_dy = 2 * (y_pred - y) / y.shape[0]  # MSE gradient
+
+        # Backward pass through consequent layer (gradients w.r.t. normalized weights)
+        dL_dnorm_w, _ = self.consequent_layer.backward(dL_dy)
+
+        # Backward pass through normalization layer
+        dL_dw = self.normalization_layer.backward(dL_dnorm_w)
+
+        # Backward pass through rule layer
+        gradients = self.rule_layer.backward(dL_dw)
+
+        # Backward pass through membership layer
+        self.membership_layer.backward(gradients)
+
+        # Update only membership function parameters (antecedent parameters)
+        for name in self.input_names:
+            for mf in self.input_mfs[name]:
+                for param_name, gradient in mf.gradients.items():
+                    mf.parameters[param_name] -= learning_rate * gradient
+
+        return loss
+
+    def fit_hybrid(
+        self,
+        x: np.ndarray,
+        y: np.ndarray,
+        epochs: int = 100,
+        learning_rate: float = 0.01,
+        verbose: bool = True,
+    ) -> list[float]:
+        """Trains the ANFIS model using the original hybrid learning algorithm.
+
+        This implements the original ANFIS training algorithm from Jang (1993)
+        that alternates between least squares method for consequent parameters
+        and backpropagation for membership function parameters.
+
+        Parameters:
+            x (np.ndarray): Training input data with shape (n_samples, n_inputs).
+            y (np.ndarray): Training target data with shape (n_samples, 1).
+            epochs (int): Number of training epochs.
+            learning_rate (float): Learning rate for membership function parameters.
+            verbose (bool): Whether to log training progress.
+
+        Returns:
+            list: List of loss values for each epoch.
+        """
+        losses = []
+
+        for epoch in range(epochs):
+            # Perform hybrid training step
+            loss = self.hybrid_train_step(x, y, learning_rate)
+            losses.append(loss)
+
+            # Log progress
+            if verbose and (epoch + 1) % max(1, epochs // 10) == 0:
+                logger.info("Epoch %d/%d, Loss: %.6f (Hybrid)", epoch + 1, epochs, loss)
+
+        return losses
+
     def train_step(self, x: np.ndarray, y: np.ndarray, learning_rate: float = 0.01) -> float:
-        """Performs one training step with the given data.
+        """Performs one training step with pure backpropagation (modern approach).
 
         Parameters:
             x (np.ndarray): Input data with shape (batch_size, n_inputs).

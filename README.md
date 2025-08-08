@@ -8,10 +8,11 @@ A comprehensive Python implementation of Adaptive Neuro-Fuzzy Inference Systems 
 ## Features
 
 - **Complete ANFIS Implementation**: Full 4-layer neural-fuzzy architecture
+- **Hybrid Learning Algorithm**: Original Jang (1993) algorithm with least squares + backpropagation
+- **Pure Backpropagation**: Modern gradient-based approach for comparison
 - **Membership Functions**: Gaussian membership functions with automatic differentiation
-- **Training Algorithms**: Gradient-based parameter optimization
 - **Multi-Platform**: Supports Python 3.9-3.13 across different platforms
-- **Comprehensive Testing**: 25+ tests with numerical gradient verification
+- **Comprehensive Testing**: 27+ tests with numerical gradient verification
 - **Easy to Use**: Simple, intuitive API for creating and training ANFIS models
 
 ## Quick Start
@@ -33,8 +34,11 @@ model = ANFIS(input_mfs)
 x_train = np.random.randn(100, 2)
 y_train = np.sum(x_train, axis=1, keepdims=True)
 
-# Train the model
-losses = model.fit(x_train, y_train, epochs=50, learning_rate=0.01)
+# Train the model (hybrid algorithm - recommended)
+losses = model.fit_hybrid(x_train, y_train, epochs=50, learning_rate=0.01)
+
+# Alternative: pure backpropagation
+# losses = model.fit(x_train, y_train, epochs=50, learning_rate=0.01)
 
 # Make predictions
 x_test = np.array([[0.5, -0.5], [1.0, 1.0]])
