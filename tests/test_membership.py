@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 from anfis_toolbox import ANFIS
-from anfis_toolbox.membership import BellMF, GaussianMF, SigmoidalMF, TrapezoidalMF, TriangularMF
+from anfis_toolbox.membership import BellMF, GaussianMF, PiMF, SigmoidalMF, TrapezoidalMF, TriangularMF
 
 
 def test_gaussian_mf():
@@ -1269,4 +1269,343 @@ def test_sigmoidal_vs_other_mfs_integration():
 
     # Both should produce valid outputs (though values will be different)
     assert output_gauss.shape == output_sigmoid.shape
+    assert not np.any(np.isnan(output_gauss))
+
+
+# ============================================================================
+# PiMF (Pi-shaped Membership Function) Tests
+# ============================================================================
+
+
+def test_pi_mf_basic():
+    """Test basic PiMF functionality."""
+    # Create standard Pi-shaped function
+    pi_mf = PiMF(a=-2.0, b=-1.0, c=1.0, d=2.0)
+
+    # Test forward pass
+    x = np.array([-3.0, -2.0, -1.5, -1.0, 0.0, 1.0, 1.5, 2.0, 3.0])
+    y = pi_mf.forward(x)
+
+    # Verify shape and bounds
+    assert y.shape == x.shape
+    assert np.all(y >= 0.0) and np.all(y <= 1.0)
+
+    # Verify key points
+    assert y[0] == 0.0  # x=-3 (outside left)
+    assert y[1] == 0.0  # x=-2 (left foot)
+    assert y[3] == 1.0  # x=-1 (left shoulder)
+    assert y[4] == 1.0  # x=0 (center, flat region)
+    assert y[5] == 1.0  # x=1 (right shoulder)
+    assert y[7] == 0.0  # x=2 (right foot)
+    assert y[8] == 0.0  # x=3 (outside right)
+
+    # Verify smooth transitions (should be between 0 and 1)
+    assert 0.0 < y[2] < 1.0  # x=-1.5 (rising edge)
+    assert 0.0 < y[6] < 1.0  # x=1.5 (falling edge)
+
+
+def test_pi_mf_parameter_validation():
+    """Test parameter validation for PiMF."""
+    # Valid parameters
+    pi_mf = PiMF(a=0.0, b=1.0, c=2.0, d=3.0)
+    assert pi_mf.parameters["a"] == 0.0
+    assert pi_mf.parameters["b"] == 1.0
+    assert pi_mf.parameters["c"] == 2.0
+    assert pi_mf.parameters["d"] == 3.0
+
+    # Test boundary case: b == c (no flat region)
+    pi_mf_no_flat = PiMF(a=0.0, b=1.0, c=1.0, d=2.0)
+    x = np.array([0.5, 1.0, 1.5])
+    y = pi_mf_no_flat.forward(x)
+    assert 0.0 < y[0] < 1.0  # Rising
+    assert y[1] == 1.0  # Peak
+    assert 0.0 < y[2] < 1.0  # Falling
+
+    # Invalid parameters: a >= b
+    with pytest.raises(ValueError, match="Parameters must satisfy a < b ≤ c < d"):
+        PiMF(a=1.0, b=1.0, c=2.0, d=3.0)
+
+    # Invalid parameters: b > c
+    with pytest.raises(ValueError, match="Parameters must satisfy a < b ≤ c < d"):
+        PiMF(a=0.0, b=2.0, c=1.0, d=3.0)
+
+    # Invalid parameters: c >= d
+    with pytest.raises(ValueError, match="Parameters must satisfy a < b ≤ c < d"):
+        PiMF(a=0.0, b=1.0, c=3.0, d=3.0)
+
+
+def test_pi_mf_forward_edge_cases():
+    """Test forward pass edge cases for PiMF."""
+    pi_mf = PiMF(a=-1.0, b=0.0, c=1.0, d=2.0)
+
+    # Test with single values
+    assert pi_mf.forward(np.array([-2.0]))[0] == 0.0
+    assert pi_mf.forward(np.array([0.5]))[0] == 1.0
+    assert pi_mf.forward(np.array([3.0]))[0] == 0.0
+
+    # Test empty array
+    result = pi_mf.forward(np.array([]))
+    assert result.shape == (0,)
+
+    # Test scalar input
+    result = pi_mf.forward(-0.5)
+    assert isinstance(result, np.ndarray)
+    result_scalar = np.asarray(result).item() if result.ndim == 0 else result[0]
+    assert 0.0 < result_scalar < 1.0
+
+
+def test_pi_mf_backward():
+    """Test backward pass for PiMF."""
+    pi_mf = PiMF(a=-1.0, b=0.0, c=1.0, d=2.0)
+
+    # Forward pass first
+    x = np.array([-0.5, 0.5, 1.5])
+    pi_mf.forward(x)
+
+    # Reset gradients
+    pi_mf.reset_gradients()
+
+    # Backward pass
+    dL_dy = np.array([1.0, 1.0, 1.0])
+    pi_mf.backward(dL_dy)
+
+    # Gradients should be computed (non-zero for affected parameters)
+    assert "a" in pi_mf.gradients
+    assert "b" in pi_mf.gradients
+    assert "c" in pi_mf.gradients
+    assert "d" in pi_mf.gradients
+
+
+@pytest.mark.parametrize("param_name", ["a", "b", "c", "d"])
+def test_pi_mf_gradient_numerical(param_name):
+    """Test numerical gradient computation for PiMF parameters."""
+    # Base parameters
+    base_params = {"a": -1.0, "b": 0.0, "c": 1.0, "d": 2.0}
+
+    # Test points in different regions
+    x = np.array([-0.5, 0.5, 1.5])  # Rising, flat, falling
+
+    # Compute numerical gradient by creating new instances
+    eps = 1e-6
+    original_param = base_params[param_name]
+
+    # Create perturbed parameter sets
+    params_plus = base_params.copy()
+    params_minus = base_params.copy()
+    params_plus[param_name] = original_param + eps
+    params_minus[param_name] = original_param - eps
+
+    # Handle constraint violations by adjusting eps if needed
+    try:
+        pi_mf_plus = PiMF(**params_plus)
+        pi_mf_minus = PiMF(**params_minus)
+    except ValueError:
+        # If constraint violated, use smaller eps
+        eps = 1e-7
+        params_plus[param_name] = original_param + eps
+        params_minus[param_name] = original_param - eps
+        pi_mf_plus = PiMF(**params_plus)
+        pi_mf_minus = PiMF(**params_minus)
+
+    # Forward pass with perturbed parameters
+    y_plus = pi_mf_plus.forward(x)
+    y_minus = pi_mf_minus.forward(x)
+
+    numerical_grad = np.sum((y_plus - y_minus) / (2 * eps))
+
+    # Compute analytical gradient with original parameters
+    pi_mf = PiMF(**base_params)
+    for key in pi_mf.gradients:
+        pi_mf.gradients[key] = 0.0  # Reset gradients without clearing cache
+    y = pi_mf.forward(x)
+    pi_mf.backward(np.ones_like(y))
+    analytical_grad = pi_mf.gradients[param_name]
+
+    # Compare gradients (allow some numerical error)
+    assert np.allclose(analytical_grad, numerical_grad, atol=1e-4), (
+        f"Gradient mismatch for {param_name}: analytical={analytical_grad:.8f}, numerical={numerical_grad:.8f}"
+    )
+
+
+def test_pi_mf_gradient_analytical():
+    """Test analytical gradients for PiMF in detail."""
+    pi_mf = PiMF(a=-1.0, b=0.0, c=1.0, d=2.0)
+
+    # Test point in rising region (S-function)
+    x = np.array([-0.5])
+    pi_mf.forward(x)
+    for key in pi_mf.gradients:
+        pi_mf.gradients[key] = 0.0  # Reset gradients without clearing cache
+    pi_mf.backward(np.array([1.0]))
+
+    # Gradients for a and b should be non-zero (affecting S-function)
+    assert pi_mf.gradients["a"] != 0.0, "Gradient w.r.t. 'a' should be non-zero in rising region"
+    assert pi_mf.gradients["b"] != 0.0, "Gradient w.r.t. 'b' should be non-zero in rising region"
+    assert pi_mf.gradients["c"] == 0.0, "Gradient w.r.t. 'c' should be zero in rising region"
+    assert pi_mf.gradients["d"] == 0.0, "Gradient w.r.t. 'd' should be zero in rising region"
+
+    # Test point in flat region
+    x = np.array([0.5])
+    pi_mf.forward(x)
+    for key in pi_mf.gradients:
+        pi_mf.gradients[key] = 0.0  # Reset gradients without clearing cache
+    pi_mf.backward(np.array([1.0]))
+
+    # All gradients should be zero in flat region (constant function)
+    assert pi_mf.gradients["a"] == 0.0, "Gradient w.r.t. 'a' should be zero in flat region"
+    assert pi_mf.gradients["b"] == 0.0, "Gradient w.r.t. 'b' should be zero in flat region"
+    assert pi_mf.gradients["c"] == 0.0, "Gradient w.r.t. 'c' should be zero in flat region"
+    assert pi_mf.gradients["d"] == 0.0, "Gradient w.r.t. 'd' should be zero in flat region"
+
+    # Test point in falling region (Z-function)
+    x = np.array([1.5])
+    pi_mf.forward(x)
+    for key in pi_mf.gradients:
+        pi_mf.gradients[key] = 0.0  # Reset gradients without clearing cache
+    pi_mf.backward(np.array([1.0]))
+
+    # Gradients for c and d should be non-zero (affecting Z-function)
+    assert pi_mf.gradients["a"] == 0.0, "Gradient w.r.t. 'a' should be zero in falling region"
+    assert pi_mf.gradients["b"] == 0.0, "Gradient w.r.t. 'b' should be zero in falling region"
+    assert pi_mf.gradients["c"] != 0.0, "Gradient w.r.t. 'c' should be non-zero in falling region"
+    assert pi_mf.gradients["d"] != 0.0, "Gradient w.r.t. 'd' should be non-zero in falling region"
+
+
+def test_pi_mf_symmetry():
+    """Test symmetry properties of PiMF."""
+    # Create symmetric Pi function
+    pi_mf = PiMF(a=-2.0, b=-1.0, c=1.0, d=2.0)
+
+    # Test symmetric points
+    x_left = np.array([-1.5])
+    x_right = np.array([1.5])
+
+    y_left = pi_mf.forward(x_left)
+    y_right = pi_mf.forward(x_right)
+
+    # Should have same membership values (symmetric)
+    assert np.allclose(y_left, y_right, atol=1e-10), (
+        f"Symmetric points should have equal membership: "
+        f"μ({x_left[0]})={y_left[0]:.6f}, μ({x_right[0]})={y_right[0]:.6f}"
+    )
+
+
+def test_pi_mf_reset():
+    """Test gradient reset functionality for PiMF."""
+    pi_mf = PiMF(a=-1.0, b=0.0, c=1.0, d=2.0)
+
+    # Perform forward and backward pass
+    x = np.array([0.5])
+    pi_mf.forward(x)
+    pi_mf.backward(np.array([1.0]))
+
+    # Reset gradients
+    pi_mf.reset_gradients()
+
+    # All gradients should be zero
+    for key in pi_mf.gradients:
+        assert pi_mf.gradients[key] == 0.0, f"Gradient for '{key}' not reset to zero"
+
+    assert pi_mf.last_input is None
+    assert pi_mf.last_output is None
+
+
+def test_pi_mf_string_representation():
+    """Test string representation of PiMF."""
+    pi_mf = PiMF(a=-1.5, b=0.0, c=1.0, d=2.5)
+
+    str_repr = str(pi_mf)
+    assert "PiMF" in str_repr
+    assert "-1.500" in str_repr
+    assert "0.000" in str_repr
+    assert "1.000" in str_repr
+    assert "2.500" in str_repr
+
+    repr_str = repr(pi_mf)
+    assert "PiMF" in repr_str
+    assert "-1.5" in repr_str
+    assert "2.5" in repr_str
+
+
+def test_pi_mf_batch_processing():
+    """Test batch processing with PiMF."""
+    pi_mf = PiMF(a=-2.0, b=-1.0, c=1.0, d=2.0)
+
+    # Large batch
+    batch_size = 1000
+    x = np.random.uniform(-3, 3, size=batch_size)
+    y = pi_mf.forward(x)
+
+    # Verify output properties
+    assert y.shape == (batch_size,)
+    assert np.all(y >= 0.0) and np.all(y <= 1.0)
+    assert not np.any(np.isnan(y))
+
+    # Verify some samples are in different regions
+    assert np.any(y == 0.0)  # Some outside
+    assert np.any(y == 1.0)  # Some in flat region
+    assert np.any((y > 0.0) & (y < 1.0))  # Some in transition regions
+
+
+def test_pi_mf_vs_trapezoidal_similarity():
+    """Test that PiMF behaves similarly to TrapezoidalMF in many cases."""
+    # Create similar functions
+    pi_mf = PiMF(a=-2.0, b=-1.0, c=1.0, d=2.0)
+    trap_mf = TrapezoidalMF(a=-2.0, b=-1.0, c=1.0, d=2.0)
+
+    # Test in flat region - should be identical
+    x_flat = np.array([-0.5, 0.0, 0.5])
+    y_pi = pi_mf.forward(x_flat)
+    y_trap = trap_mf.forward(x_flat)
+
+    assert np.allclose(y_pi, y_trap), "Pi and Trapezoidal should be identical in flat region"
+
+    # Test outside regions - should be identical
+    x_outside = np.array([-3.0, 3.0])
+    y_pi_out = pi_mf.forward(x_outside)
+    y_trap_out = trap_mf.forward(x_outside)
+
+    assert np.allclose(y_pi_out, y_trap_out), "Pi and Trapezoidal should be identical outside their support"
+
+    # In transition regions, Pi should be smoother (S-shaped vs linear)
+    x_transition = np.array([-1.5, 1.5])
+    y_pi_trans = pi_mf.forward(x_transition)
+    y_trap_trans = trap_mf.forward(x_transition)
+
+    # Both should be in (0,1) but values will differ due to smoothness
+    assert np.all((y_pi_trans > 0) & (y_pi_trans < 1))
+    assert np.all((y_trap_trans > 0) & (y_trap_trans < 1))
+
+
+def test_pi_mf_anfis_integration():
+    """Test PiMF integration with ANFIS model."""
+    # Create input membership functions using PiMF
+    input_mfs = {
+        "x1": [PiMF(a=-3.0, b=-1.0, c=-0.5, d=0.0), PiMF(a=0.0, b=0.5, c=1.0, d=3.0)],
+        "x2": [PiMF(a=-2.0, b=-1.0, c=0.0, d=1.0), PiMF(a=-1.0, b=0.0, c=1.0, d=2.0)],
+    }
+
+    # Create ANFIS model
+    model = ANFIS(input_mfs)
+    assert model.n_rules == 4  # 2x2 rules
+
+    # Test prediction
+    x_test = np.array([[-1.0, -0.5], [0.5, 0.5]])
+    output = model.predict(x_test)
+
+    # Verify output properties
+    assert output.shape == (2, 1)
+    assert not np.any(np.isnan(output))
+
+    # Compare with Gaussian-based ANFIS
+    input_mfs_gauss = {
+        "x1": [GaussianMF(mean=-1.0, sigma=0.8), GaussianMF(mean=1.0, sigma=0.8)],
+        "x2": [GaussianMF(mean=-0.5, sigma=0.6), GaussianMF(mean=0.5, sigma=0.6)],
+    }
+
+    model_gauss = ANFIS(input_mfs_gauss)
+    output_gauss = model_gauss.predict(x_test)
+
+    # Both should produce valid outputs (though values will be different)
+    assert output_gauss.shape == output.shape
     assert not np.any(np.isnan(output_gauss))
