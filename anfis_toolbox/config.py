@@ -194,21 +194,31 @@ class ANFISModelManager:
         Returns:
             Model configuration dictionary
         """
+        # Use standardized interface: both model and membership_layer have membership_functions property
+        membership_functions = model.membership_functions
+        input_names = model.input_names
+
         config = {
             "model_info": {
-                "n_inputs": model.n_inputs,
-                "n_rules": model.n_rules,
-                "input_names": list(model.membership_layer.membership_functions.keys()),
+                "n_inputs": int(model.n_inputs),
+                "n_rules": int(model.n_rules),
+                "input_names": input_names,
             },
             "membership_functions": {},
         }
 
         # Extract MF information
-        for input_name, mfs in model.membership_layer.membership_functions.items():
+        for input_name, mfs in membership_functions.items():
             config["membership_functions"][input_name] = []
 
             for _i, mf in enumerate(mfs):
-                mf_info = {"type": mf.__class__.__name__, "parameters": mf.parameters.copy()}
+                # Get parameters and convert numpy types to native Python types for JSON serialization
+                parameters = mf.parameters.copy()
+                for key, value in parameters.items():
+                    if hasattr(value, "item"):
+                        parameters[key] = value.item()
+
+                mf_info = {"type": mf.__class__.__name__, "parameters": parameters}
                 config["membership_functions"][input_name].append(mf_info)
 
         return config

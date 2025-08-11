@@ -14,16 +14,16 @@ try:
     from .validation import ANFISMetrics, ANFISValidator, quick_evaluate
 
     _HAS_VALIDATION = True
-except ImportError:
+except ImportError:  # pragma: no cover
     _HAS_VALIDATION = False
 
     # Create dummy classes for documentation
     class ANFISValidator:
         """Dummy class for validation when scikit-learn is not available."""
 
-        def __init__(self, *args, **kwargs):
+        def __init__(self, *args, **kwargs):  # pragma: no cover
             """Initialize dummy validator."""
-            raise ImportError(
+            raise ImportError(  # pragma: no cover
                 "Validation features require scikit-learn. Install with: pip install anfis-toolbox[validation]"
             )
 
@@ -31,22 +31,22 @@ except ImportError:
         """Dummy class for metrics when scikit-learn is not available."""
 
         @staticmethod
-        def regression_metrics(*args, **kwargs):
+        def regression_metrics(*args, **kwargs):  # pragma: no cover
             """Dummy method for regression metrics when scikit-learn is not available."""
-            raise ImportError(
+            raise ImportError(  # pragma: no cover
                 "Validation features require scikit-learn. Install with: pip install anfis-toolbox[validation]"
             )
 
         @staticmethod
-        def model_complexity_metrics(*args, **kwargs):
+        def model_complexity_metrics(*args, **kwargs):  # pragma: no cover
             """Dummy method for model complexity metrics when scikit-learn is not available."""
-            raise ImportError(
+            raise ImportError(  # pragma: no cover
                 "Validation features require scikit-learn. Install with: pip install anfis-toolbox[validation]"
             )
 
-    def quick_evaluate(*args, **kwargs):
+    def quick_evaluate(*args, **kwargs):  # pragma: no cover
         """Dummy function for quick evaluation when scikit-learn is not available."""
-        raise ImportError(
+        raise ImportError(  # pragma: no cover
             "Validation features require scikit-learn. Install with: pip install anfis-toolbox[validation]"
         )
 
@@ -56,28 +56,28 @@ try:
     from .visualization import ANFISVisualizer, quick_plot_results, quick_plot_training
 
     _HAS_VISUALIZATION = True
-except ImportError:
+except ImportError:  # pragma: no cover
     _HAS_VISUALIZATION = False
 
     # Create dummy classes for documentation
     class ANFISVisualizer:
         """Dummy class for visualization when matplotlib is not available."""
 
-        def __init__(self, *args, **kwargs):
+        def __init__(self, *args, **kwargs):  # pragma: no cover
             """Initialize dummy visualizer."""
-            raise ImportError(
+            raise ImportError(  # pragma: no cover
                 "Visualization features require matplotlib. Install with: pip install anfis-toolbox[visualization]"
             )
 
-    def quick_plot_training(*args, **kwargs):
+    def quick_plot_training(*args, **kwargs):  # pragma: no cover
         """Dummy function for plotting training curves when matplotlib is not available."""
-        raise ImportError(
+        raise ImportError(  # pragma: no cover
             "Visualization features require matplotlib. Install with: pip install anfis-toolbox[visualization]"
         )
 
-    def quick_plot_results(*args, **kwargs):
+    def quick_plot_results(*args, **kwargs):  # pragma: no cover
         """Dummy function for plotting results when matplotlib is not available."""
-        raise ImportError(
+        raise ImportError(  # pragma: no cover
             "Visualization features require matplotlib. Install with: pip install anfis-toolbox[visualization]"
         )
 
