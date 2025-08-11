@@ -3,6 +3,7 @@
 import json
 import logging
 import pickle
+from copy import deepcopy
 from pathlib import Path
 from typing import Any, Union
 
@@ -129,7 +130,7 @@ class ANFISConfig:
         Returns:
             Configuration dictionary
         """
-        return self.config.copy()
+        return deepcopy(self.config)
 
     def __repr__(self) -> str:
         """String representation of configuration."""

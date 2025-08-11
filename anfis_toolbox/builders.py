@@ -52,7 +52,13 @@ class ANFISBuilder:
     def _create_gaussian_mfs(self, range_min: float, range_max: float, n_mfs: int, overlap: float) -> list[GaussianMF]:
         """Create evenly spaced Gaussian membership functions."""
         centers = np.linspace(range_min, range_max, n_mfs)
-        sigma = (range_max - range_min) / (n_mfs - 1) * overlap
+
+        # Handle single MF case
+        if n_mfs == 1:
+            sigma = (range_max - range_min) * 0.25  # Use quarter of range as default sigma
+        else:
+            sigma = (range_max - range_min) / (n_mfs - 1) * overlap
+
         return [GaussianMF(mean=center, sigma=sigma) for center in centers]
 
     def _create_triangular_mfs(
