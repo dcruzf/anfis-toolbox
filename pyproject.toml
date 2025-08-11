@@ -9,9 +9,22 @@ description = "A Python toolbox for building, training, and evaluating Adaptive 
 authors = [{ name = "Daniel França", email = "daniel@ci.ufpb.br" }]
 license = { text = "MIT" }
 dependencies = [
+    "matplotlib>=3.9.4",
     "numpy>=1.24.4",
 ]
 requires-python = ">=3.9"
+
+[project.optional-dependencies]
+visualization = [
+    "matplotlib>=3.5.0",
+]
+validation = [
+    "scikit-learn>=1.0.0",
+]
+all = [
+    "matplotlib>=3.5.0",
+    "scikit-learn>=1.0.0",
+]
 
 [tool.hatch.version]
 path = 'anfis_toolbox/__init__.py'
