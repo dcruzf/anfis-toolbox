@@ -4,7 +4,7 @@ __version__ = "0.1.0"
 
 from .layers import ConsequentLayer, MembershipLayer, NormalizationLayer, RuleLayer
 from .logging_config import disable_training_logs, enable_training_logs, setup_logging
-from .membership import BellMF, GaussianMF, MembershipFunction, SigmoidalMF, TrapezoidalMF, TriangularMF
+from .membership import BellMF, GaussianMF, MembershipFunction, PiMF, SigmoidalMF, TrapezoidalMF, TriangularMF
 from .model import ANFIS
 
 __all__ = [
@@ -15,6 +15,7 @@ __all__ = [
     "TrapezoidalMF",
     "BellMF",
     "SigmoidalMF",
+    "PiMF",
     "MembershipLayer",
     "RuleLayer",
     "NormalizationLayer",

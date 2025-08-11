@@ -832,3 +832,212 @@ class SigmoidalMF(MembershipFunction):
     def __repr__(self) -> str:
         """Returns detailed representation of the sigmoidal membership function."""
         return f"SigmoidalMF(a={self.parameters['a']}, c={self.parameters['c']})"
+
+
+class PiMF(MembershipFunction):
+    """Pi-shaped membership function.
+
+    The Pi-shaped membership function is characterized by a trapezoidal-like shape
+    with smooth S-shaped transitions on both sides. It is defined by four parameters
+    that control the shape and position:
+
+    Mathematical definition:
+    μ(x) = S(x; a, b) for x ∈ [a, b]
+         = 1 for x ∈ [b, c]
+         = Z(x; c, d) for x ∈ [c, d]
+         = 0 elsewhere
+
+    Where:
+    - S(x; a, b) is an S-shaped function from 0 to 1
+    - Z(x; c, d) is a Z-shaped function from 1 to 0
+
+    The S and Z functions use smooth cubic splines for differentiability:
+    S(x; a, b) = 2*((x-a)/(b-a))^3 for x ∈ [a, (a+b)/2]
+               = 1 - 2*((b-x)/(b-a))^3 for x ∈ [(a+b)/2, b]
+
+    Parameters:
+        a (float): Left foot of the function (where function starts rising from 0)
+        b (float): Left shoulder of the function (where function reaches 1)
+        c (float): Right shoulder of the function (where function starts falling from 1)
+        d (float): Right foot of the function (where function reaches 0)
+
+    Note:
+        Parameters must satisfy: a < b ≤ c < d
+    """
+
+    def __init__(self, a: float, b: float, c: float, d: float):
+        """Initialize the Pi-shaped membership function.
+
+        Parameters:
+            a (float): Left foot parameter
+            b (float): Left shoulder parameter
+            c (float): Right shoulder parameter
+            d (float): Right foot parameter
+
+        Raises:
+            ValueError: If parameters don't satisfy a < b ≤ c < d
+        """
+        super().__init__()
+
+        # Parameter validation
+        if not (a < b <= c < d):
+            raise ValueError(f"Parameters must satisfy a < b ≤ c < d, got a={a}, b={b}, c={c}, d={d}")
+
+        self.parameters = {"a": float(a), "b": float(b), "c": float(c), "d": float(d)}
+        self.gradients = {"a": 0.0, "b": 0.0, "c": 0.0, "d": 0.0}
+
+    def forward(self, x: np.ndarray) -> np.ndarray:
+        """Compute the Pi-shaped membership function.
+
+        The function combines S and Z functions for smooth transitions:
+        - Rising edge: S-function from a to b
+        - Flat top: constant 1 from b to c
+        - Falling edge: Z-function from c to d
+        - Outside: 0
+
+        Parameters:
+            x (np.ndarray): Input values
+
+        Returns:
+            np.ndarray: Membership values μ(x) ∈ [0, 1]
+        """
+        x = np.asarray(x)
+        self.last_input = x.copy()
+
+        a, b, c, d = self.parameters["a"], self.parameters["b"], self.parameters["c"], self.parameters["d"]
+
+        # Initialize output
+        y = np.zeros_like(x, dtype=np.float64)
+
+        # S-function for rising edge [a, b]
+        mask_s = (x >= a) & (x <= b)
+        if np.any(mask_s):
+            x_s = x[mask_s]
+            # Avoid division by zero
+            if b != a:
+                t = (x_s - a) / (b - a)  # Normalize to [0, 1]
+
+                # Smooth S-function using smoothstep: S(t) = 3*t² - 2*t³
+                # This is continuous and differentiable across the entire [0,1] interval
+                y_s = 3 * t**2 - 2 * t**3
+
+                y[mask_s] = y_s
+            else:
+                # Degenerate case: instant transition
+                y[mask_s] = 1.0
+
+        # Flat region [b, c]: μ(x) = 1
+        mask_flat = (x >= b) & (x <= c)
+        y[mask_flat] = 1.0
+
+        # Z-function for falling edge [c, d]
+        mask_z = (x >= c) & (x <= d)
+        if np.any(mask_z):
+            x_z = x[mask_z]
+            # Avoid division by zero
+            if d != c:
+                t = (x_z - c) / (d - c)  # Normalize to [0, 1]
+
+                # Smooth Z-function (inverted smoothstep): Z(t) = 1 - S(t) = 1 - (3*t² - 2*t³)
+                # This is continuous and differentiable, going from 1 to 0
+                y_z = 1 - (3 * t**2 - 2 * t**3)
+
+                y[mask_z] = y_z
+            else:
+                # Degenerate case: instant transition
+                y[mask_z] = 0.0
+
+        self.last_output = y.copy()
+        return y
+
+    def backward(self, dL_dy: np.ndarray):
+        """Compute gradients for backpropagation.
+
+        Analytical gradients for the Pi-shaped function parameters.
+        The gradients are computed separately for each region:
+        - S-function region: gradients w.r.t. a, b
+        - Z-function region: gradients w.r.t. c, d
+        - Flat region: no gradients (constant function)
+
+        Parameters:
+            dL_dy (np.ndarray): Gradient of loss w.r.t. function output
+        """
+        if self.last_input is None or self.last_output is None:
+            return
+
+        x = self.last_input
+        dL_dy = np.asarray(dL_dy)
+
+        a, b, c, d = self.parameters["a"], self.parameters["b"], self.parameters["c"], self.parameters["d"]
+
+        # Initialize gradients
+        grad_a = grad_b = grad_c = grad_d = 0.0
+
+        # S-function gradients [a, b]
+        mask_s = (x >= a) & (x <= b)
+        if np.any(mask_s) and b != a:
+            x_s = x[mask_s]
+            dL_dy_s = dL_dy[mask_s]
+            t = (x_s - a) / (b - a)
+
+            # Calculate parameter derivatives
+            dt_da = (x_s - b) / (b - a) ** 2  # Correct derivative
+            dt_db = -(x_s - a) / (b - a) ** 2
+
+            # For smoothstep S(t) = 3*t² - 2*t³, derivative is dS/dt = 6*t - 6*t² = 6*t*(1-t)
+            dS_dt = 6 * t * (1 - t)
+
+            # Apply chain rule: dS/da = dS/dt * dt/da
+            dS_da = dS_dt * dt_da
+            dS_db = dS_dt * dt_db
+
+            grad_a += np.sum(dL_dy_s * dS_da)
+            grad_b += np.sum(dL_dy_s * dS_db)
+
+        # Z-function gradients [c, d]
+        mask_z = (x >= c) & (x <= d)
+        if np.any(mask_z) and d != c:
+            x_z = x[mask_z]
+            dL_dy_z = dL_dy[mask_z]
+            t = (x_z - c) / (d - c)
+
+            # Calculate parameter derivatives
+            dt_dc = (x_z - d) / (d - c) ** 2  # Correct derivative
+            dt_dd = -(x_z - c) / (d - c) ** 2
+
+            # For Z(t) = 1 - S(t) = 1 - (3*t² - 2*t³), derivative is dZ/dt = -dS/dt = -6*t*(1-t) = 6*t*(t-1)
+            dZ_dt = 6 * t * (t - 1)
+
+            # Apply chain rule: dZ/dc = dZ/dt * dt/dc
+            dZ_dc = dZ_dt * dt_dc
+            dZ_dd = dZ_dt * dt_dd
+
+            grad_c += np.sum(dL_dy_z * dZ_dc)
+            grad_d += np.sum(dL_dy_z * dZ_dd)
+
+        # Accumulate gradients
+        self.gradients["a"] += grad_a
+        self.gradients["b"] += grad_b
+        self.gradients["c"] += grad_c
+        self.gradients["d"] += grad_d
+
+    def reset_gradients(self):
+        """Reset gradients to zero.
+
+        This method should be called before each training step to clear
+        accumulated gradients from previous iterations.
+        """
+        for key in self.gradients:
+            self.gradients[key] = 0.0
+        self.last_input = None
+        self.last_output = None
+
+    def __str__(self) -> str:
+        """Returns string representation of the Pi-shaped membership function."""
+        a, b, c, d = self.parameters["a"], self.parameters["b"], self.parameters["c"], self.parameters["d"]
+        return f"PiMF(a={a:.3f}, b={b:.3f}, c={c:.3f}, d={d:.3f})"
+
+    def __repr__(self) -> str:
+        """Returns detailed representation of the Pi-shaped membership function."""
+        a, b, c, d = self.parameters["a"], self.parameters["b"], self.parameters["c"], self.parameters["d"]
+        return f"PiMF(a={a}, b={b}, c={c}, d={d})"
