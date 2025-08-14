@@ -17,6 +17,7 @@ rebuild-lockfiles: .uv
 install: .uv
 	uv sync
 	uv tool install hatch
+	uv tool update-shell
 	uvx pre-commit install
 	uvx pre-commit autoupdate
 
