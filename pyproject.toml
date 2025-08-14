@@ -49,21 +49,17 @@ dependencies = [
     "matplotlib>=3.5.0",
 ]
 
-[tool.hatch.envs.test.scripts]
-test = "pytest {args:tests}"
-test-cov = "coverage run -m pytest {args:tests}"
-cov-report = [
-    "- coverage combine",
-    "coverage report -m",
-]
-cov-html = [
-    "- coverage combine",
-    "coverage html",
-]
+[tool.hatch.envs.hatch-test]
+installer = "pip"
 
-# Test matrix for multiple Python versions
-[[tool.hatch.envs.test.matrix]]
-python = ["3.9", "3.10", "3.11", "3.12", "3.13"]
+[[tool.hatch.envs.hatch-test.matrix]]
+python = ["3.13", "3.12", "3.11", "3.10", "3.9"]
+
+[tool.hatch.envs.hatch-test.scripts]
+run = "pytest{env:HATCH_TEST_ARGS:} {args}"
+run-cov = "coverage run -m pytest{env:HATCH_TEST_ARGS:} {args}"
+cov-combine = "coverage combine"
+cov-report = "coverage report -m"
 
 [tool.ruff]
 line-length = 120

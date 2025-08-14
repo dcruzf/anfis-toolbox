@@ -37,19 +37,18 @@ lint: .uv
 
 .PHONY: test ## Run tests
 test: .hatch
-	uv tool run hatch run test:test
+	uv tool run hatch test -c
 
-.PHONY: test-cov ## Run tests with coverage
-test-cov: .hatch
-	uv tool run hatch run test:test-cov
-	uv tool run hatch run test:cov-report
+.PHONY: test-all ## Run tests with coverage
+test-all: .hatch
+	uv tool run hatch test -c --all
 
 .PHONY: lf ## Run last failed tests
 lf: .uv
 	uv run pytest --lf -vv
 
 .PHONY: all
-all: format lint test
+all: format lint test-all
 
 .PHONY: clean  ## Clear local caches and build artifacts
 clean:
