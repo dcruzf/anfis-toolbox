@@ -65,9 +65,19 @@ class MembershipFunction(ABC):
         Returns:
             None
         """
-        self.gradients = dict.fromkeys(self.parameters, 0.0)
+        for key in self.gradients:
+            self.gradients[key] = 0.0
         self.last_input = None
         self.last_output = None
+
+    def __str__(self) -> str:  # pragma: no cover
+        """Returns string representation of the Gaussian membership function."""
+        params = ", ".join(f"{key}={value:.3f}" for key, value in self.parameters.items())
+        return f"{self.__class__.__name__}({params})"
+
+    def __repr__(self) -> str:  # pragma: no cover
+        """Returns detailed representation of the Gaussian membership function."""
+        return self.__str__()
 
 
 class GaussianMF(MembershipFunction):
@@ -137,17 +147,6 @@ class GaussianMF(MembershipFunction):
         # Update gradients
         self.gradients["mean"] += dL_dmean
         self.gradients["sigma"] += dL_dsigma
-
-    def reset(self):
-        """Resets gradients to zero.
-
-        This method should be called before each training step to clear
-        accumulated gradients from previous iterations.
-        """
-        for key in self.gradients:
-            self.gradients[key] = 0.0
-        self.last_input = None
-        self.last_output = None
 
     def __str__(self) -> str:
         """Returns string representation of the Gaussian membership function."""
@@ -298,17 +297,6 @@ class TriangularMF(MembershipFunction):
         self.gradients["a"] += dL_da
         self.gradients["b"] += dL_db
         self.gradients["c"] += dL_dc
-
-    def reset(self):
-        """Resets gradients to zero.
-
-        This method should be called before each training step to clear
-        accumulated gradients from previous iterations.
-        """
-        for key in self.gradients:
-            self.gradients[key] = 0.0
-        self.last_input = None
-        self.last_output = None
 
     def __str__(self) -> str:
         """Returns string representation of the triangular membership function."""
@@ -470,17 +458,6 @@ class TrapezoidalMF(MembershipFunction):
         self.gradients["b"] += dL_db
         self.gradients["c"] += dL_dc
         self.gradients["d"] += dL_dd
-
-    def reset(self):
-        """Resets gradients to zero.
-
-        This method should be called before each training step to clear
-        accumulated gradients from previous iterations.
-        """
-        for key in self.gradients:
-            self.gradients[key] = 0.0
-        self.last_input = None
-        self.last_output = None
 
     def __str__(self) -> str:
         """Returns string representation of the trapezoidal membership function."""
@@ -666,17 +643,6 @@ class BellMF(MembershipFunction):
         self.gradients["b"] += dL_db
         self.gradients["c"] += dL_dc
 
-    def reset(self):
-        """Resets gradients to zero.
-
-        This method should be called before each training step to clear
-        accumulated gradients from previous iterations.
-        """
-        for key in self.gradients:
-            self.gradients[key] = 0.0
-        self.last_input = None
-        self.last_output = None
-
     def __str__(self) -> str:
         """Returns string representation of the bell membership function."""
         return f"BellMF(a={self.parameters['a']:.3f}, b={self.parameters['b']:.3f}, c={self.parameters['c']:.3f})"
@@ -813,17 +779,6 @@ class SigmoidalMF(MembershipFunction):
         # Update gradients (accumulate for batch processing)
         self.gradients["a"] += dL_da
         self.gradients["c"] += dL_dc
-
-    def reset(self):
-        """Resets gradients to zero.
-
-        This method should be called before each training step to clear
-        accumulated gradients from previous iterations.
-        """
-        for key in self.gradients:
-            self.gradients[key] = 0.0
-        self.last_input = None
-        self.last_output = None
 
     def __str__(self) -> str:
         """Returns string representation of the sigmoidal membership function."""
@@ -1020,17 +975,6 @@ class PiMF(MembershipFunction):
         self.gradients["b"] += grad_b
         self.gradients["c"] += grad_c
         self.gradients["d"] += grad_d
-
-    def reset_gradients(self):
-        """Reset gradients to zero.
-
-        This method should be called before each training step to clear
-        accumulated gradients from previous iterations.
-        """
-        for key in self.gradients:
-            self.gradients[key] = 0.0
-        self.last_input = None
-        self.last_output = None
 
     def __str__(self) -> str:
         """Returns string representation of the Pi-shaped membership function."""

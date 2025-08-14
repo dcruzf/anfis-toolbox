@@ -10,11 +10,11 @@ from .membership import BellMF, GaussianMF, MembershipFunction, PiMF, SigmoidalM
 from .model import ANFIS
 
 # Import validation utilities (optional)
-try:
+try:  # pragma: no cover
     from .validation import ANFISMetrics, ANFISValidator, quick_evaluate
 
     _HAS_VALIDATION = True
-except ImportError:  # pragma: no cover
+except ImportError:
     _HAS_VALIDATION = False
 
     # Create dummy classes for documentation

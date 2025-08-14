@@ -1363,7 +1363,7 @@ def test_pi_mf_backward():
     pi_mf.forward(x)
 
     # Reset gradients
-    pi_mf.reset_gradients()
+    pi_mf.reset()
 
     # Backward pass
     dL_dy = np.array([1.0, 1.0, 1.0])
@@ -1500,7 +1500,7 @@ def test_pi_mf_reset():
     pi_mf.backward(np.array([1.0]))
 
     # Reset gradients
-    pi_mf.reset_gradients()
+    pi_mf.reset()
 
     # All gradients should be zero
     for key in pi_mf.gradients:
@@ -1609,3 +1609,26 @@ def test_pi_mf_anfis_integration():
     # Both should produce valid outputs (though values will be different)
     assert output_gauss.shape == output.shape
     assert not np.any(np.isnan(output_gauss))
+
+
+@pytest.mark.parametrize(
+    "mf",
+    [
+        GaussianMF(mean=0.0, sigma=1.0),
+        TriangularMF(a=0.0, b=1.0, c=2.0),
+        TrapezoidalMF(a=0.0, b=1.0, c=2.0, d=3.0),
+        BellMF(a=0.5, b=1.0, c=2.0),
+        SigmoidalMF(a=0.5, c=1.0),
+        PiMF(a=0.1, b=1.0, c=2.0, d=3.0),
+    ],
+)
+def test_str_repr(mf):
+    s = str(mf)
+    r = repr(mf)
+
+    # Tipo correto
+    assert isinstance(s, str)
+    assert isinstance(r, str)
+
+    # Contém o nome da classe e "MF"
+    assert mf.__class__.__name__ in s
