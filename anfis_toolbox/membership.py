@@ -70,12 +70,12 @@ class MembershipFunction(ABC):
         self.last_input = None
         self.last_output = None
 
-    def __str__(self) -> str:  # pragma: no cover
+    def __str__(self) -> str:
         """Returns string representation of the Gaussian membership function."""
         params = ", ".join(f"{key}={value:.3f}" for key, value in self.parameters.items())
         return f"{self.__class__.__name__}({params})"
 
-    def __repr__(self) -> str:  # pragma: no cover
+    def __repr__(self) -> str:
         """Returns detailed representation of the Gaussian membership function."""
         return self.__str__()
 
@@ -148,14 +148,6 @@ class GaussianMF(MembershipFunction):
         self.gradients["mean"] += dL_dmean
         self.gradients["sigma"] += dL_dsigma
 
-    def __str__(self) -> str:
-        """Returns string representation of the Gaussian membership function."""
-        return f"GaussianMF(mean={self.parameters['mean']:.3f}, sigma={self.parameters['sigma']:.3f})"
-
-    def __repr__(self) -> str:
-        """Returns detailed representation of the Gaussian membership function."""
-        return f"GaussianMF(mean={self.parameters['mean']}, sigma={self.parameters['sigma']})"
-
 
 class TriangularMF(MembershipFunction):
     """Triangular Membership Function.
@@ -165,146 +157,136 @@ class TriangularMF(MembershipFunction):
            { (x-a)/(b-a), a < x < b
            { (c-x)/(c-b), b ≤ x < c
 
-    This function is commonly used in fuzzy logic systems due to its simplicity,
-    computational efficiency, and good linguistic interpretability.
-
     Parameters:
-        a (float): Left base point of the triangle (lower support bound).
-        b (float): Peak point of the triangle (core point where μ(x) = 1).
-        c (float): Right base point of the triangle (upper support bound).
+        a (float): Left base point of the triangle.
+        b (float): Peak point of the triangle (μ(b) = 1).
+        c (float): Right base point of the triangle.
 
     Note:
-        Parameters must satisfy: a ≤ b ≤ c for a valid triangular function.
+        Must satisfy: a ≤ b ≤ c
     """
 
     def __init__(self, a: float, b: float, c: float):
-        """Initializes the Triangular membership function with three control points.
+        """Initialize the triangular membership function.
 
         Parameters:
-            a (float): Left base point (μ(a) = 0).
-            b (float): Peak point (μ(b) = 1).
-            c (float): Right base point (μ(c) = 0).
+            a (float): Left base point (must satisfy a ≤ b).
+            b (float): Peak point (must satisfy a ≤ b ≤ c).
+            c (float): Right base point (must satisfy b ≤ c).
 
         Raises:
-            ValueError: If parameters don't satisfy a ≤ b ≤ c.
+            ValueError: If parameters do not satisfy a ≤ b ≤ c or if a == c (zero width).
         """
         super().__init__()
 
-        # Validate parameters
         if not (a <= b <= c):
             raise ValueError(f"Triangular MF parameters must satisfy a ≤ b ≤ c, got a={a}, b={b}, c={c}")
-
         if a == c:
             raise ValueError("Parameters 'a' and 'c' cannot be equal (zero width triangle)")
 
         self.parameters = {"a": float(a), "b": float(b), "c": float(c)}
-        # Initialize gradients to zero for all parameters
         self.gradients = dict.fromkeys(self.parameters.keys(), 0.0)
 
     def forward(self, x: np.ndarray) -> np.ndarray:
-        """Computes the triangular membership values for the input x.
+        """Compute membership values μ(x) for a triangular MF.
+
+        Uses piecewise linear segments defined by (a, b, c):
+        - 0 outside [a, c]
+        - rising slope in (a, b)
+        - peak 1 at x == b
+        - falling slope in (b, c)
 
         Parameters:
-            x (np.ndarray): Input array for which the membership values are to be computed.
+            x (np.ndarray): Input array.
 
         Returns:
-            np.ndarray: Output array containing the triangular membership values.
-        """
-        a = self.parameters["a"]
-        b = self.parameters["b"]
-        c = self.parameters["c"]
+            np.ndarray: Membership values in [0, 1] with the same shape as x.
 
+        Notes:
+            Caches last_input and last_output for use during backward().
+        """
+        a, b, c = self.parameters["a"], self.parameters["b"], self.parameters["c"]
         self.last_input = x
 
-        # Initialize output with zeros
-        output = np.zeros_like(x)
+        output = np.zeros_like(x, dtype=float)
 
-        # Left slope: (x - a) / (b - a) for a < x < b
-        if b > a:  # Avoid division by zero
+        # Left slope
+        if b > a:
             left_mask = (x > a) & (x < b)
             output[left_mask] = (x[left_mask] - a) / (b - a)
 
-        # Peak: μ(x) = 1 at x = b
+        # Peak
         peak_mask = x == b
         output[peak_mask] = 1.0
 
-        # Right slope: (c - x) / (c - b) for b < x < c
-        if c > b:  # Avoid division by zero
+        # Right slope
+        if c > b:
             right_mask = (x > b) & (x < c)
             output[right_mask] = (c - x[right_mask]) / (c - b)
 
-        # Values outside [a, c] are already zero
+        # Clip for numerical stability
+        output = np.clip(output, 0.0, 1.0)
 
         self.last_output = output
         return output
 
     def backward(self, dL_dy: np.ndarray):
-        """Computes the gradients for the parameters based on the loss gradient.
+        """Accumulate gradients for parameters a, b, c given upstream gradient dL/dy.
 
-        The gradients are computed analytically for the piecewise linear function:
-        - ∂μ/∂a: Affects the left slope
-        - ∂μ/∂b: Affects both slopes as it's the peak point
-        - ∂μ/∂c: Affects the right slope
+        Computes analytical derivatives for the triangular MF in the rising (a, b)
+        and falling (b, c) regions and sums them over the batch.
 
         Parameters:
-            dL_dy (np.ndarray): The gradient of the loss with respect to the output of this layer.
+            dL_dy (np.ndarray): Gradient of the loss w.r.t. μ(x); shape compatible
+                with the output of forward() (same shape or broadcastable).
 
         Returns:
-            None: Gradients are accumulated in self.gradients.
-        """
-        a = self.parameters["a"]
-        b = self.parameters["b"]
-        c = self.parameters["c"]
+            None: Updates self.gradients in place.
 
+        Notes:
+            Requires a prior call to forward() to use cached inputs.
+        """
+        a, b, c = self.parameters["a"], self.parameters["b"], self.parameters["c"]
         x = self.last_input
 
-        # Initialize gradients
         dL_da = 0.0
         dL_db = 0.0
         dL_dc = 0.0
 
-        # Left slope region: a < x < b, μ(x) = (x-a)/(b-a)
+        # Left slope: a < x < b
         if b > a:
             left_mask = (x > a) & (x < b)
             if np.any(left_mask):
                 x_left = x[left_mask]
                 dL_dy_left = dL_dy[left_mask]
 
-                # ∂μ/∂a = -1/(b-a) for left slope
-                dmu_da_left = -1.0 / (b - a)
+                # ∂μ/∂a = (x - b) / (b - a)^2
+                dmu_da_left = (x_left - b) / ((b - a) ** 2)
                 dL_da += np.sum(dL_dy_left * dmu_da_left)
 
-                # ∂μ/∂b = -(x-a)/(b-a)² for left slope
+                # ∂μ/∂b = -(x - a) / (b - a)^2
                 dmu_db_left = -(x_left - a) / ((b - a) ** 2)
                 dL_db += np.sum(dL_dy_left * dmu_db_left)
 
-        # Right slope region: b < x < c, μ(x) = (c-x)/(c-b)
+        # Right slope: b < x < c
         if c > b:
             right_mask = (x > b) & (x < c)
             if np.any(right_mask):
                 x_right = x[right_mask]
                 dL_dy_right = dL_dy[right_mask]
 
-                # ∂μ/∂b = (x-c)/(c-b)² for right slope
+                # ∂μ/∂b = (x - c) / (c - b)^2
                 dmu_db_right = (x_right - c) / ((c - b) ** 2)
                 dL_db += np.sum(dL_dy_right * dmu_db_right)
 
-                # ∂μ/∂c = -1/(c-b) for right slope (derivative of (c-x)/(c-b) w.r.t. c)
+                # ∂μ/∂c = (x - b) / (c - b)^2
                 dmu_dc_right = (x_right - b) / ((c - b) ** 2)
                 dL_dc += np.sum(dL_dy_right * dmu_dc_right)
 
-        # Update gradients (accumulate for batch processing)
+        # Update gradients
         self.gradients["a"] += dL_da
         self.gradients["b"] += dL_db
         self.gradients["c"] += dL_dc
-
-    def __str__(self) -> str:
-        """Returns string representation of the triangular membership function."""
-        return f"TriangularMF(a={self.parameters['a']:.3f}, b={self.parameters['b']:.3f}, c={self.parameters['c']:.3f})"
-
-    def __repr__(self) -> str:
-        """Returns detailed representation of the triangular membership function."""
-        return f"TriangularMF(a={self.parameters['a']}, b={self.parameters['b']}, c={self.parameters['c']})"
 
 
 class TrapezoidalMF(MembershipFunction):
@@ -458,20 +440,6 @@ class TrapezoidalMF(MembershipFunction):
         self.gradients["b"] += dL_db
         self.gradients["c"] += dL_dc
         self.gradients["d"] += dL_dd
-
-    def __str__(self) -> str:
-        """Returns string representation of the trapezoidal membership function."""
-        return (
-            f"TrapezoidalMF(a={self.parameters['a']:.3f}, b={self.parameters['b']:.3f}, "
-            f"c={self.parameters['c']:.3f}, d={self.parameters['d']:.3f})"
-        )
-
-    def __repr__(self) -> str:
-        """Returns detailed representation of the trapezoidal membership function."""
-        return (
-            f"TrapezoidalMF(a={self.parameters['a']}, b={self.parameters['b']}, "
-            f"c={self.parameters['c']}, d={self.parameters['d']})"
-        )
 
 
 class BellMF(MembershipFunction):
@@ -643,14 +611,6 @@ class BellMF(MembershipFunction):
         self.gradients["b"] += dL_db
         self.gradients["c"] += dL_dc
 
-    def __str__(self) -> str:
-        """Returns string representation of the bell membership function."""
-        return f"BellMF(a={self.parameters['a']:.3f}, b={self.parameters['b']:.3f}, c={self.parameters['c']:.3f})"
-
-    def __repr__(self) -> str:
-        """Returns detailed representation of the bell membership function."""
-        return f"BellMF(a={self.parameters['a']}, b={self.parameters['b']}, c={self.parameters['c']})"
-
 
 class SigmoidalMF(MembershipFunction):
     """Sigmoidal Membership Function.
@@ -779,14 +739,6 @@ class SigmoidalMF(MembershipFunction):
         # Update gradients (accumulate for batch processing)
         self.gradients["a"] += dL_da
         self.gradients["c"] += dL_dc
-
-    def __str__(self) -> str:
-        """Returns string representation of the sigmoidal membership function."""
-        return f"SigmoidalMF(a={self.parameters['a']:.3f}, c={self.parameters['c']:.3f})"
-
-    def __repr__(self) -> str:
-        """Returns detailed representation of the sigmoidal membership function."""
-        return f"SigmoidalMF(a={self.parameters['a']}, c={self.parameters['c']})"
 
 
 class PiMF(MembershipFunction):
@@ -975,13 +927,3 @@ class PiMF(MembershipFunction):
         self.gradients["b"] += grad_b
         self.gradients["c"] += grad_c
         self.gradients["d"] += grad_d
-
-    def __str__(self) -> str:
-        """Returns string representation of the Pi-shaped membership function."""
-        a, b, c, d = self.parameters["a"], self.parameters["b"], self.parameters["c"], self.parameters["d"]
-        return f"PiMF(a={a:.3f}, b={b:.3f}, c={c:.3f}, d={d:.3f})"
-
-    def __repr__(self) -> str:
-        """Returns detailed representation of the Pi-shaped membership function."""
-        a, b, c, d = self.parameters["a"], self.parameters["b"], self.parameters["c"], self.parameters["d"]
-        return f"PiMF(a={a}, b={b}, c={c}, d={d})"

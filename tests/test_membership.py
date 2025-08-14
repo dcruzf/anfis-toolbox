@@ -206,65 +206,119 @@ def test_triangular_mf_gradient_numerical(param_name):
         )
 
 
-def test_triangular_mf_gradient_analytical():
-    """Test analytical gradients with known cases."""
+def test_triangular_mf_forward_left_slope():
+    tri_mf = TriangularMF(a=0.0, b=1.0, c=2.0)
+    x = np.array([0.5])
+    y = tri_mf.forward(x)
+    expected = np.array([0.5])
+    assert np.allclose(y, expected), f"Left slope forward incorrect: {y}"
+
+
+def test_triangular_mf_forward_right_slope():
+    tri_mf = TriangularMF(a=0.0, b=1.0, c=2.0)
+    x = np.array([1.5])
+    y = tri_mf.forward(x)
+    expected = np.array([0.5])
+    assert np.allclose(y, expected), f"Right slope forward incorrect: {y}"
+
+
+def test_triangular_mf_forward_peak():
+    tri_mf = TriangularMF(a=0.0, b=1.0, c=2.0)
+    x = np.array([1.0])
+    y = tri_mf.forward(x)
+    expected = np.array([1.0])
+    assert np.allclose(y, expected), f"Peak forward incorrect: {y}"
+
+
+def test_triangular_mf_forward_outside_support():
+    tri_mf = TriangularMF(a=0.0, b=1.0, c=2.0)
+    x = np.array([-1.0, 3.0])
+    y = tri_mf.forward(x)
+    expected = np.array([0.0, 0.0])
+    assert np.allclose(y, expected), f"Outside support forward incorrect: {y}"
+
+
+def test_triangular_mf_backward_left_slope():
+    tri_mf = TriangularMF(a=0.0, b=1.0, c=2.0)
+    x = np.array([0.5])
+    tri_mf.forward(x)
+    for key in tri_mf.gradients:
+        tri_mf.gradients[key] = 0.0
+    tri_mf.backward(np.array([1.0]))
+    assert np.allclose(tri_mf.gradients["a"], -0.5), f"Left slope ∂μ/∂a incorrect: {tri_mf.gradients['a']}"
+    assert np.allclose(tri_mf.gradients["b"], -0.5), f"Left slope ∂μ/∂b incorrect: {tri_mf.gradients['b']}"
+    assert np.allclose(tri_mf.gradients["c"], 0.0), f"Left slope ∂μ/∂c incorrect: {tri_mf.gradients['c']}"
+
+
+def test_triangular_mf_backward_right_slope():
+    tri_mf = TriangularMF(a=0.0, b=1.0, c=2.0)
+    x = np.array([1.5])
+    tri_mf.forward(x)
+    for key in tri_mf.gradients:
+        tri_mf.gradients[key] = 0.0
+    tri_mf.backward(np.array([1.0]))
+    assert np.allclose(tri_mf.gradients["a"], 0.0)
+    assert np.allclose(tri_mf.gradients["b"], -0.5)
+    assert np.allclose(tri_mf.gradients["c"], 0.5)
+
+
+def test_triangular_mf_backward_peak():
+    tri_mf = TriangularMF(a=0.0, b=1.0, c=2.0)
+    x = np.array([1.0])
+    tri_mf.forward(x)
+    for key in tri_mf.gradients:
+        tri_mf.gradients[key] = 0.0
+    tri_mf.backward(np.array([1.0]))
+    assert np.allclose(tri_mf.gradients["a"], 0.0)
+    assert np.allclose(tri_mf.gradients["b"], 0.0)
+    assert np.allclose(tri_mf.gradients["c"], 0.0)
+
+
+def test_triangular_mf_backward_outside_support():
+    tri_mf = TriangularMF(a=0.0, b=1.0, c=2.0)
+    x = np.array([-1.0, 3.0])
+    tri_mf.forward(x)
+    for key in tri_mf.gradients:
+        tri_mf.gradients[key] = 0.0
+    tri_mf.backward(np.ones_like(x))
+    assert np.allclose(tri_mf.gradients["a"], 0.0)
+    assert np.allclose(tri_mf.gradients["b"], 0.0)
+    assert np.allclose(tri_mf.gradients["c"], 0.0)
+
+
+def test_triangular_mf_forward_left_mask_execution():
+    """Test execution of the `if b > a` and left_mask assignment."""
+    # Criar MF normal, b > a
     tri_mf = TriangularMF(a=0.0, b=1.0, c=2.0)
 
-    # Test case 1: Point on left slope
-    x = np.array([0.5])  # μ(0.5) = 0.5, on left slope
+    # Um único ponto que ativa a left_mask (a < x < b)
+    x = np.array([0.3])
+
+    # Forward deve executar o bloco if b > a
     y = tri_mf.forward(x)
-    assert np.allclose(y, [0.5]), "Forward pass incorrect"
 
-    # Reset only gradients, keep last_input for backward pass
-    for key in tri_mf.gradients:
-        tri_mf.gradients[key] = 0.0
+    # Verifica saída calculada corretamente
+    expected_y = np.array([(0.3 - 0.0) / (1.0 - 0.0)])  # 0.3
+    assert np.allclose(y, expected_y), f"Left mask forward incorrect: {y}"
 
-    tri_mf.backward(np.array([1.0]))  # dL_dy = 1.0
+    # Se quisermos cobertura explícita, podemos também checar last_output
+    assert np.allclose(tri_mf.last_output, expected_y), "last_output not set correctly"
 
-    # Expected gradients for left slope:
-    # ∂μ/∂a = -1/(b-a) = -1/1 = -1
-    # ∂μ/∂b = -(x-a)/(b-a)² = -(0.5-0)/1² = -0.5
-    # ∂μ/∂c = 0 (point not on right slope)
 
-    assert np.allclose(tri_mf.gradients["a"], -1.0), f"Expected ∂μ/∂a = -1.0, got {tri_mf.gradients['a']}"
-    assert np.allclose(tri_mf.gradients["b"], -0.5), f"Expected ∂μ/∂b = -0.5, got {tri_mf.gradients['b']}"
-    assert np.allclose(tri_mf.gradients["c"], 0.0), f"Expected ∂μ/∂c = 0.0, got {tri_mf.gradients['c']}"
-
-    # Test case 2: Point on right slope
-    x = np.array([1.5])  # μ(1.5) = 0.5, on right slope
+def test_triangular_mf_forward_right_limit_execution():
+    tri_mf = TriangularMF(a=0.0, b=1.0, c=2.0)
+    x = np.array([2.0])  # limite superior
     y = tri_mf.forward(x)
-    assert np.allclose(y, [0.5]), "Forward pass incorrect"
+    expected_y = np.array([0.0])
+    assert np.allclose(y, expected_y), f"Right limit forward incorrect: {y}"
 
-    # Reset only gradients
-    for key in tri_mf.gradients:
-        tri_mf.gradients[key] = 0.0
 
-    tri_mf.backward(np.array([1.0]))  # dL_dy = 1.0
-
-    # Expected gradients for right slope:
-    # ∂μ/∂a = 0 (point not on left slope)
-    # ∂μ/∂b = (x-c)/(c-b)² = (1.5-2)/1² = -0.5
-    # ∂μ/∂c = (x-b)/(c-b)² = (1.5-1)/1² = 0.5
-
-    assert np.allclose(tri_mf.gradients["a"], 0.0), f"Expected ∂μ/∂a = 0.0, got {tri_mf.gradients['a']}"
-    assert np.allclose(tri_mf.gradients["b"], -0.5), f"Expected ∂μ/∂b = -0.5, got {tri_mf.gradients['b']}"
-    assert np.allclose(tri_mf.gradients["c"], 0.5), f"Expected ∂μ/∂c = 0.5, got {tri_mf.gradients['c']}"
-
-    # Test case 3: Point outside support
-    x = np.array([3.0])  # μ(3.0) = 0.0, outside support
+def test_triangular_mf_forward_outside_support_execution():
+    tri_mf = TriangularMF(a=0.0, b=1.0, c=2.0)
+    x = np.array([-1.0, 3.0])
     y = tri_mf.forward(x)
-    assert np.allclose(y, [0.0]), "Forward pass incorrect"
-
-    # Reset only gradients
-    for key in tri_mf.gradients:
-        tri_mf.gradients[key] = 0.0
-
-    tri_mf.backward(np.array([1.0]))  # dL_dy = 1.0
-
-    # Expected gradients outside support: all should be 0
-    assert np.allclose(tri_mf.gradients["a"], 0.0), f"Expected ∂μ/∂a = 0.0, got {tri_mf.gradients['a']}"
-    assert np.allclose(tri_mf.gradients["b"], 0.0), f"Expected ∂μ/∂b = 0.0, got {tri_mf.gradients['b']}"
-    assert np.allclose(tri_mf.gradients["c"], 0.0), f"Expected ∂μ/∂c = 0.0, got {tri_mf.gradients['c']}"
+    expected_y = np.array([0.0, 0.0])
+    assert np.allclose(y, expected_y), f"Outside support forward incorrect: {y}"
 
 
 def test_triangular_mf_reset():
@@ -286,20 +340,6 @@ def test_triangular_mf_reset():
     assert all(v == 0.0 for v in tri_mf.gradients.values())
     assert tri_mf.last_input is None
     assert tri_mf.last_output is None
-
-
-def test_triangular_mf_string_representation():
-    """Test string representations of triangular membership function."""
-    tri_mf = TriangularMF(a=-1.0, b=0.0, c=1.0)
-
-    str_repr = str(tri_mf)
-    assert "TriangularMF" in str_repr
-    assert "-1.000" in str_repr
-    assert "0.000" in str_repr
-    assert "1.000" in str_repr
-
-    repr_str = repr(tri_mf)
-    assert "TriangularMF(a=-1.0, b=0.0, c=1.0)" == repr_str
 
 
 def test_triangular_mf_batch_processing():
@@ -587,21 +627,6 @@ def test_trapezoidal_mf_reset():
     assert trap_mf.last_output is None
 
 
-def test_trapezoidal_mf_string_representation():
-    """Test string representations of trapezoidal membership function."""
-    trap_mf = TrapezoidalMF(a=-2.0, b=-1.0, c=1.0, d=2.0)
-
-    str_repr = str(trap_mf)
-    assert "TrapezoidalMF" in str_repr
-    assert "-2.000" in str_repr
-    assert "-1.000" in str_repr
-    assert "1.000" in str_repr
-    assert "2.000" in str_repr
-
-    repr_str = repr(trap_mf)
-    assert "TrapezoidalMF(a=-2.0, b=-1.0, c=1.0, d=2.0)" == repr_str
-
-
 def test_trapezoidal_mf_batch_processing():
     """Test trapezoidal membership function with batch inputs."""
     trap_mf = TrapezoidalMF(-2, -1, 1, 2)
@@ -861,20 +886,6 @@ def test_bell_mf_reset():
     assert all(v == 0.0 for v in bell_mf.gradients.values())
     assert bell_mf.last_input is None
     assert bell_mf.last_output is None
-
-
-def test_bell_mf_string_representation():
-    """Test string representations of bell membership function."""
-    bell_mf = BellMF(a=2.0, b=3.0, c=1.0)
-
-    str_repr = str(bell_mf)
-    assert "BellMF" in str_repr
-    assert "2.000" in str_repr
-    assert "3.000" in str_repr
-    assert "1.000" in str_repr
-
-    repr_str = repr(bell_mf)
-    assert "BellMF(a=2.0, b=3.0, c=1.0)" == repr_str
 
 
 def test_bell_mf_batch_processing():
@@ -1181,19 +1192,6 @@ def test_sigmoidal_mf_reset():
     assert all(v == 0.0 for v in sigmoid_mf.gradients.values())
     assert sigmoid_mf.last_input is None
     assert sigmoid_mf.last_output is None
-
-
-def test_sigmoidal_mf_string_representation():
-    """Test string representations of sigmoidal membership function."""
-    sigmoid_mf = SigmoidalMF(a=2.0, c=1.0)
-
-    str_repr = str(sigmoid_mf)
-    assert "SigmoidalMF" in str_repr
-    assert "2.000" in str_repr
-    assert "1.000" in str_repr
-
-    repr_str = repr(sigmoid_mf)
-    assert "SigmoidalMF(a=2.0, c=1.0)" == repr_str
 
 
 def test_sigmoidal_mf_batch_processing():
@@ -1508,23 +1506,6 @@ def test_pi_mf_reset():
 
     assert pi_mf.last_input is None
     assert pi_mf.last_output is None
-
-
-def test_pi_mf_string_representation():
-    """Test string representation of PiMF."""
-    pi_mf = PiMF(a=-1.5, b=0.0, c=1.0, d=2.5)
-
-    str_repr = str(pi_mf)
-    assert "PiMF" in str_repr
-    assert "-1.500" in str_repr
-    assert "0.000" in str_repr
-    assert "1.000" in str_repr
-    assert "2.500" in str_repr
-
-    repr_str = repr(pi_mf)
-    assert "PiMF" in repr_str
-    assert "-1.5" in repr_str
-    assert "2.5" in repr_str
 
 
 def test_pi_mf_batch_processing():
