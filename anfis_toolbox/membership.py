@@ -3,6 +3,17 @@ from abc import ABC, abstractmethod
 import numpy as np
 
 
+# Shared helpers for smooth S/Z transitions
+def _smoothstep(t: np.ndarray) -> np.ndarray:
+    """Cubic smoothstep S(t) = 3t^2 - 2t^3 for t in [0,1]."""
+    return 3.0 * t**2 - 2.0 * t**3
+
+
+def _dsmoothstep_dt(t: np.ndarray) -> np.ndarray:
+    """Derivative of smoothstep: dS/dt = 6t(1-t)."""
+    return 6.0 * t * (1.0 - t)
+
+
 class MembershipFunction(ABC):
     """Abstract base class for membership functions.
 
@@ -71,12 +82,12 @@ class MembershipFunction(ABC):
         self.last_output = None
 
     def __str__(self) -> str:
-        """Returns string representation of the Gaussian membership function."""
+        """Return a concise string representation of this membership function."""
         params = ", ".join(f"{key}={value:.3f}" for key, value in self.parameters.items())
         return f"{self.__class__.__name__}({params})"
 
     def __repr__(self) -> str:
-        """Returns detailed representation of the Gaussian membership function."""
+        """Return a detailed representation of this membership function."""
         return self.__str__()
 
 
@@ -246,6 +257,9 @@ class TriangularMF(MembershipFunction):
         Notes:
             Requires a prior call to forward() to use cached inputs.
         """
+        if self.last_input is None or self.last_output is None:
+            return
+
         a, b, c = self.parameters["a"], self.parameters["b"], self.parameters["c"]
         x = self.last_input
 
@@ -389,6 +403,9 @@ class TrapezoidalMF(MembershipFunction):
         Returns:
             None: Gradients are accumulated in self.gradients.
         """
+        if self.last_input is None or self.last_output is None:
+            return
+
         a = self.parameters["a"]
         b = self.parameters["b"]
         c = self.parameters["c"]
@@ -741,6 +758,109 @@ class SigmoidalMF(MembershipFunction):
         self.gradients["c"] += dL_dc
 
 
+class ZShapedMF(MembershipFunction):
+    """Z-shaped Membership Function.
+
+    Smoothly transitions from 1 to 0 between two parameters a and b using the
+    smoothstep polynomial S(t) = 3t² - 2t³ (Z = 1 - S). Commonly used in fuzzy
+    logic as the complement of the S-shaped function.
+
+    Definition with a < b:
+    - μ(x) = 1, for x ≤ a
+    - μ(x) = 1 - (3t² - 2t³), t = (x-a)/(b-a), for a < x < b
+    - μ(x) = 0, for x ≥ b
+
+    Parameters:
+        a (float): Left shoulder (start of transition).
+        b (float): Right foot (end of transition).
+
+    Note:
+        Requires a < b. In the degenerate case a == b, the function becomes an
+        instantaneous drop at x=a.
+    """
+
+    def __init__(self, a: float, b: float):
+        """Initializes the membership function with parameters `a` and `b`.
+
+        Args:
+            a (float): The lower bound parameter.
+            b (float): The upper bound parameter.
+
+        Raises:
+            ValueError: If `a` is not less than `b`.
+        Sets:
+            self.parameters (dict): Dictionary containing 'a' and 'b' as floats.
+            self.gradients (dict): Dictionary containing gradients for 'a' and 'b', initialized to 0.0.
+        """
+        super().__init__()
+
+        if not (a < b):
+            raise ValueError(f"Parameters must satisfy a < b, got a={a}, b={b}")
+
+        self.parameters = {"a": float(a), "b": float(b)}
+        self.gradients = {"a": 0.0, "b": 0.0}
+
+    def forward(self, x: np.ndarray) -> np.ndarray:
+        """Compute Z-shaped membership values."""
+        x = np.asarray(x)
+        self.last_input = x.copy()
+
+        a, b = self.parameters["a"], self.parameters["b"]
+
+        y = np.zeros_like(x, dtype=np.float64)
+
+        # Left side (x ≤ a): μ = 1
+        mask_left = x <= a
+        y[mask_left] = 1.0
+
+        # Transition region (a < x < b): μ = 1 - smoothstep(t)
+        mask_trans = (x > a) & (x < b)
+        if np.any(mask_trans):
+            x_t = x[mask_trans]
+            t = (x_t - a) / (b - a)
+            y[mask_trans] = 1.0 - _smoothstep(t)
+
+        # Right side (x ≥ b) remains 0
+
+        self.last_output = y.copy()
+        return y
+
+    def backward(self, dL_dy: np.ndarray):
+        """Accumulate gradients for a and b using analytical derivatives.
+
+        Uses Z(t) = 1 - (3t² - 2t³), t = (x-a)/(b-a) on the transition region.
+        """
+        if self.last_input is None or self.last_output is None:
+            return
+
+        x = self.last_input
+        dL_dy = np.asarray(dL_dy)
+
+        a, b = self.parameters["a"], self.parameters["b"]
+
+        # Only transition region contributes to parameter gradients
+        mask = (x >= a) & (x <= b)
+        if not (np.any(mask) and b != a):
+            return
+
+        x_t = x[mask]
+        dL_dy_t = dL_dy[mask]
+        t = (x_t - a) / (b - a)
+
+        # dZ/dt = -dS/dt = 6*t*(t-1)
+        dZ_dt = -_dsmoothstep_dt(t)
+
+        # dt/da and dt/db
+        dt_da = (x_t - b) / (b - a) ** 2
+        dt_db = -(x_t - a) / (b - a) ** 2
+
+        dZ_da = dZ_dt * dt_da
+        dZ_db = dZ_dt * dt_db
+
+        self.gradients["a"] += float(np.sum(dL_dy_t * dZ_da))
+        self.gradients["b"] += float(np.sum(dL_dy_t * dZ_db))
+
+
 class PiMF(MembershipFunction):
     """Pi-shaped membership function.
 
@@ -826,7 +946,7 @@ class PiMF(MembershipFunction):
 
                 # Smooth S-function using smoothstep: S(t) = 3*t² - 2*t³
                 # This is continuous and differentiable across the entire [0,1] interval
-                y_s = 3 * t**2 - 2 * t**3
+                y_s = _smoothstep(t)
 
                 y[mask_s] = y_s
             else:
@@ -847,7 +967,7 @@ class PiMF(MembershipFunction):
 
                 # Smooth Z-function (inverted smoothstep): Z(t) = 1 - S(t) = 1 - (3*t² - 2*t³)
                 # This is continuous and differentiable, going from 1 to 0
-                y_z = 1 - (3 * t**2 - 2 * t**3)
+                y_z = 1 - _smoothstep(t)
 
                 y[mask_z] = y_z
             else:
@@ -892,7 +1012,7 @@ class PiMF(MembershipFunction):
             dt_db = -(x_s - a) / (b - a) ** 2
 
             # For smoothstep S(t) = 3*t² - 2*t³, derivative is dS/dt = 6*t - 6*t² = 6*t*(1-t)
-            dS_dt = 6 * t * (1 - t)
+            dS_dt = _dsmoothstep_dt(t)
 
             # Apply chain rule: dS/da = dS/dt * dt/da
             dS_da = dS_dt * dt_da
@@ -913,7 +1033,7 @@ class PiMF(MembershipFunction):
             dt_dd = -(x_z - c) / (d - c) ** 2
 
             # For Z(t) = 1 - S(t) = 1 - (3*t² - 2*t³), derivative is dZ/dt = -dS/dt = -6*t*(1-t) = 6*t*(t-1)
-            dZ_dt = 6 * t * (t - 1)
+            dZ_dt = -_dsmoothstep_dt(t)
 
             # Apply chain rule: dZ/dc = dZ/dt * dt/dc
             dZ_dc = dZ_dt * dt_dc

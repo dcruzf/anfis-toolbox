@@ -6,7 +6,16 @@ __version__ = "0.1.0"
 from .builders import ANFISBuilder, QuickANFIS
 from .layers import ConsequentLayer, MembershipLayer, NormalizationLayer, RuleLayer
 from .logging_config import disable_training_logs, enable_training_logs, setup_logging
-from .membership import BellMF, GaussianMF, MembershipFunction, PiMF, SigmoidalMF, TrapezoidalMF, TriangularMF
+from .membership import (
+    BellMF,
+    GaussianMF,
+    MembershipFunction,
+    PiMF,
+    SigmoidalMF,
+    TrapezoidalMF,
+    TriangularMF,
+    ZShapedMF,
+)
 from .model import ANFIS
 
 # Import validation utilities (optional)
@@ -92,6 +101,7 @@ __all__ = [
     "BellMF",
     "SigmoidalMF",
     "PiMF",
+    "ZShapedMF",
     "MembershipLayer",
     "RuleLayer",
     "NormalizationLayer",
