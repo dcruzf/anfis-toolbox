@@ -15,6 +15,7 @@ rebuild-lockfiles: .uv
 
 .PHONY: install ## Install the package, dependencies, and pre-commit for local development
 install: .uv
+	uv self update
 	uv sync
 	uv tool install hatch
 	uv tool update-shell
