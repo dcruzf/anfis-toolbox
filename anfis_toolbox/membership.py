@@ -758,6 +758,109 @@ class SigmoidalMF(MembershipFunction):
         self.gradients["c"] += dL_dc
 
 
+class SShapedMF(MembershipFunction):
+    """S-shaped Membership Function.
+
+    Smoothly transitions from 0 to 1 between two parameters a and b using the
+    smoothstep polynomial S(t) = 3t² - 2t³. Commonly used in fuzzy logic for
+    gradual onset of membership.
+
+    Definition with a < b:
+    - μ(x) = 0, for x ≤ a
+    - μ(x) = 3t² - 2t³, t = (x-a)/(b-a), for a < x < b
+    - μ(x) = 1, for x ≥ b
+
+    Parameters:
+        a (float): Left foot (start of transition from 0).
+        b (float): Right shoulder (end of transition at 1).
+
+    Note:
+        Requires a < b.
+    """
+
+    def __init__(self, a: float, b: float):
+        """Initialize the membership function with parameters 'a' and 'b'.
+
+        Args:
+            a (float): The first parameter, must be less than 'b'.
+            b (float): The second parameter, must be greater than 'a'.
+
+        Raises:
+            ValueError: If 'a' is not less than 'b'.
+
+        Attributes:
+            parameters (dict): Dictionary containing 'a' and 'b' as floats.
+            gradients (dict): Dictionary containing gradients for 'a' and 'b', initialized to 0.0.
+        """
+        super().__init__()
+
+        if not (a < b):
+            raise ValueError(f"Parameters must satisfy a < b, got a={a}, b={b}")
+
+        self.parameters = {"a": float(a), "b": float(b)}
+        self.gradients = {"a": 0.0, "b": 0.0}
+
+    def forward(self, x: np.ndarray) -> np.ndarray:
+        """Compute S-shaped membership values."""
+        x = np.asarray(x)
+        self.last_input = x.copy()
+
+        a, b = self.parameters["a"], self.parameters["b"]
+
+        y = np.zeros_like(x, dtype=np.float64)
+
+        # Right side (x ≥ b): μ = 1
+        mask_right = x >= b
+        y[mask_right] = 1.0
+
+        # Transition region (a < x < b): μ = smoothstep(t)
+        mask_trans = (x > a) & (x < b)
+        if np.any(mask_trans):
+            x_t = x[mask_trans]
+            t = (x_t - a) / (b - a)
+            y[mask_trans] = _smoothstep(t)
+
+        # Left side (x ≤ a) remains 0
+
+        self.last_output = y.copy()
+        return y
+
+    def backward(self, dL_dy: np.ndarray):
+        """Accumulate gradients for a and b using analytical derivatives.
+
+        Uses S(t) = 3t² - 2t³, t = (x-a)/(b-a) on the transition region.
+        """
+        if self.last_input is None or self.last_output is None:
+            return
+
+        x = self.last_input
+        dL_dy = np.asarray(dL_dy)
+
+        a, b = self.parameters["a"], self.parameters["b"]
+
+        # Only transition region contributes to parameter gradients
+        mask = (x >= a) & (x <= b)
+        if not (np.any(mask) and b != a):
+            return
+
+        x_t = x[mask]
+        dL_dy_t = dL_dy[mask]
+        t = (x_t - a) / (b - a)
+
+        # dS/dt = 6*t*(1-t)
+        dS_dt = _dsmoothstep_dt(t)
+
+        # dt/da and dt/db
+        dt_da = (x_t - b) / (b - a) ** 2
+        dt_db = -(x_t - a) / (b - a) ** 2
+
+        dS_da = dS_dt * dt_da
+        dS_db = dS_dt * dt_db
+
+        self.gradients["a"] += float(np.sum(dL_dy_t * dS_da))
+        self.gradients["b"] += float(np.sum(dL_dy_t * dS_db))
+
+
 class ZShapedMF(MembershipFunction):
     """Z-shaped Membership Function.
 
