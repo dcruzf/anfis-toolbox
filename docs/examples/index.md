@@ -8,31 +8,15 @@ Welcome to the ANFIS Toolbox examples! This section provides practical, real-wor
 Perfect for getting started and understanding core concepts.
 
 - **[Basic Function Approximation](basic.md)** - Learn nonlinear functions
-- **[Simple Regression](regression.md)** - Predict continuous values
-- **[Time Series Basics](time-series-basic.md)** - Forecast simple patterns
 
 ### 🏭 Real-World Applications
-Practical applications across different domains.
-
-- **[Stock Price Prediction](stock-prediction.md)** - Financial time series forecasting
-- **[Temperature Control](temperature-control.md)** - Fuzzy control system
-- **[Medical Diagnosis](medical-diagnosis.md)** - Healthcare decision support
-- **[Image Processing](image-processing.md)** - Pixel-level transformations
+More examples coming soon.
 
 ### 🔬 Advanced Techniques
-Sophisticated applications and techniques.
-
-- **[Ensemble ANFIS](ensemble.md)** - Multiple models for better accuracy
-- **[Multi-output Prediction](multi-output.md)** - Predicting multiple variables
-- **[Online Learning](online-learning.md)** - Adaptive models that update continuously
-- **[Custom Membership Functions](custom-mf-example.md)** - Creating specialized MF types
+More examples coming soon.
 
 ### 🛠️ Integration Examples
-Using ANFIS with other tools and libraries.
-
-- **[Scikit-learn Integration](sklearn-integration.md)** - Pipelines and model selection
-- **[Pandas Integration](pandas-integration.md)** - Working with real datasets
-- **[Jupyter Notebooks](jupyter-notebooks.md)** - Interactive analysis and visualization
+More examples coming soon.
 
 ## 🚀 Quick Start Examples
 
@@ -52,7 +36,7 @@ print(f"Prediction: {model.predict([[1, 1]])}")
 ### 2-Minute Example
 ```python
 import numpy as np
-from anfis_toolbox import QuickANFIS, quick_evaluate, ANFISVisualizer
+from anfis_toolbox import QuickANFIS
 
 # Generate data
 X = np.random.uniform(-3, 3, (200, 2))
@@ -63,30 +47,22 @@ model = QuickANFIS.for_regression(X, n_mfs=4, mf_type='gaussian')
 losses = model.fit_hybrid(X, y, epochs=100, learning_rate=0.01)
 
 # Evaluate and visualize
-metrics = quick_evaluate(model, X, y)
-print(f"R² Score: {metrics['r2']:.4f}")
-
-viz = ANFISVisualizer(model)
-viz.plot_training_curves(losses)
-viz.plot_membership_functions()
+# Evaluate (placeholder)
+pred = model.predict(X[:5])
+print(pred[:3])
 ```
 
 ### 5-Minute Example
 ```python
 import numpy as np
-from anfis_toolbox import ANFISBuilder, ANFISValidator, ANFISConfig
+from anfis_toolbox import ANFISBuilder
 
 # Prepare data
 X = np.random.uniform(-1, 1, (300, 3))
 y = X[:, 0] * X[:, 1] + np.sin(X[:, 2]) + 0.05 * np.random.randn(300)
 
 # Configure model
-config = ANFISConfig(
-    n_epochs=150,
-    learning_rate=0.02,
-    tolerance=1e-5,
-    validation_split=0.2
-)
+config = dict(n_epochs=150, learning_rate=0.02)
 
 # Build model with custom architecture
 builder = (ANFISBuilder()
@@ -99,17 +75,15 @@ builder = (ANFISBuilder()
 model = builder.build()
 
 # Train with validation
-losses = model.fit_hybrid(X, y, **config.training_params())
+losses = model.fit_hybrid(X, y, **config)
 
 # Comprehensive evaluation
-validator = ANFISValidator(model)
-cv_results = validator.cross_validate(X, y, cv=5)
-learning_curves = validator.learning_curve(X, y)
-
-print(f"CV R²: {cv_results['r2_mean']:.3f} ± {cv_results['r2_std']:.3f}")
+# Placeholder evaluation
+print(f"Loss history (len): {len(losses)}")
 
 # Save model
-model.save('complex_model.pkl')
+# Placeholder persistence
+# model.save('complex_model.pkl')
 ```
 
 ## 📊 Example Datasets
@@ -228,15 +202,10 @@ import matplotlib.pyplot as plt
 
 # ANFIS Toolbox
 from anfis_toolbox import QuickANFIS, ANFISBuilder
-from anfis_toolbox.validation import ANFISValidator
-from anfis_toolbox.visualization import ANFISVisualizer
+from anfis_toolbox import QuickANFIS
 
 # Optional dependencies (with fallbacks)
-try:
-    import seaborn as sns
-    sns.set_style('whitegrid')
-except ImportError:
-    pass
+import warnings
 ```
 
 ### Configuration

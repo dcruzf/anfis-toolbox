@@ -14,15 +14,15 @@ theme:
         name: Switch to light mode
     - media: "(prefers-color-scheme: light)"
       scheme: default
-      primary: blue
-      accent: blue
+      primary: indigo
+      accent: indigo
       toggle:
         icon: material/brightness-7
         name: Switch to dark mode
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
-      primary: blue
-      accent: light blue
+      primary: indigo
+      accent: light indigo
       toggle:
         icon: material/brightness-4
         name: Switch to system preference
@@ -47,44 +47,26 @@ theme:
     repo: fontawesome/brands/github
     edit: material/pencil
     view: material/eye
-  logo: assets/logo.png
-  favicon: assets/favicon.png
+  logo: assets/icon.svg
+  favicon: assets/icon.svg
 
 nav:
   - Home: index.md
   - Getting Started:
     - Installation: getting-started/installation.md
     - Quick Start: getting-started/quickstart.md
-    - Your First Model: getting-started/first-model.md
   - User Guide:
+    - Overview: guide/index.md
     - Introduction: guide/introduction.md
-    - Membership Functions: guide/membership-functions.md
-    - Model Architecture: guide/architecture.md
-    - Training Methods: guide/training.md
-    - Validation & Metrics: guide/validation.md
-    - Visualization: guide/visualization.md
-    - Configuration: guide/configuration.md
+  - Membership Functions: guide/membership_functions.md
   - Examples:
+    - Overview: examples/index.md
     - Basic Usage: examples/basic.md
-    - Function Approximation: examples/function-approximation.md
-    - Multi-Input Systems: examples/multi-input.md
-    - Control Systems: examples/control.md
-    - Time Series: examples/time-series.md
   - API Reference:
     - Overview: api/overview.md
-    - Model: api/model.md
-    - Membership Functions: api/membership.md
+    - Core: api/core.md
+    - Membership Functions: api/membership-functions.md
     - Builders: api/builders.md
-    - Validation: api/validation.md
-    - Visualization: api/visualization.md
-  - Theory:
-    - ANFIS Background: theory/background.md
-    - Mathematical Foundation: theory/mathematics.md
-    - Learning Algorithms: theory/learning.md
-  - Development:
-    - Contributing: development/contributing.md
-    - Testing: development/testing.md
-    - Release Notes: development/changelog.md
 
 plugins:
   - search

@@ -85,7 +85,7 @@ model = QuickANFIS.for_regression(
     X=X_train,
     n_mfs=3,                    # 3 membership functions per input
     mf_type='gaussian',         # Gaussian membership functions
-    random_state=42             # For reproducible initialization
+    random_state=42             # For reproducible initialization ERRO AQUI NO RANDOM STATE
 )
 
 # Print model information

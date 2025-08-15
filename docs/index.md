@@ -1,26 +1,11 @@
 # ANFIS Toolbox
 
 <p align="center">
-  <img src="assets/logo.png" alt="ANFIS Toolbox Logo" width="300" />
+  <img src="assets/logo.svg" alt="ANFIS Toolbox Logo" width="300" />
 </p>
 
 <p align="center">
     <em>The most user-friendly Python library for Adaptive Neuro-Fuzzy Inference Systems (ANFIS)</em>
-</p>
-
-<p align="center">
-    <a href="https://github.com/dcruzf/anfis-toolbox/actions" target="_blank">
-        <img src="https://img.shields.io/github/actions/workflow/status/dcruzf/anfis-toolbox/tests.yml?branch=main" alt="Test Status">
-    </a>
-    <a href="https://pypi.org/project/anfis-toolbox" target="_blank">
-        <img src="https://img.shields.io/pypi/v/anfis-toolbox" alt="Package version">
-    </a>
-    <a href="https://pypi.org/project/anfis-toolbox" target="_blank">
-        <img src="https://img.shields.io/pypi/pyversions/anfis-toolbox" alt="Supported Python versions">
-    </a>
-    <a href="https://github.com/dcruzf/anfis-toolbox/blob/main/LICENSE" target="_blank">
-        <img src="https://img.shields.io/github/license/dcruzf/anfis-toolbox" alt="License">
-    </a>
 </p>
 
 ---
@@ -193,6 +178,7 @@ graph LR
 - **Trapezoidal** (`TrapezoidalMF`) - Plateau regions
 - **Bell-shaped** (`BellMF`) - Generalized bell curves
 - **Sigmoidal** (`SigmoidalMF`) - S-shaped transitions
+- **S-shaped** (`SShapedMF`) and **Z-shaped** (`ZShapedMF`) - Smoothstep transitions
 - **Pi-shaped** (`PiMF`) - Bell with flat top
 
 ### Training Methods
@@ -218,6 +204,7 @@ graph LR
 - 📚 **[User Guide](guide/introduction.md)** - Comprehensive documentation
 - 💡 **[Examples](examples/basic.md)** - Real-world use cases
 - 🔧 **[API Reference](api/overview.md)** - Complete function documentation
+    - 📐 [Membership Functions](api/membership-functions.md) - All MF classes
 
 ## Community & Support
 

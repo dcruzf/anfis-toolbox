@@ -6,25 +6,25 @@ Welcome to the comprehensive ANFIS Toolbox User Guide! This section provides in-
 
 ### 🎯 Core Concepts
 - **[Introduction](introduction.md)** - ANFIS theory and architecture
-- **[Membership Functions](membership-functions.md)** - Types, properties, and selection
-- **[Training Methods](training-methods.md)** - Hybrid learning vs. backpropagation
-- **[Model Architecture](model-architecture.md)** - Understanding the 5-layer structure
+- Membership Functions - Types, properties, and selection
+- Training Methods - Hybrid learning vs. backpropagation
+- Model Architecture - Understanding the 5-layer structure
 
 ### 🛠️ Practical Usage
-- **[Basic Usage](basic-usage.md)** - Essential patterns and workflows
-- **[Advanced Usage](advanced-usage.md)** - Custom configurations and fine-tuning
-- **[Builder Patterns](builder-patterns.md)** - Using QuickANFIS and ANFISBuilder
-- **[Model Persistence](model-persistence.md)** - Saving, loading, and deployment
+- Basic Usage - Essential patterns and workflows
+- Advanced Usage - Custom configurations and fine-tuning
+- Builder Patterns - Using QuickANFIS and ANFISBuilder
+- Model Persistence - Saving, loading, and deployment
 
 ### 📊 Analysis & Visualization
-- **[Validation](validation.md)** - Cross-validation, metrics, and model comparison
-- **[Visualization](visualization.md)** - Plotting membership functions and results
-- **[Performance Tuning](performance-tuning.md)** - Optimization strategies
+- Validation - Cross-validation, metrics, and model comparison
+- Visualization - Plotting membership functions and results
+- Performance Tuning - Optimization strategies
 
 ### 🔧 Advanced Topics
-- **[Configuration Management](configuration-management.md)** - ANFISConfig and settings
-- **[Custom Membership Functions](custom-membership-functions.md)** - Creating your own MF types
-- **[Integration](integration.md)** - Using with scikit-learn and other libraries
+- Configuration Management - ANFISConfig and settings
+- Custom Membership Functions - Creating your own MF types
+- Integration - Using with scikit-learn and other libraries
 
 ## 🚀 Quick Navigation
 
@@ -32,21 +32,21 @@ Welcome to the comprehensive ANFIS Toolbox User Guide! This section provides in-
 
 | **Goal** | **Start Here** | **Level** |
 |----------|----------------|-----------|
-| Understand ANFIS theory | [Introduction](introduction.md) | Beginner |
-| Build my first model | [Basic Usage](basic-usage.md) | Beginner |
-| Compare different models | [Validation](validation.md) | Intermediate |
-| Optimize model performance | [Performance Tuning](performance-tuning.md) | Intermediate |
-| Create custom MF types | [Custom Membership Functions](custom-membership-functions.md) | Advanced |
-| Deploy models in production | [Model Persistence](model-persistence.md) | Intermediate |
+| Understand ANFIS theory | Introduction | Beginner |
+| Build my first model | Basic Usage | Beginner |
+| Compare different models | Validation | Intermediate |
+| Optimize model performance | Performance Tuning | Intermediate |
+| Create custom MF types | Custom Membership Functions | Advanced |
+| Deploy models in production | Model Persistence | Intermediate |
 
 ### By Application Type
 
 | **Application** | **Recommended Reading** |
 |----------------|-------------------------|
-| **Function Approximation** | [Basic Usage](basic-usage.md) → [Training Methods](training-methods.md) |
-| **Regression Analysis** | [Builder Patterns](builder-patterns.md) → [Validation](validation.md) |
-| **Control Systems** | [Membership Functions](membership-functions.md) → [Advanced Usage](advanced-usage.md) |
-| **Time Series Forecasting** | [Model Architecture](model-architecture.md) → [Performance Tuning](performance-tuning.md) |
+| **Function Approximation** | Basic Usage → Training Methods |
+| **Regression Analysis** | Builder Patterns → Validation |
+| **Control Systems** | Membership Functions → Advanced Usage |
+| **Time Series Forecasting** | Model Architecture → Performance Tuning |
 
 ## 🎯 Learning Path
 
@@ -157,8 +157,8 @@ detailed_results = metrics.comprehensive_evaluation(X, y)
 
 ## Where to Start?
 
-**New to ANFIS?** → Begin with [Introduction](introduction.md)
-**Need to solve a problem quickly?** → Jump to [Basic Usage](basic-usage.md)
-**Want to understand everything?** → Follow the [Beginner Path](#-beginner-path-essential-knowledge)
+**New to ANFIS?** → Begin with Introduction
+**Need to solve a problem quickly?** → Jump to Basic Usage
+**Want to understand everything?** → Follow the Beginner Path
 
 Ready to become an ANFIS expert? Let's dive in! 🚀

@@ -16,29 +16,31 @@ Complete reference documentation for all ANFIS Toolbox classes, functions, and m
 
 | Class | Type | Parameters | Documentation |
 |-------|------|------------|---------------|
-| **`GaussianMF`** | Gaussian | `center`, `width` | [🔗 Details](membership-functions.md#gaussianmf) |
-| **`TriangularMF`** | Triangular | `left`, `center`, `right` | [🔗 Details](membership-functions.md#triangularmf) |
-| **`TrapezoidalMF`** | Trapezoidal | `left`, `left_peak`, `right_peak`, `right` | [🔗 Details](membership-functions.md#trapezoidalmf) |
-| **`BellMF`** | Bell-shaped | `center`, `width`, `slope` | [🔗 Details](membership-functions.md#bellmf) |
-| **`SigmoidalMF`** | Sigmoidal | `center`, `slope` | [🔗 Details](membership-functions.md#sigmoidalmf) |
-| **`PiMF`** | Pi-shaped | `left`, `left_peak`, `right_peak`, `right` | [🔗 Details](membership-functions.md#pimf) |
+| **`GaussianMF`** | Gaussian | `mean`, `sigma` | [🔗 Details](membership-functions.md#gaussianmf) |
+| **`TriangularMF`** | Triangular | `a`, `b`, `c` | [🔗 Details](membership-functions.md#triangularmf) |
+| **`TrapezoidalMF`** | Trapezoidal | `a`, `b`, `c`, `d` | [🔗 Details](membership-functions.md#trapezoidalmf) |
+| **`BellMF`** | Bell-shaped | `a`, `b`, `c` | [🔗 Details](membership-functions.md#bellmf) |
+| **`SigmoidalMF`** | Sigmoidal | `a`, `c` | [🔗 Details](membership-functions.md#sigmoidalmf) |
+| **`SShapedMF`** | S-shaped | `a`, `b` | [🔗 Details](membership-functions.md#sshapedmf) |
+| **`ZShapedMF`** | Z-shaped | `a`, `b` | [🔗 Details](membership-functions.md#zshapedmf) |
+| **`PiMF`** | Pi-shaped | `a`, `b`, `c`, `d` | [🔗 Details](membership-functions.md#pimf) |
 
 ## 📊 Analysis & Visualization
 
 | Class/Function | Purpose | Documentation |
 |----------------|---------|---------------|
-| **`ANFISVisualizer`** | Plotting and visualization | [🔗 Details](visualization.md) |
-| **`ANFISValidator`** | Model validation and metrics | [🔗 Details](validation.md#anfisvalidator) |
-| **`ANFISMetrics`** | Performance metrics | [🔗 Details](validation.md#anfismetrics) |
-| **`quick_evaluate`** | Fast model evaluation | [🔗 Details](validation.md#quick-evaluate) |
+| **`ANFISVisualizer`** | Plotting and visualization | Coming soon |
+| **`ANFISValidator`** | Model validation and metrics | Coming soon |
+| **`ANFISMetrics`** | Performance metrics | Coming soon |
+| **`quick_evaluate`** | Fast model evaluation | Coming soon |
 
 ## ⚙️ Configuration & Utilities
 
 | Class/Function | Purpose | Documentation |
 |----------------|---------|---------------|
-| **`ANFISConfig`** | Configuration management | [🔗 Details](configuration.md) |
-| **`load_anfis`** | Model loading | [🔗 Details](persistence.md#load-anfis) |
-| **`save_anfis`** | Model saving | [🔗 Details](persistence.md#save-anfis) |
+| **`ANFISConfig`** | Configuration management | Coming soon |
+| **`load_anfis`** | Model loading | Coming soon |
+| **`save_anfis`** | Model saving | Coming soon |
 
 ## 📦 Module Organization
 
@@ -66,7 +68,7 @@ from anfis_toolbox import ANFIS, QuickANFIS, ANFISBuilder
 # Membership functions
 from anfis_toolbox.membership import (
     GaussianMF, TriangularMF, TrapezoidalMF,
-    BellMF, SigmoidalMF, PiMF
+    BellMF, SigmoidalMF, SShapedMF, ZShapedMF, PiMF
 )
 
 # Validation and visualization (optional dependencies)
@@ -114,21 +116,13 @@ visualizer.plot_training_curves(losses)
 
 - **[Core Classes](core.md)** - ANFIS, basic functionality
 - **[Builders](builders.md)** - QuickANFIS, ANFISBuilder
-- **[Membership Functions](membership-functions.md)** - All 6 MF types
-- **[Training](training.md)** - Learning algorithms and parameters
-- **[Validation](validation.md)** - Metrics, cross-validation, evaluation
-- **[Visualization](visualization.md)** - Plotting and analysis tools
-- **[Configuration](configuration.md)** - ANFISConfig and settings
-- **[Persistence](persistence.md)** - Saving and loading models
-- **[Utilities](utilities.md)** - Helper functions and tools
+- **[Membership Functions](membership-functions.md)** - All MF types
+Training, Validation, Visualization, Configuration, Persistence, and Utilities docs are coming soon.
 
 ### By Use Case
 
 - **[Getting Started](../getting-started/quickstart.md)** - Basic usage patterns
-- **[Function Approximation](function-approximation.md)** - Modeling mathematical functions
-- **[Regression Analysis](regression-analysis.md)** - Predictive modeling
-- **[Control Systems](control-systems.md)** - Fuzzy control applications
-- **[Time Series](time-series.md)** - Temporal data modeling
+Function Approximation, Regression Analysis, Control Systems, and Time Series docs are coming soon.
 
 ## 🔍 Search and Navigation
 
@@ -136,14 +130,14 @@ visualizer.plot_training_curves(losses)
 
 | I want to... | Look at... |
 |-------------|------------|
-| Create a simple model | `QuickANFIS` in [Builders](builders.md) |
-| Build custom architecture | `ANFISBuilder` in [Builders](builders.md) |
+| Create a simple model | `QuickANFIS` in Builders |
+| Build custom architecture | `ANFISBuilder` in Builders |
 | Choose membership functions | [Membership Functions](membership-functions.md) |
 | Train my model | `fit_hybrid()`, `fit()` in [Core](core.md) |
-| Evaluate performance | `quick_evaluate()` in [Validation](validation.md) |
-| Visualize results | `ANFISVisualizer` in [Visualization](visualization.md) |
-| Save/load models | [Persistence](persistence.md) |
-| Configure training | `ANFISConfig` in [Configuration](configuration.md) |
+| Evaluate performance | `quick_evaluate()` (docs coming soon) |
+| Visualize results | `ANFISVisualizer` (docs coming soon) |
+| Save/load models | Persistence (docs coming soon) |
+| Configure training | `ANFISConfig` (docs coming soon) |
 
 ### Find by Data Type
 
@@ -264,9 +258,9 @@ def example_function(param1: int, param2: str = "default") -> float:
 
 - 🚀 **New user?** → [Core Classes](core.md)
 - 🏗️ **Building models?** → [Builders](builders.md)
-- 📊 **Analyzing results?** → [Validation](validation.md)
-- 🎨 **Visualizing?** → [Visualization](visualization.md)
-- ⚙️ **Configuring?** → [Configuration](configuration.md)
+- 📊 **Analyzing results?** → Validation (docs coming soon)
+- 🎨 **Visualizing?** → Visualization (docs coming soon)
+- ⚙️ **Configuring?** → Configuration (docs coming soon)
 
 **Or browse by alphabetical order:**
 
