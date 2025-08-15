@@ -50,6 +50,29 @@ lf: .uv
 .PHONY: all
 all: format lint test-all
 
+
+.PHONY: build  ## Build wheel and sdist into dist/
+build: .hatch
+	uv tool run hatch build
+
+.PHONY: docs  ## Serve the documentation at http://localhost:8000
+docs:
+	uvx --with mkdocs-material \
+    --with mkdocstrings --with mkdocstrings-python \
+    --with mkdocs-awesome-pages-plugin \
+    --with mkdocs-git-revision-date-localized-plugin \
+    --with ruff \
+    mkdocs serve -a 127.0.0.1:8000
+
+.PHONY: docs-build  ## Build static docs into site/
+docs-build: .uv
+	uvx --with mkdocs-material \
+		--with mkdocstrings --with mkdocstrings-python \
+		--with mkdocs-awesome-pages-plugin \
+		--with mkdocs-git-revision-date-localized-plugin \
+		--with ruff \
+		mkdocs build
+
 .PHONY: clean  ## Clear local caches and build artifacts
 clean:
 	rm -rf `find . -name __pycache__`
