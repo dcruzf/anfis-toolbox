@@ -4,7 +4,7 @@ The **Generalized Bell membership function** (GbellMF), also known as the **Bell
 
 The function is defined by three parameters:
 
-  * **center ($c$)**: This parameter determines the **center** of the curve, representing the point in the domain with a maximum membership value of 1.
+  * **center** ($c$): This parameter determines the **center** of the curve, representing the point in the domain with a maximum membership value of 1.
   * **width ($a$)**: This parameter controls the **width** or spread of the curve. A larger value of $a$ results in a wider curve, while a smaller value produces a narrower curve.
   * **slope ($b$)**: This parameter, which must be a positive value, determines the **slope** of the curve's sides. It directly impacts the steepness of the curve's transition from 0 to 1. A larger $b$ value creates a steeper curve, making the fuzzy set sharper and less "fuzzy."
 
@@ -76,6 +76,9 @@ plt.show()
 
 Below is a visual representation of a Generalized Bell membership function, showing how its shape is influenced by the **width ($a$)** and **slope ($b$)** parameters, while the **center ($c$)** remains fixed.
 
-\<iframe src="/anfis-toolbox/assets/g-bell\_mf\_subplots.html" width="100%" height="550" frameborder="0" loading="lazy"\>\</iframe\>
+
+<iframe src="/anfis-toolbox/assets/bell_mf_subplots.html" width="100%" height="550" frameborder="0" loading="lazy"></iframe>
+
+
 
 The image displays a series of symmetrical bell-shaped curves. You can observe how increasing the width ($a$) makes the curve broader, while increasing the slope ($b$) makes the sides of the curve steeper.
