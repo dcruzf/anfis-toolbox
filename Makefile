@@ -74,6 +74,11 @@ docs-build: .uv
 		--with ruff \
 		mkdocs build
 
+.PHONY: jupyter  ## Run Jupyter Lab with uvx
+jupyter: .uv
+	uv run --with jupyterlab --with plotly jupyter lab
+
+
 .PHONY: clean  ## Clear local caches and build artifacts
 clean:
 	rm -rf `find . -name __pycache__`
