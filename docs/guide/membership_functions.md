@@ -39,6 +39,7 @@ Rules of thumb:
 - Params: mean (center), sigma > 0 (width).
 - Use when: You want smooth, unimodal fuzzy sets; great default.
 - Notes: Larger sigma = wider, smaller sigma = sharper.
+- [more](gaussianmf.md)
 
 ### BellMF
 
