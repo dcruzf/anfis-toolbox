@@ -46,6 +46,7 @@ Rules of thumb:
 - Shape: Generalized bell, adjustable shoulders and peak flatness.
 - Params: a > 0 (width), b (slope/shape), c (center).
 - Use when: Gaussian feels too restrictive; need heavier shoulders or flatter peak.
+- [more](bellmf.md)
 
 ### SigmoidalMF
 
