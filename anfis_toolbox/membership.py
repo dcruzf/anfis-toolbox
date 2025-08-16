@@ -146,7 +146,7 @@ class GaussianMF(MembershipFunction):
         z = (x - mean) / sigma
 
         # Derivatives of the Gaussian function
-        dy_dmean = -y * (x - mean) / (sigma**2)
+        dy_dmean = -y * z / sigma
         dy_dsigma = y * (z**2) / sigma
 
         # Gradient with respect to mean
