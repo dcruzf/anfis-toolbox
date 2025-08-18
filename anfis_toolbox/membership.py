@@ -3,6 +3,17 @@ from abc import ABC, abstractmethod
 import numpy as np
 
 
+# Shared helpers for smooth S/Z transitions
+def _smoothstep(t: np.ndarray) -> np.ndarray:
+    """Cubic smoothstep S(t) = 3t^2 - 2t^3 for t in [0,1]."""
+    return 3.0 * t**2 - 2.0 * t**3
+
+
+def _dsmoothstep_dt(t: np.ndarray) -> np.ndarray:
+    """Derivative of smoothstep: dS/dt = 6t(1-t)."""
+    return 6.0 * t * (1.0 - t)
+
+
 class MembershipFunction(ABC):
     """Abstract base class for membership functions.
 
@@ -65,9 +76,19 @@ class MembershipFunction(ABC):
         Returns:
             None
         """
-        self.gradients = dict.fromkeys(self.parameters, 0.0)
+        for key in self.gradients:
+            self.gradients[key] = 0.0
         self.last_input = None
         self.last_output = None
+
+    def __str__(self) -> str:
+        """Return a concise string representation of this membership function."""
+        params = ", ".join(f"{key}={value:.3f}" for key, value in self.parameters.items())
+        return f"{self.__class__.__name__}({params})"
+
+    def __repr__(self) -> str:
+        """Return a detailed representation of this membership function."""
+        return self.__str__()
 
 
 class GaussianMF(MembershipFunction):
@@ -125,7 +146,7 @@ class GaussianMF(MembershipFunction):
         z = (x - mean) / sigma
 
         # Derivatives of the Gaussian function
-        dy_dmean = y * z / sigma
+        dy_dmean = -y * z / sigma
         dy_dsigma = y * (z**2) / sigma
 
         # Gradient with respect to mean
@@ -138,25 +159,6 @@ class GaussianMF(MembershipFunction):
         self.gradients["mean"] += dL_dmean
         self.gradients["sigma"] += dL_dsigma
 
-    def reset(self):
-        """Resets gradients to zero.
-
-        This method should be called before each training step to clear
-        accumulated gradients from previous iterations.
-        """
-        for key in self.gradients:
-            self.gradients[key] = 0.0
-        self.last_input = None
-        self.last_output = None
-
-    def __str__(self) -> str:
-        """Returns string representation of the Gaussian membership function."""
-        return f"GaussianMF(mean={self.parameters['mean']:.3f}, sigma={self.parameters['sigma']:.3f})"
-
-    def __repr__(self) -> str:
-        """Returns detailed representation of the Gaussian membership function."""
-        return f"GaussianMF(mean={self.parameters['mean']}, sigma={self.parameters['sigma']})"
-
 
 class TriangularMF(MembershipFunction):
     """Triangular Membership Function.
@@ -166,157 +168,139 @@ class TriangularMF(MembershipFunction):
            { (x-a)/(b-a), a < x < b
            { (c-x)/(c-b), b ≤ x < c
 
-    This function is commonly used in fuzzy logic systems due to its simplicity,
-    computational efficiency, and good linguistic interpretability.
-
     Parameters:
-        a (float): Left base point of the triangle (lower support bound).
-        b (float): Peak point of the triangle (core point where μ(x) = 1).
-        c (float): Right base point of the triangle (upper support bound).
+        a (float): Left base point of the triangle.
+        b (float): Peak point of the triangle (μ(b) = 1).
+        c (float): Right base point of the triangle.
 
     Note:
-        Parameters must satisfy: a ≤ b ≤ c for a valid triangular function.
+        Must satisfy: a ≤ b ≤ c
     """
 
     def __init__(self, a: float, b: float, c: float):
-        """Initializes the Triangular membership function with three control points.
+        """Initialize the triangular membership function.
 
         Parameters:
-            a (float): Left base point (μ(a) = 0).
-            b (float): Peak point (μ(b) = 1).
-            c (float): Right base point (μ(c) = 0).
+            a (float): Left base point (must satisfy a ≤ b).
+            b (float): Peak point (must satisfy a ≤ b ≤ c).
+            c (float): Right base point (must satisfy b ≤ c).
 
         Raises:
-            ValueError: If parameters don't satisfy a ≤ b ≤ c.
+            ValueError: If parameters do not satisfy a ≤ b ≤ c or if a == c (zero width).
         """
         super().__init__()
 
-        # Validate parameters
         if not (a <= b <= c):
             raise ValueError(f"Triangular MF parameters must satisfy a ≤ b ≤ c, got a={a}, b={b}, c={c}")
-
         if a == c:
             raise ValueError("Parameters 'a' and 'c' cannot be equal (zero width triangle)")
 
         self.parameters = {"a": float(a), "b": float(b), "c": float(c)}
-        # Initialize gradients to zero for all parameters
         self.gradients = dict.fromkeys(self.parameters.keys(), 0.0)
 
     def forward(self, x: np.ndarray) -> np.ndarray:
-        """Computes the triangular membership values for the input x.
+        """Compute membership values μ(x) for a triangular MF.
+
+        Uses piecewise linear segments defined by (a, b, c):
+        - 0 outside [a, c]
+        - rising slope in (a, b)
+        - peak 1 at x == b
+        - falling slope in (b, c)
 
         Parameters:
-            x (np.ndarray): Input array for which the membership values are to be computed.
+            x (np.ndarray): Input array.
 
         Returns:
-            np.ndarray: Output array containing the triangular membership values.
-        """
-        a = self.parameters["a"]
-        b = self.parameters["b"]
-        c = self.parameters["c"]
+            np.ndarray: Membership values in [0, 1] with the same shape as x.
 
+        Notes:
+            Caches last_input and last_output for use during backward().
+        """
+        a, b, c = self.parameters["a"], self.parameters["b"], self.parameters["c"]
         self.last_input = x
 
-        # Initialize output with zeros
-        output = np.zeros_like(x)
+        output = np.zeros_like(x, dtype=float)
 
-        # Left slope: (x - a) / (b - a) for a < x < b
-        if b > a:  # Avoid division by zero
+        # Left slope
+        if b > a:
             left_mask = (x > a) & (x < b)
             output[left_mask] = (x[left_mask] - a) / (b - a)
 
-        # Peak: μ(x) = 1 at x = b
+        # Peak
         peak_mask = x == b
         output[peak_mask] = 1.0
 
-        # Right slope: (c - x) / (c - b) for b < x < c
-        if c > b:  # Avoid division by zero
+        # Right slope
+        if c > b:
             right_mask = (x > b) & (x < c)
             output[right_mask] = (c - x[right_mask]) / (c - b)
 
-        # Values outside [a, c] are already zero
+        # Clip for numerical stability
+        output = np.clip(output, 0.0, 1.0)
 
         self.last_output = output
         return output
 
     def backward(self, dL_dy: np.ndarray):
-        """Computes the gradients for the parameters based on the loss gradient.
+        """Accumulate gradients for parameters a, b, c given upstream gradient dL/dy.
 
-        The gradients are computed analytically for the piecewise linear function:
-        - ∂μ/∂a: Affects the left slope
-        - ∂μ/∂b: Affects both slopes as it's the peak point
-        - ∂μ/∂c: Affects the right slope
+        Computes analytical derivatives for the triangular MF in the rising (a, b)
+        and falling (b, c) regions and sums them over the batch.
 
         Parameters:
-            dL_dy (np.ndarray): The gradient of the loss with respect to the output of this layer.
+            dL_dy (np.ndarray): Gradient of the loss w.r.t. μ(x); shape compatible
+                with the output of forward() (same shape or broadcastable).
 
         Returns:
-            None: Gradients are accumulated in self.gradients.
-        """
-        a = self.parameters["a"]
-        b = self.parameters["b"]
-        c = self.parameters["c"]
+            None: Updates self.gradients in place.
 
+        Notes:
+            Requires a prior call to forward() to use cached inputs.
+        """
+        if self.last_input is None or self.last_output is None:
+            return
+
+        a, b, c = self.parameters["a"], self.parameters["b"], self.parameters["c"]
         x = self.last_input
 
-        # Initialize gradients
         dL_da = 0.0
         dL_db = 0.0
         dL_dc = 0.0
 
-        # Left slope region: a < x < b, μ(x) = (x-a)/(b-a)
+        # Left slope: a < x < b
         if b > a:
             left_mask = (x > a) & (x < b)
             if np.any(left_mask):
                 x_left = x[left_mask]
                 dL_dy_left = dL_dy[left_mask]
 
-                # ∂μ/∂a = -1/(b-a) for left slope
-                dmu_da_left = -1.0 / (b - a)
+                # ∂μ/∂a = (x - b) / (b - a)^2
+                dmu_da_left = (x_left - b) / ((b - a) ** 2)
                 dL_da += np.sum(dL_dy_left * dmu_da_left)
 
-                # ∂μ/∂b = -(x-a)/(b-a)² for left slope
+                # ∂μ/∂b = -(x - a) / (b - a)^2
                 dmu_db_left = -(x_left - a) / ((b - a) ** 2)
                 dL_db += np.sum(dL_dy_left * dmu_db_left)
 
-        # Right slope region: b < x < c, μ(x) = (c-x)/(c-b)
+        # Right slope: b < x < c
         if c > b:
             right_mask = (x > b) & (x < c)
             if np.any(right_mask):
                 x_right = x[right_mask]
                 dL_dy_right = dL_dy[right_mask]
 
-                # ∂μ/∂b = (x-c)/(c-b)² for right slope
+                # ∂μ/∂b = (x - c) / (c - b)^2
                 dmu_db_right = (x_right - c) / ((c - b) ** 2)
                 dL_db += np.sum(dL_dy_right * dmu_db_right)
 
-                # ∂μ/∂c = -1/(c-b) for right slope (derivative of (c-x)/(c-b) w.r.t. c)
+                # ∂μ/∂c = (x - b) / (c - b)^2
                 dmu_dc_right = (x_right - b) / ((c - b) ** 2)
                 dL_dc += np.sum(dL_dy_right * dmu_dc_right)
 
-        # Update gradients (accumulate for batch processing)
+        # Update gradients
         self.gradients["a"] += dL_da
         self.gradients["b"] += dL_db
         self.gradients["c"] += dL_dc
-
-    def reset(self):
-        """Resets gradients to zero.
-
-        This method should be called before each training step to clear
-        accumulated gradients from previous iterations.
-        """
-        for key in self.gradients:
-            self.gradients[key] = 0.0
-        self.last_input = None
-        self.last_output = None
-
-    def __str__(self) -> str:
-        """Returns string representation of the triangular membership function."""
-        return f"TriangularMF(a={self.parameters['a']:.3f}, b={self.parameters['b']:.3f}, c={self.parameters['c']:.3f})"
-
-    def __repr__(self) -> str:
-        """Returns detailed representation of the triangular membership function."""
-        return f"TriangularMF(a={self.parameters['a']}, b={self.parameters['b']}, c={self.parameters['c']})"
 
 
 class TrapezoidalMF(MembershipFunction):
@@ -419,6 +403,9 @@ class TrapezoidalMF(MembershipFunction):
         Returns:
             None: Gradients are accumulated in self.gradients.
         """
+        if self.last_input is None or self.last_output is None:
+            return
+
         a = self.parameters["a"]
         b = self.parameters["b"]
         c = self.parameters["c"]
@@ -470,31 +457,6 @@ class TrapezoidalMF(MembershipFunction):
         self.gradients["b"] += dL_db
         self.gradients["c"] += dL_dc
         self.gradients["d"] += dL_dd
-
-    def reset(self):
-        """Resets gradients to zero.
-
-        This method should be called before each training step to clear
-        accumulated gradients from previous iterations.
-        """
-        for key in self.gradients:
-            self.gradients[key] = 0.0
-        self.last_input = None
-        self.last_output = None
-
-    def __str__(self) -> str:
-        """Returns string representation of the trapezoidal membership function."""
-        return (
-            f"TrapezoidalMF(a={self.parameters['a']:.3f}, b={self.parameters['b']:.3f}, "
-            f"c={self.parameters['c']:.3f}, d={self.parameters['d']:.3f})"
-        )
-
-    def __repr__(self) -> str:
-        """Returns detailed representation of the trapezoidal membership function."""
-        return (
-            f"TrapezoidalMF(a={self.parameters['a']}, b={self.parameters['b']}, "
-            f"c={self.parameters['c']}, d={self.parameters['d']})"
-        )
 
 
 class BellMF(MembershipFunction):
@@ -666,25 +628,6 @@ class BellMF(MembershipFunction):
         self.gradients["b"] += dL_db
         self.gradients["c"] += dL_dc
 
-    def reset(self):
-        """Resets gradients to zero.
-
-        This method should be called before each training step to clear
-        accumulated gradients from previous iterations.
-        """
-        for key in self.gradients:
-            self.gradients[key] = 0.0
-        self.last_input = None
-        self.last_output = None
-
-    def __str__(self) -> str:
-        """Returns string representation of the bell membership function."""
-        return f"BellMF(a={self.parameters['a']:.3f}, b={self.parameters['b']:.3f}, c={self.parameters['c']:.3f})"
-
-    def __repr__(self) -> str:
-        """Returns detailed representation of the bell membership function."""
-        return f"BellMF(a={self.parameters['a']}, b={self.parameters['b']}, c={self.parameters['c']})"
-
 
 class SigmoidalMF(MembershipFunction):
     """Sigmoidal Membership Function.
@@ -814,24 +757,211 @@ class SigmoidalMF(MembershipFunction):
         self.gradients["a"] += dL_da
         self.gradients["c"] += dL_dc
 
-    def reset(self):
-        """Resets gradients to zero.
 
-        This method should be called before each training step to clear
-        accumulated gradients from previous iterations.
+class SShapedMF(MembershipFunction):
+    """S-shaped Membership Function.
+
+    Smoothly transitions from 0 to 1 between two parameters a and b using the
+    smoothstep polynomial S(t) = 3t² - 2t³. Commonly used in fuzzy logic for
+    gradual onset of membership.
+
+    Definition with a < b:
+    - μ(x) = 0, for x ≤ a
+    - μ(x) = 3t² - 2t³, t = (x-a)/(b-a), for a < x < b
+    - μ(x) = 1, for x ≥ b
+
+    Parameters:
+        a (float): Left foot (start of transition from 0).
+        b (float): Right shoulder (end of transition at 1).
+
+    Note:
+        Requires a < b.
+    """
+
+    def __init__(self, a: float, b: float):
+        """Initialize the membership function with parameters 'a' and 'b'.
+
+        Args:
+            a (float): The first parameter, must be less than 'b'.
+            b (float): The second parameter, must be greater than 'a'.
+
+        Raises:
+            ValueError: If 'a' is not less than 'b'.
+
+        Attributes:
+            parameters (dict): Dictionary containing 'a' and 'b' as floats.
+            gradients (dict): Dictionary containing gradients for 'a' and 'b', initialized to 0.0.
         """
-        for key in self.gradients:
-            self.gradients[key] = 0.0
-        self.last_input = None
-        self.last_output = None
+        super().__init__()
 
-    def __str__(self) -> str:
-        """Returns string representation of the sigmoidal membership function."""
-        return f"SigmoidalMF(a={self.parameters['a']:.3f}, c={self.parameters['c']:.3f})"
+        if not (a < b):
+            raise ValueError(f"Parameters must satisfy a < b, got a={a}, b={b}")
 
-    def __repr__(self) -> str:
-        """Returns detailed representation of the sigmoidal membership function."""
-        return f"SigmoidalMF(a={self.parameters['a']}, c={self.parameters['c']})"
+        self.parameters = {"a": float(a), "b": float(b)}
+        self.gradients = {"a": 0.0, "b": 0.0}
+
+    def forward(self, x: np.ndarray) -> np.ndarray:
+        """Compute S-shaped membership values."""
+        x = np.asarray(x)
+        self.last_input = x.copy()
+
+        a, b = self.parameters["a"], self.parameters["b"]
+
+        y = np.zeros_like(x, dtype=np.float64)
+
+        # Right side (x ≥ b): μ = 1
+        mask_right = x >= b
+        y[mask_right] = 1.0
+
+        # Transition region (a < x < b): μ = smoothstep(t)
+        mask_trans = (x > a) & (x < b)
+        if np.any(mask_trans):
+            x_t = x[mask_trans]
+            t = (x_t - a) / (b - a)
+            y[mask_trans] = _smoothstep(t)
+
+        # Left side (x ≤ a) remains 0
+
+        self.last_output = y.copy()
+        return y
+
+    def backward(self, dL_dy: np.ndarray):
+        """Accumulate gradients for a and b using analytical derivatives.
+
+        Uses S(t) = 3t² - 2t³, t = (x-a)/(b-a) on the transition region.
+        """
+        if self.last_input is None or self.last_output is None:
+            return
+
+        x = self.last_input
+        dL_dy = np.asarray(dL_dy)
+
+        a, b = self.parameters["a"], self.parameters["b"]
+
+        # Only transition region contributes to parameter gradients
+        mask = (x >= a) & (x <= b)
+        if not (np.any(mask) and b != a):
+            return
+
+        x_t = x[mask]
+        dL_dy_t = dL_dy[mask]
+        t = (x_t - a) / (b - a)
+
+        # dS/dt = 6*t*(1-t)
+        dS_dt = _dsmoothstep_dt(t)
+
+        # dt/da and dt/db
+        dt_da = (x_t - b) / (b - a) ** 2
+        dt_db = -(x_t - a) / (b - a) ** 2
+
+        dS_da = dS_dt * dt_da
+        dS_db = dS_dt * dt_db
+
+        self.gradients["a"] += float(np.sum(dL_dy_t * dS_da))
+        self.gradients["b"] += float(np.sum(dL_dy_t * dS_db))
+
+
+class ZShapedMF(MembershipFunction):
+    """Z-shaped Membership Function.
+
+    Smoothly transitions from 1 to 0 between two parameters a and b using the
+    smoothstep polynomial S(t) = 3t² - 2t³ (Z = 1 - S). Commonly used in fuzzy
+    logic as the complement of the S-shaped function.
+
+    Definition with a < b:
+    - μ(x) = 1, for x ≤ a
+    - μ(x) = 1 - (3t² - 2t³), t = (x-a)/(b-a), for a < x < b
+    - μ(x) = 0, for x ≥ b
+
+    Parameters:
+        a (float): Left shoulder (start of transition).
+        b (float): Right foot (end of transition).
+
+    Note:
+        Requires a < b. In the degenerate case a == b, the function becomes an
+        instantaneous drop at x=a.
+    """
+
+    def __init__(self, a: float, b: float):
+        """Initializes the membership function with parameters `a` and `b`.
+
+        Args:
+            a (float): The lower bound parameter.
+            b (float): The upper bound parameter.
+
+        Raises:
+            ValueError: If `a` is not less than `b`.
+        Sets:
+            self.parameters (dict): Dictionary containing 'a' and 'b' as floats.
+            self.gradients (dict): Dictionary containing gradients for 'a' and 'b', initialized to 0.0.
+        """
+        super().__init__()
+
+        if not (a < b):
+            raise ValueError(f"Parameters must satisfy a < b, got a={a}, b={b}")
+
+        self.parameters = {"a": float(a), "b": float(b)}
+        self.gradients = {"a": 0.0, "b": 0.0}
+
+    def forward(self, x: np.ndarray) -> np.ndarray:
+        """Compute Z-shaped membership values."""
+        x = np.asarray(x)
+        self.last_input = x.copy()
+
+        a, b = self.parameters["a"], self.parameters["b"]
+
+        y = np.zeros_like(x, dtype=np.float64)
+
+        # Left side (x ≤ a): μ = 1
+        mask_left = x <= a
+        y[mask_left] = 1.0
+
+        # Transition region (a < x < b): μ = 1 - smoothstep(t)
+        mask_trans = (x > a) & (x < b)
+        if np.any(mask_trans):
+            x_t = x[mask_trans]
+            t = (x_t - a) / (b - a)
+            y[mask_trans] = 1.0 - _smoothstep(t)
+
+        # Right side (x ≥ b) remains 0
+
+        self.last_output = y.copy()
+        return y
+
+    def backward(self, dL_dy: np.ndarray):
+        """Accumulate gradients for a and b using analytical derivatives.
+
+        Uses Z(t) = 1 - (3t² - 2t³), t = (x-a)/(b-a) on the transition region.
+        """
+        if self.last_input is None or self.last_output is None:
+            return
+
+        x = self.last_input
+        dL_dy = np.asarray(dL_dy)
+
+        a, b = self.parameters["a"], self.parameters["b"]
+
+        # Only transition region contributes to parameter gradients
+        mask = (x >= a) & (x <= b)
+        if not (np.any(mask) and b != a):
+            return
+
+        x_t = x[mask]
+        dL_dy_t = dL_dy[mask]
+        t = (x_t - a) / (b - a)
+
+        # dZ/dt = -dS/dt = 6*t*(t-1)
+        dZ_dt = -_dsmoothstep_dt(t)
+
+        # dt/da and dt/db
+        dt_da = (x_t - b) / (b - a) ** 2
+        dt_db = -(x_t - a) / (b - a) ** 2
+
+        dZ_da = dZ_dt * dt_da
+        dZ_db = dZ_dt * dt_db
+
+        self.gradients["a"] += float(np.sum(dL_dy_t * dZ_da))
+        self.gradients["b"] += float(np.sum(dL_dy_t * dZ_db))
 
 
 class PiMF(MembershipFunction):
@@ -919,7 +1049,7 @@ class PiMF(MembershipFunction):
 
                 # Smooth S-function using smoothstep: S(t) = 3*t² - 2*t³
                 # This is continuous and differentiable across the entire [0,1] interval
-                y_s = 3 * t**2 - 2 * t**3
+                y_s = _smoothstep(t)
 
                 y[mask_s] = y_s
             else:
@@ -940,7 +1070,7 @@ class PiMF(MembershipFunction):
 
                 # Smooth Z-function (inverted smoothstep): Z(t) = 1 - S(t) = 1 - (3*t² - 2*t³)
                 # This is continuous and differentiable, going from 1 to 0
-                y_z = 1 - (3 * t**2 - 2 * t**3)
+                y_z = 1 - _smoothstep(t)
 
                 y[mask_z] = y_z
             else:
@@ -985,7 +1115,7 @@ class PiMF(MembershipFunction):
             dt_db = -(x_s - a) / (b - a) ** 2
 
             # For smoothstep S(t) = 3*t² - 2*t³, derivative is dS/dt = 6*t - 6*t² = 6*t*(1-t)
-            dS_dt = 6 * t * (1 - t)
+            dS_dt = _dsmoothstep_dt(t)
 
             # Apply chain rule: dS/da = dS/dt * dt/da
             dS_da = dS_dt * dt_da
@@ -1006,7 +1136,7 @@ class PiMF(MembershipFunction):
             dt_dd = -(x_z - c) / (d - c) ** 2
 
             # For Z(t) = 1 - S(t) = 1 - (3*t² - 2*t³), derivative is dZ/dt = -dS/dt = -6*t*(1-t) = 6*t*(t-1)
-            dZ_dt = 6 * t * (t - 1)
+            dZ_dt = -_dsmoothstep_dt(t)
 
             # Apply chain rule: dZ/dc = dZ/dt * dt/dc
             dZ_dc = dZ_dt * dt_dc
@@ -1020,24 +1150,3 @@ class PiMF(MembershipFunction):
         self.gradients["b"] += grad_b
         self.gradients["c"] += grad_c
         self.gradients["d"] += grad_d
-
-    def reset_gradients(self):
-        """Reset gradients to zero.
-
-        This method should be called before each training step to clear
-        accumulated gradients from previous iterations.
-        """
-        for key in self.gradients:
-            self.gradients[key] = 0.0
-        self.last_input = None
-        self.last_output = None
-
-    def __str__(self) -> str:
-        """Returns string representation of the Pi-shaped membership function."""
-        a, b, c, d = self.parameters["a"], self.parameters["b"], self.parameters["c"], self.parameters["d"]
-        return f"PiMF(a={a:.3f}, b={b:.3f}, c={c:.3f}, d={d:.3f})"
-
-    def __repr__(self) -> str:
-        """Returns detailed representation of the Pi-shaped membership function."""
-        a, b, c, d = self.parameters["a"], self.parameters["b"], self.parameters["c"], self.parameters["d"]
-        return f"PiMF(a={a}, b={b}, c={c}, d={d})"
