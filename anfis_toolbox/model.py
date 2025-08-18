@@ -69,6 +69,15 @@ class ANFIS:
         self.normalization_layer = NormalizationLayer()
         self.consequent_layer = ConsequentLayer(self.n_rules, self.n_inputs)
 
+    @property
+    def membership_functions(self) -> dict[str, list[MembershipFunction]]:
+        """Alias for input_mfs to provide a standardized interface.
+
+        Returns:
+            dict: Dictionary mapping input names to lists of membership functions.
+        """
+        return self.input_mfs
+
     def forward(self, x: np.ndarray) -> np.ndarray:
         """Performs forward pass through the entire ANFIS model.
 

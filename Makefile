@@ -15,8 +15,10 @@ rebuild-lockfiles: .uv
 
 .PHONY: install ## Install the package, dependencies, and pre-commit for local development
 install: .uv
+	uv self update
 	uv sync
 	uv tool install hatch
+	uv tool update-shell
 	uvx pre-commit install
 	uvx pre-commit autoupdate
 
@@ -36,19 +38,46 @@ lint: .uv
 
 .PHONY: test ## Run tests
 test: .hatch
-	uv tool run hatch run test:test
+	uv tool run hatch test -c
 
-.PHONY: test-cov ## Run tests with coverage
-test-cov: .hatch
-	uv tool run hatch run test:test-cov
-	uv tool run hatch run test:cov-report
+.PHONY: test-all ## Run tests with coverage
+test-all: .hatch
+	uv tool run hatch test -c --all
 
 .PHONY: lf ## Run last failed tests
 lf: .uv
 	uv run pytest --lf -vv
 
 .PHONY: all
-all: format lint test
+all: format lint test-all
+
+
+.PHONY: build  ## Build wheel and sdist into dist/
+build: .hatch
+	uv tool run hatch build
+
+.PHONY: docs  ## Serve the documentation at http://localhost:8000
+docs:
+	uvx --with mkdocs-material \
+    --with mkdocstrings --with mkdocstrings-python \
+    --with mkdocs-awesome-pages-plugin \
+    --with mkdocs-git-revision-date-localized-plugin \
+    --with ruff \
+    mkdocs serve -a 127.0.0.1:8000
+
+.PHONY: docs-build  ## Build static docs into site/
+docs-build: .uv
+	uvx --with mkdocs-material \
+		--with mkdocstrings --with mkdocstrings-python \
+		--with mkdocs-awesome-pages-plugin \
+		--with mkdocs-git-revision-date-localized-plugin \
+		--with ruff \
+		mkdocs build
+
+.PHONY: jupyter  ## Run Jupyter Lab with uvx
+jupyter: .uv
+	uv run --with jupyterlab --with plotly jupyter lab
+
 
 .PHONY: clean  ## Clear local caches and build artifacts
 clean:

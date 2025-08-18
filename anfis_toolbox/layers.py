@@ -34,6 +34,15 @@ class MembershipLayer:
         self.mf_per_input = [len(mfs) for mfs in input_mfs.values()]
         self.last = {}
 
+    @property
+    def membership_functions(self) -> dict:
+        """Alias for input_mfs to provide a standardized interface.
+
+        Returns:
+            dict: Dictionary mapping input names to lists of membership functions.
+        """
+        return self.input_mfs
+
     def forward(self, x: np.ndarray) -> dict:
         """Performs forward pass to compute membership degrees for all inputs.
 

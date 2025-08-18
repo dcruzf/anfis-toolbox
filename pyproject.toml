@@ -9,9 +9,22 @@ description = "A Python toolbox for building, training, and evaluating Adaptive 
 authors = [{ name = "Daniel França", email = "daniel@ci.ufpb.br" }]
 license = { text = "MIT" }
 dependencies = [
+    "matplotlib>=3.9.4",
     "numpy>=1.24.4",
 ]
 requires-python = ">=3.9"
+
+[project.optional-dependencies]
+visualization = [
+    "matplotlib>=3.5.0",
+]
+validation = [
+    "scikit-learn>=1.0.0",
+]
+all = [
+    "matplotlib>=3.5.0",
+    "scikit-learn>=1.0.0",
+]
 
 [tool.hatch.version]
 path = 'anfis_toolbox/__init__.py'
@@ -31,23 +44,22 @@ dependencies = [
     "coverage[toml]>=7.6.1",
     "pytest>=7.0.0",
     "pytest-cov>=5.0.0",
+    # Optional dependencies for comprehensive testing
+    "scikit-learn>=1.0.0",
+    "matplotlib>=3.5.0",
 ]
 
-[tool.hatch.envs.test.scripts]
-test = "pytest {args:tests}"
-test-cov = "coverage run -m pytest {args:tests}"
-cov-report = [
-    "- coverage combine",
-    "coverage report",
-]
-cov-html = [
-    "- coverage combine",
-    "coverage html",
-]
+[tool.hatch.envs.hatch-test]
+installer = "pip"
 
-# Test matrix for multiple Python versions
-[[tool.hatch.envs.test.matrix]]
-python = ["3.9", "3.10", "3.11", "3.12", "3.13"]
+[[tool.hatch.envs.hatch-test.matrix]]
+python = ["3.13", "3.12", "3.11", "3.10", "3.9"]
+
+[tool.hatch.envs.hatch-test.scripts]
+run = "pytest{env:HATCH_TEST_ARGS:} {args}"
+run-cov = "coverage run -m pytest{env:HATCH_TEST_ARGS:} {args}"
+cov-combine = "coverage combine"
+cov-report = "coverage report -m"
 
 [tool.ruff]
 line-length = 120
@@ -81,3 +93,12 @@ xfail_strict = true
 source = ['anfis_toolbox']
 branch = true
 relative_files = true
+
+[dependency-groups]
+dev = [
+    "mkdocs>=1.6.1",
+    "mkdocs-awesome-pages-plugin>=2.10.1",
+    "mkdocs-git-revision-date-localized-plugin>=1.4.7",
+    "mkdocs-material>=9.6.16",
+    "mkdocstrings[python]>=0.30.0",
+]
