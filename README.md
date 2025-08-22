@@ -1,100 +1,91 @@
 # ANFIS Toolbox
 
-A comprehensive Python implementation of Adaptive Neuro-Fuzzy Inference Systems (ANFIS) with Takagi-Sugeno-Kang (TSK) architecture.
+Adaptive Neuro-Fuzzy Inference Systems (ANFIS) in pure Python (TSK architecture) with simple APIs, local model selection utilities, robust validation, and clear visualization.
 
-[![Tests](https://github.com/username/anfis-toolbox/workflows/Tests/badge.svg)](https://github.com/username/anfis-toolbox/actions)
-[![Python 3.9+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 
-## Features
+## Highlights
 
-- **Complete ANFIS Implementation**: Full 4-layer neural-fuzzy architecture
-- **Hybrid Learning Algorithm**: Original Jang (1993) algorithm with least squares + backpropagation
-- **Pure Backpropagation**: Modern gradient-based approach for comparison
-- **Membership Functions**: Gaussian membership functions with automatic differentiation
-- **Multi-Platform**: Supports Python 3.9-3.13 across different platforms
-- **Comprehensive Testing**: 27+ tests with numerical gradient verification
-- **Easy to Use**: Simple, intuitive API for creating and training ANFIS models
+- 4-layer ANFIS (Membership → Rules → Normalization → Consequent)
+- Training: SGD and Hybrid trainer (least-squares + gradient) decoupled from the model
+- Membership functions: Gaussian, Bell, Sigmoidal, Triangular, Trapezoidal, S-shaped (S), Z-shaped (Z), Pi-shaped (Π)
+- Builders: ANFISBuilder and QuickANFIS for fast setup from data
+- Validation: ANFISValidator with deterministic CV, metrics, learning curves
+- Model selection: Local `KFold` and `train_test_split` (no scikit-learn dependency)
+- Visualization: EDA plots, training curves, residuals, membership and rule-activation plots
+- Tested across Python 3.10–3.13 with 100% coverage; linted with Ruff; docs via MkDocs
 
-## Quick Start
+## Installation
+
+```bash
+# From source
+git clone https://github.com/<your-user>/anfis-toolbox.git
+cd anfis-toolbox
+pip install -e .
+```
+
+## Quick start
+
+Minimal example using QuickANFIS:
+
+```python
+import numpy as np
+from anfis_toolbox import QuickANFIS
+
+X = np.random.uniform(-2, 2, (200, 2))
+y = (X[:, 0] ** 2 + X[:, 1] ** 2)
+
+model = QuickANFIS.for_regression(X, n_mfs=3)
+losses = model.fit_hybrid(X, y, epochs=50)
+preds = model.predict([[1.0, -0.5], [0.5, 1.2]])
+```
+
+Or with explicit membership functions:
 
 ```python
 import numpy as np
 from anfis_toolbox import ANFIS, GaussianMF
 
-# Define input membership functions
 input_mfs = {
-    'x1': [GaussianMF(mean=-1.0, sigma=1.0), GaussianMF(mean=1.0, sigma=1.0)],
-    'x2': [GaussianMF(mean=-1.0, sigma=1.0), GaussianMF(mean=1.0, sigma=1.0)]
+    "x1": [GaussianMF(-1.0, 1.0), GaussianMF(1.0, 1.0)],
+    "x2": [GaussianMF(-1.0, 1.0), GaussianMF(1.0, 1.0)],
 }
 
-# Create and train ANFIS model
 model = ANFIS(input_mfs)
-
-# Generate training data
-x_train = np.random.randn(100, 2)
-y_train = np.sum(x_train, axis=1, keepdims=True)
-
-# Train the model (hybrid algorithm - recommended)
-losses = model.fit_hybrid(x_train, y_train, epochs=50, learning_rate=0.01)
-
-# Alternative: pure backpropagation
-# losses = model.fit(x_train, y_train, epochs=50, learning_rate=0.01)
-
-# Make predictions
-x_test = np.array([[0.5, -0.5], [1.0, 1.0]])
-y_pred = model.predict(x_test)
+X = np.random.randn(100, 2)
+y = X.sum(axis=1)
+losses = model.fit_hybrid(X, y, epochs=50)
+pred = model.predict([[0.5, -0.5]])
 ```
 
-## Installation
+## Visualization (optional)
 
-```bash
-# From PyPI (when available)
-pip install anfis-toolbox
+```python
+from anfis_toolbox import ANFISVisualizer, quick_plot_training, quick_plot_results
 
-# From source
-git clone https://github.com/username/anfis-toolbox.git
-cd anfis-toolbox
-pip install -e .
+quick_plot_training(losses)
+quick_plot_results(X, y, model)
+
+viz = ANFISVisualizer(model)
+viz.plot_membership_functions()
 ```
 
-## Architecture
+## Validation and model selection
 
-The ANFIS toolbox implements a complete 4-layer neural-fuzzy architecture:
+```python
+from anfis_toolbox import ANFISValidator
+from anfis_toolbox.model_selection import train_test_split, KFold
 
-1. **Membership Layer**: Converts crisp inputs to fuzzy membership degrees
-2. **Rule Layer**: Computes fuzzy rule firing strengths
-3. **Normalization Layer**: Normalizes firing strengths
-4. **Consequent Layer**: Applies TSK consequent functions
+Xtr, Xte, ytr, yte = train_test_split(X, y, train_size=0.8, shuffle=True, random_state=42)
 
-## Examples
-
-See the `examples/` directory for comprehensive usage examples:
-- 1D function approximation
-- 2D function approximation
-- Parameter inspection and modification
-
-Run the examples:
-```bash
-uv run python examples/usage_examples.py
-```
-
-## Development
-
-```bash
-# Install development dependencies
-uv install --dev
-
-# Run tests across all Python versions
-uv tool run hatch run test:test
-
-# Run specific tests
-uv run pytest tests/test_model.py -v
+validator = ANFISValidator(model)
+cv = validator.cross_validate(Xtr, ytr, cv=KFold(n_splits=5, shuffle=True, random_state=42))
 ```
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) for details.
+MIT – see [LICENSE](LICENSE).
 
 ## References
 
-1. Jang, J. S. (1993). ANFIS: adaptive-network-based fuzzy inference system. IEEE transactions on systems, man, and cybernetics, 23(3), 665-685.
+1. Jang, J. S. (1993). ANFIS: adaptive-network-based fuzzy inference system. IEEE TSMC, 23(3), 665–685.
