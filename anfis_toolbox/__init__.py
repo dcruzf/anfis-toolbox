@@ -20,11 +20,11 @@ from .membership import (
 from .model import ANFIS
 
 # Import validation utilities (optional)
-try:  # pragma: no cover
+try:
     from .validation import ANFISMetrics, ANFISValidator, quick_evaluate
 
     _HAS_VALIDATION = True
-except ImportError:
+except ImportError:  # pragma: no cover
     _HAS_VALIDATION = False
 
     # Create dummy classes for documentation

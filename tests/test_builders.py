@@ -10,7 +10,16 @@ import numpy as np
 import pytest
 
 from anfis_toolbox.builders import ANFISBuilder, QuickANFIS
-from anfis_toolbox.membership import GaussianMF, TrapezoidalMF, TriangularMF
+from anfis_toolbox.membership import (
+    BellMF,
+    GaussianMF,
+    PiMF,
+    SigmoidalMF,
+    SShapedMF,
+    TrapezoidalMF,
+    TriangularMF,
+    ZShapedMF,
+)
 from anfis_toolbox.model import ANFIS
 
 
@@ -191,6 +200,126 @@ class TestANFISBuilder:
         # Single MF should be at the center of linspace range
         assert mfs[0].parameters["mean"] == -1.0  # linspace with n=1 returns start value
 
+    def test_create_bell_single_mf(self):
+        """Bell MF: single MF branch sets half-width from range and default slope."""
+        builder = ANFISBuilder()
+        mfs = builder._create_bell_mfs(0.0, 10.0, 1, overlap=0.7)
+        assert len(mfs) == 1
+        mf = mfs[0]
+        assert isinstance(mf, BellMF)
+        # a = 0.25 * (range_max - range_min)
+        assert np.isclose(mf.parameters["a"], 2.5)
+        assert np.isclose(mf.parameters["b"], 2.0)
+        # c equals start of linspace when n=1
+        assert np.isclose(mf.parameters["c"], 0.0)
+
+    def test_create_sigmoidal_single_mf(self):
+        """Sigmoidal MF: single MF branch sets width from range and computes slope."""
+        builder = ANFISBuilder()
+        mfs = builder._create_sigmoidal_mfs(0.0, 10.0, 1, overlap=0.5)
+        assert len(mfs) == 1
+        mf = mfs[0]
+        assert isinstance(mf, SigmoidalMF)
+        # width = 0.5 * (range_max - range_min) => 5, a = 4.4 / width ≈ 0.88
+        assert np.isclose(mf.parameters["a"], 0.88)
+        assert np.isclose(mf.parameters["c"], 0.0)
+
+    def test_create_sshape_zero_range_fallback(self):
+        """S-shaped MF: zero range triggers tiny-span fallback (a < b)."""
+        builder = ANFISBuilder()
+        mfs = builder._create_sshape_mfs(1.23, 1.23, 1, overlap=0.5)
+        assert len(mfs) == 1
+        a, b = mfs[0].parameters["a"], mfs[0].parameters["b"]
+        assert a < b
+        # very small span around center
+        assert (b - a) < 1e-5
+        assert abs((a + b) / 2.0 - 1.23) < 1e-3
+
+    def test_create_zshape_zero_range_fallback(self):
+        """Z-shaped MF: zero range triggers tiny-span fallback (a < b)."""
+        builder = ANFISBuilder()
+        mfs = builder._create_zshape_mfs(-2.0, -2.0, 1, overlap=0.5)
+        assert len(mfs) == 1
+        a, b = mfs[0].parameters["a"], mfs[0].parameters["b"]
+        assert a < b
+        assert (b - a) < 1e-5
+        assert abs((a + b) / 2.0 - (-2.0)) < 1e-3
+
+    def test_create_pi_single_and_zero_range(self):
+        """Pi MF: cover single-MF width branch and zero-range fallback branch."""
+        builder = ANFISBuilder()
+        # Single MF normal range
+        mfs = builder._create_pi_mfs(0.0, 10.0, 1, overlap=0.4)
+        assert len(mfs) == 1
+        a, b, c, d = (mfs[0].parameters[k] for k in ("a", "b", "c", "d"))
+        assert a < b <= c < d
+        # Zero range triggers clamp and fallback
+        mfs_zero = builder._create_pi_mfs(0.0, 0.0, 1, overlap=0.4)
+        a2, b2, c2, d2 = (mfs_zero[0].parameters[k] for k in ("a", "b", "c", "d"))
+        assert a2 < b2 <= c2 < d2
+        assert (d2 - a2) < 1e-4
+
+    def test_add_input_bell_and_alias(self):
+        """Bell MF creation with canonical and alias names."""
+        builder = ANFISBuilder()
+        for mf_name in ("bell", "gbell"):
+            builder.add_input("x", -1.0, 1.0, n_mfs=3, mf_type=mf_name)
+            assert all(isinstance(mf, BellMF) for mf in builder.input_mfs["x"])
+
+    def test_add_input_sigmoidal_and_alias(self):
+        """Sigmoidal MF creation with canonical and alias names."""
+        builder = ANFISBuilder()
+        for mf_name in ("sigmoidal", "sigmoid"):
+            builder.add_input("x", -2.0, 2.0, n_mfs=4, mf_type=mf_name)
+            assert all(isinstance(mf, SigmoidalMF) for mf in builder.input_mfs["x"])
+
+    def test_add_input_sshape_and_alias(self):
+        """S-shaped MF creation with canonical and alias names and parameter ordering."""
+        builder = ANFISBuilder()
+        for mf_name in ("sshape", "s"):
+            builder.add_input("x", 0.0, 10.0, n_mfs=3, mf_type=mf_name)
+            mfs = builder.input_mfs["x"]
+            assert all(isinstance(mf, SShapedMF) for mf in mfs)
+            # Ensure a < b for each S-shaped MF
+            for mf in mfs:
+                a, b = mf.parameters["a"], mf.parameters["b"]
+                assert a < b
+
+    def test_add_input_zshape_and_alias(self):
+        """Z-shaped MF creation with canonical and alias names and parameter ordering."""
+        builder = ANFISBuilder()
+        for mf_name in ("zshape", "z"):
+            builder.add_input("x", -5.0, 5.0, n_mfs=3, mf_type=mf_name)
+            mfs = builder.input_mfs["x"]
+            assert all(isinstance(mf, ZShapedMF) for mf in mfs)
+            for mf in mfs:
+                a, b = mf.parameters["a"], mf.parameters["b"]
+                assert a < b
+
+    def test_add_input_pi_and_alias(self):
+        """Pi MF creation with canonical and alias names and parameter ordering."""
+        builder = ANFISBuilder()
+        for mf_name in ("pi", "pimf"):
+            builder.add_input("x", -3.0, 3.0, n_mfs=3, mf_type=mf_name)
+            mfs = builder.input_mfs["x"]
+            assert all(isinstance(mf, PiMF) for mf in mfs)
+            for mf in mfs:
+                a = mf.parameters["a"]
+                b = mf.parameters["b"]
+                c = mf.parameters["c"]
+                d = mf.parameters["d"]
+                assert a < b <= c < d
+
+    def test_add_input_from_data(self):
+        """add_input_from_data infers ranges and creates requested MF types."""
+        data = np.array([1.0, 1.5, 2.0, 2.5])
+        builder = ANFISBuilder()
+        builder.add_input_from_data("x", data, n_mfs=2, mf_type="sigmoidal", overlap=0.6, margin=0.2)
+        assert "x" in builder.input_mfs
+        mfs = builder.input_mfs["x"]
+        assert len(mfs) == 2
+        assert all(isinstance(mf, SigmoidalMF) for mf in mfs)
+
 
 class TestQuickANFIS:
     """Test cases for QuickANFIS class."""
@@ -297,7 +426,16 @@ class TestQuickANFIS:
         X = np.random.uniform(-1, 1, (10, 2))
 
         # Test with different MF types
-        for mf_type in ["gaussian", "triangular", "trapezoidal"]:
+        for mf_type in [
+            "gaussian",
+            "triangular",
+            "trapezoidal",
+            "bell",
+            "sigmoidal",
+            "sshape",
+            "zshape",
+            "pi",
+        ]:
             model = QuickANFIS.for_regression(X, n_mfs=2, mf_type=mf_type)
             assert isinstance(model, ANFIS)
             assert model.n_inputs == 2
