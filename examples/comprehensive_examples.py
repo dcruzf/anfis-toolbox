@@ -115,7 +115,7 @@ def example_multi_input_system():
     # Train
     losses = model.fit_hybrid(X, y, epochs=60, learning_rate=0.015)
 
-    # Cross-validation (uncomment if sklearn available)
+    # Cross-validation
     # from anfis_toolbox.validation import ANFISValidator
     # validator = ANFISValidator(model)
     # cv_results = validator.cross_validate(X, y, cv=3, epochs=30)

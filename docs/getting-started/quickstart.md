@@ -218,7 +218,7 @@ losses_hybrid = model.fit_hybrid(X, y, epochs=50)  # Hybrid (recommended)
 ### Use Advanced Features
 
 ```python
-# Cross-validation (needs sklearn)
+# Cross-validation
 from anfis_toolbox import ANFISValidator
 
 validator = ANFISValidator(model)
