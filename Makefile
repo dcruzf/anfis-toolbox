@@ -76,7 +76,7 @@ docs-build: .uv
 
 .PHONY: jupyter  ## Run Jupyter Lab with uvx
 jupyter: .uv
-	uv run --with jupyterlab --with plotly jupyter lab
+	uv run --with .[all] --with jupyterlab --with plotly jupyter lab
 
 
 .PHONY: clean  ## Clear local caches and build artifacts
