@@ -2,7 +2,16 @@
 
 import numpy as np
 
-from .membership import GaussianMF, TrapezoidalMF, TriangularMF
+from .membership import (
+    BellMF,
+    GaussianMF,
+    PiMF,
+    SigmoidalMF,
+    SShapedMF,
+    TrapezoidalMF,
+    TriangularMF,
+    ZShapedMF,
+)
 from .model import ANFIS
 
 
@@ -13,6 +22,24 @@ class ANFISBuilder:
         """Initialize the ANFIS builder."""
         self.input_mfs = {}
         self.input_ranges = {}
+        # Centralized dispatch for MF creators (supports aliases)
+        self._dispatch = {
+            # Canonical
+            "gaussian": self._create_gaussian_mfs,
+            "triangular": self._create_triangular_mfs,
+            "trapezoidal": self._create_trapezoidal_mfs,
+            "bell": self._create_bell_mfs,
+            "sigmoidal": self._create_sigmoidal_mfs,
+            "sshape": self._create_sshape_mfs,
+            "zshape": self._create_zshape_mfs,
+            "pi": self._create_pi_mfs,
+            # Aliases
+            "gbell": self._create_bell_mfs,
+            "sigmoid": self._create_sigmoidal_mfs,
+            "s": self._create_sshape_mfs,
+            "z": self._create_zshape_mfs,
+            "pimf": self._create_pi_mfs,
+        }
 
     def add_input(
         self,
@@ -30,7 +57,9 @@ class ANFISBuilder:
             range_min: Minimum value of the input range
             range_max: Maximum value of the input range
             n_mfs: Number of membership functions (default: 3)
-            mf_type: Type of membership functions ('gaussian', 'triangular', 'trapezoidal')
+            mf_type: Type of membership functions. Supported:
+                'gaussian', 'triangular', 'trapezoidal',
+                'bell', 'sigmoidal', 'sshape', 'zshape', 'pi'
             overlap: Overlap factor between adjacent MFs (0.0 to 1.0)
 
         Returns:
@@ -38,16 +67,39 @@ class ANFISBuilder:
         """
         self.input_ranges[name] = (range_min, range_max)
 
-        if mf_type.lower() == "gaussian":
-            self.input_mfs[name] = self._create_gaussian_mfs(range_min, range_max, n_mfs, overlap)
-        elif mf_type.lower() == "triangular":
-            self.input_mfs[name] = self._create_triangular_mfs(range_min, range_max, n_mfs, overlap)
-        elif mf_type.lower() == "trapezoidal":
-            self.input_mfs[name] = self._create_trapezoidal_mfs(range_min, range_max, n_mfs, overlap)
-        else:
-            raise ValueError(f"Unknown membership function type: {mf_type}")
+        mf_key = mf_type.strip().lower()
+        factory = self._dispatch.get(mf_key)
+        if factory is None:
+            supported = ", ".join(sorted(set(self._dispatch.keys())))
+            raise ValueError(f"Unknown membership function type: {mf_type}. Supported: {supported}")
+        self.input_mfs[name] = factory(range_min, range_max, n_mfs, overlap)
 
         return self
+
+    def add_input_from_data(
+        self,
+        name: str,
+        data: np.ndarray,
+        n_mfs: int = 3,
+        mf_type: str = "gaussian",
+        overlap: float = 0.5,
+        margin: float = 0.10,
+    ) -> "ANFISBuilder":
+        """Add an input inferring range_min/range_max from data with a margin.
+
+        Parameters:
+            name: Input name
+            data: 1D array-like samples for this input
+            n_mfs: Number of membership functions
+            mf_type: Membership function type (see add_input)
+            overlap: Overlap factor between adjacent MFs
+            margin: Fraction of (max-min) to pad on each side
+        """
+        arr = np.asarray(data, dtype=float).reshape(-1)
+        rmin = float(np.min(arr))
+        rmax = float(np.max(arr))
+        pad = (rmax - rmin) * float(margin)
+        return self.add_input(name, rmin - pad, rmax + pad, n_mfs, mf_type, overlap)
 
     def _create_gaussian_mfs(self, range_min: float, range_max: float, n_mfs: int, overlap: float) -> list[GaussianMF]:
         """Create evenly spaced Gaussian membership functions."""
@@ -109,6 +161,104 @@ class ANFISBuilder:
 
             mfs.append(TrapezoidalMF(a, b, c, d))
 
+        return mfs
+
+    # New MF families
+    def _create_bell_mfs(self, range_min: float, range_max: float, n_mfs: int, overlap: float) -> list[BellMF]:
+        """Create evenly spaced Bell membership functions (generalized bell)."""
+        centers = np.linspace(range_min, range_max, n_mfs)
+        if n_mfs == 1:
+            a = (range_max - range_min) * 0.25
+        else:
+            spacing = (range_max - range_min) / (n_mfs - 1)
+            a = spacing * (1 + overlap) / 2.0  # half-width
+        b = 2.0  # default slope
+        return [BellMF(a=a, b=b, c=float(c)) for c in centers]
+
+    def _create_sigmoidal_mfs(
+        self, range_min: float, range_max: float, n_mfs: int, overlap: float
+    ) -> list[SigmoidalMF]:
+        """Create a bank of sigmoids across the range with centers and slopes."""
+        centers = np.linspace(range_min, range_max, n_mfs)
+        if n_mfs == 1:
+            width = (range_max - range_min) * 0.5
+        else:
+            spacing = (range_max - range_min) / (n_mfs - 1)
+            width = spacing * (1 + overlap)
+        # Choose slope a s.t. 0.1->0.9 transition ~ width: width ≈ 4.4 / a
+        a = 4.4 / max(width, 1e-8)
+        return [SigmoidalMF(a=float(a), c=float(c)) for c in centers]
+
+    def _create_sshape_mfs(self, range_min: float, range_max: float, n_mfs: int, overlap: float) -> list[SShapedMF]:
+        """Create S-shaped MFs with spans around evenly spaced centers."""
+        centers = np.linspace(range_min, range_max, n_mfs)
+        if n_mfs == 1:
+            width = (range_max - range_min) * 0.5
+        else:
+            spacing = (range_max - range_min) / (n_mfs - 1)
+            width = spacing * (1 + overlap)
+        half = width / 2.0
+        mfs: list[SShapedMF] = []
+        for c in centers:
+            a = float(c - half)
+            b = float(c + half)
+            # Clamp to the provided range
+            a = max(a, range_min)
+            b = min(b, range_max)
+            if a >= b:
+                # Fallback to a tiny span
+                eps = 1e-6
+                a, b = float(c - eps), float(c + eps)
+            mfs.append(SShapedMF(a, b))
+        return mfs
+
+    def _create_zshape_mfs(self, range_min: float, range_max: float, n_mfs: int, overlap: float) -> list[ZShapedMF]:
+        """Create Z-shaped MFs with spans around evenly spaced centers."""
+        centers = np.linspace(range_min, range_max, n_mfs)
+        if n_mfs == 1:
+            width = (range_max - range_min) * 0.5
+        else:
+            spacing = (range_max - range_min) / (n_mfs - 1)
+            width = spacing * (1 + overlap)
+        half = width / 2.0
+        mfs: list[ZShapedMF] = []
+        for c in centers:
+            a = float(c - half)
+            b = float(c + half)
+            a = max(a, range_min)
+            b = min(b, range_max)
+            if a >= b:
+                eps = 1e-6
+                a, b = float(c - eps), float(c + eps)
+            mfs.append(ZShapedMF(a, b))
+        return mfs
+
+    def _create_pi_mfs(self, range_min: float, range_max: float, n_mfs: int, overlap: float) -> list[PiMF]:
+        """Create Pi-shaped MFs with smooth S/Z edges and a flat top."""
+        centers = np.linspace(range_min, range_max, n_mfs)
+        if n_mfs == 1:
+            width = (range_max - range_min) * 0.5
+        else:
+            spacing = (range_max - range_min) / (n_mfs - 1)
+            width = spacing * (1 + overlap)
+        plateau = width * 0.3
+        mfs: list[PiMF] = []
+        for c in centers:
+            a = float(c - width / 2.0)
+            d = float(c + width / 2.0)
+            b = float(a + (width - plateau) / 2.0)
+            c_right = float(b + plateau)
+            # Clamp within the provided range
+            a = max(a, range_min)
+            d = min(d, range_max)
+            # Ensure ordering a < b ≤ c < d
+            b = max(b, a + 1e-6)
+            c_right = min(c_right, d - 1e-6)
+            if not (a < b <= c_right < d):
+                # Fallback to a minimal valid shape around center
+                eps = 1e-6
+                a, b, c_right, d = c - 2 * eps, c - eps, c + eps, c + 2 * eps
+            mfs.append(PiMF(a, b, c_right, d))
         return mfs
 
     def build(self) -> ANFIS:
