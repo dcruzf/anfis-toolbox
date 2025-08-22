@@ -104,9 +104,6 @@ def test_train_test_split_errors_and_edge_cases():
     # Mismatched lengths
     with pytest.raises(ValueError):
         train_test_split(np.arange(3), np.arange(4))
-    # Invalid stratify
-    with pytest.raises(NotImplementedError):
-        train_test_split(np.arange(5), stratify=np.arange(5))
     # Invalid test_size float bounds
     with pytest.raises(ValueError):
         train_test_split(np.arange(5), test_size=0.0)
@@ -137,6 +134,17 @@ def test_train_test_split_errors_and_edge_cases():
         ms._validate_split_sizes(5, 0, 3)
     with pytest.raises(ValueError):
         ms._validate_split_sizes(5, 3, 0)
+
+    # train_size as float path (floor rounding) -> covers line 172
+    test_n, train_n = ms._validate_split_sizes(7, None, 0.6)
+    assert (test_n, train_n) == (3, 4)  # floor(7*0.6)=4, rest=3
+
+    # end-to-end: train_size float without shuffle keeps order; test slice comes first
+    X = np.arange(10)
+    X_train, X_test = ms.train_test_split(X, train_size=0.55, shuffle=False)
+    # floor(10*0.55)=5 train, remainder=5 test
+    assert X_test.tolist() == [0, 1, 2, 3, 4]
+    assert X_train.tolist() == [5, 6, 7, 8, 9]
     # Direct branch coverage: test_n derived when None
     t, tr = ms._validate_split_sizes(10, None, 3)
     assert (t, tr) == (7, 3)

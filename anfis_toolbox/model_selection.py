@@ -107,16 +107,12 @@ def train_test_split(
     train_size: float | int | None = None,
     random_state: int | np.random.RandomState | None = None,
     shuffle: bool = True,
-    stratify: Sequence | None = None,
 ) -> tuple:
     """Split arrays or matrices into random train and test subsets.
 
     Minimal subset of sklearn.model_selection.train_test_split.
     Supports splitting multiple arrays of equal length along the first dimension.
     """
-    if stratify is not None:
-        raise NotImplementedError("stratify is not supported in the lightweight splitter")
-
     if len(arrays) == 0:
         raise ValueError("At least one array required as input")
 
