@@ -3,7 +3,7 @@
 A comprehensive Python implementation of Adaptive Neuro-Fuzzy Inference Systems (ANFIS) with Takagi-Sugeno-Kang (TSK) architecture.
 
 [![Tests](https://github.com/username/anfis-toolbox/workflows/Tests/badge.svg)](https://github.com/username/anfis-toolbox/actions)
-[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.9+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 
 ## Features
 
