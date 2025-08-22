@@ -359,6 +359,17 @@ def test_predict_invalid_shapes():
         model.predict(np.zeros((2, 2, 2)))
 
 
+def test_predict_1d_valid_length_triggers_reshape():
+    # Ensure that a 1D array with correct feature count is reshaped and processed
+    model = _make_simple_model(n_inputs=2, n_mfs=2)
+    x1d = np.array([0.5, -1.2])  # length matches n_inputs
+    y1 = model.predict(x1d)
+    y2 = model.predict(x1d.reshape(1, -1))
+    # Outputs should be identical and shape should be (1, 1)
+    np.testing.assert_array_equal(y1, y2)
+    assert y1.shape == (1, 1)
+
+
 def test_str_and_repr_cover():
     model = _make_simple_model()
     s = str(model)
@@ -401,3 +412,47 @@ def test_membership_functions_property_and_parameter_set_get():
     model.set_parameters(params)
     new_params = model.get_parameters()
     assert np.isclose(new_params["membership"]["x1"][0]["mean"], params["membership"]["x1"][0]["mean"])
+
+
+def test_set_parameters_without_consequent_updates_only_membership():
+    model = _make_simple_model()
+    params_before = model.get_parameters()
+    # Build a parameters dict without 'consequent' to exercise the 199->203 branch
+    params = {"membership": params_before["membership"]}
+    # Tweak a membership param
+    params["membership"]["x1"][0]["mean"] += 0.5
+    model.set_parameters(params)
+    params_after = model.get_parameters()
+    # Consequent stays the same
+    np.testing.assert_array_equal(params_after["consequent"], params_before["consequent"])
+    # Membership changed for x1 first MF
+    assert params_after["membership"]["x1"][0]["mean"] == params["membership"]["x1"][0]["mean"]
+
+
+def test_set_parameters_without_membership_updates_only_consequent():
+    model = _make_simple_model()
+    params_before = model.get_parameters()
+    # Build a parameters dict without 'membership' to exercise the 203->exit branch
+    new_consequent = np.ones_like(params_before["consequent"]) * 3.14
+    params = {"consequent": new_consequent}
+    model.set_parameters(params)
+    params_after = model.get_parameters()
+    # Consequent updated
+    np.testing.assert_array_equal(params_after["consequent"], new_consequent)
+    # Membership remains unchanged
+    assert params_after["membership"] == params_before["membership"]
+
+
+def test_set_parameters_membership_missing_name_skips_safely():
+    model = _make_simple_model()
+    params_before = model.get_parameters()
+    # Provide membership params only for x1; x2 entry omitted to trigger line 208 'continue'
+    partial_membership = {"x1": params_before["membership"]["x1"]}
+    # Modify x1
+    partial_membership["x1"][0]["mean"] += 0.25
+    model.set_parameters({"membership": partial_membership})
+    params_after = model.get_parameters()
+    # x1 updated
+    assert params_after["membership"]["x1"][0]["mean"] == partial_membership["x1"][0]["mean"]
+    # x2 unchanged
+    assert params_after["membership"]["x2"] == params_before["membership"]["x2"]
