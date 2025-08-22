@@ -1,5 +1,18 @@
-"""Visualization utilities for ANFIS models."""
+"""Clear, minimal visualization utilities for EDA and ANFIS regression.
 
+This module provides a small set of focused plotting functions for:
+- Exploring data before fitting (histograms, feature-vs-target, correlations)
+- Assessing model results (training curve, predictions vs target, residuals)
+- Inspecting ANFIS internals (membership functions, rule activations)
+
+All functions return a Matplotlib Figure and never call plt.show(), so users and
+tests can control rendering. A light wrapper class (ANFISVisualizer) offers the
+same API style if you prefer an OO approach.
+"""
+
+from __future__ import annotations
+
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.figure import Figure
@@ -7,312 +20,655 @@ from matplotlib.figure import Figure
 from .membership import MembershipFunction
 from .model import ANFIS
 
+# -----------------------------
+# EDA helpers (pre-model)
+# -----------------------------
+
+
+def plot_feature_histograms(
+    X: np.ndarray,
+    *,
+    feature_names: list[str] | None = None,
+    bins: int = 30,
+    max_cols: int = 4,
+    figsize: tuple[int, int] | None = None,
+    save_path: str | None = None,
+) -> Figure:
+    """Plot histograms for each feature.
+
+    Args:
+        X: Array of shape (n_samples, n_features) with the input features.
+        feature_names: Optional list with one name per feature; defaults to x1..xN.
+        bins: Number of histogram bins.
+        max_cols: Maximum number of columns in the subplot grid.
+        figsize: Optional custom figure size.
+        save_path: Optional path to save the figure to disk.
+
+    Returns:
+        A Matplotlib Figure containing the histogram grid.
+    """
+    X = np.asarray(X)
+    if X.ndim != 2:
+        raise ValueError("X must be 2D (n_samples, n_features)")
+    n_features = X.shape[1]
+    cols = min(max_cols, n_features)
+    rows = int(np.ceil(n_features / cols))
+    fig, axes = plt.subplots(rows, cols, figsize=figsize or (4 * cols, 3 * rows), squeeze=False)
+    names = feature_names or [f"x{i + 1}" for i in range(n_features)]
+    for j in range(rows * cols):
+        r, c = divmod(j, cols)
+        ax = axes[r, c]
+        if j < n_features:
+            ax.hist(X[:, j], bins=bins, color="steelblue", alpha=0.8)
+            ax.set_title(f"{names[j]}")
+            ax.grid(True, alpha=0.2)
+        else:
+            ax.axis("off")
+    fig.tight_layout()
+    if save_path:
+        fig.savefig(save_path, dpi=300, bbox_inches="tight")
+    return fig
+
+
+def plot_feature_vs_target(
+    X: np.ndarray,
+    y: np.ndarray,
+    *,
+    feature_names: list[str] | None = None,
+    max_cols: int = 3,
+    figsize: tuple[int, int] | None = None,
+    save_path: str | None = None,
+) -> Figure:
+    """Scatter each feature vs target to reveal relationships/outliers.
+
+    Args:
+        X: Array of shape (n_samples, n_features) with the input features.
+        y: Array-like of shape (n_samples,) with the target values.
+        feature_names: Optional list with one name per feature; defaults to x1..xN.
+        max_cols: Maximum number of columns in the subplot grid.
+        figsize: Optional custom figure size.
+        save_path: Optional path to save the figure to disk.
+
+    Returns:
+        A Matplotlib Figure containing the scatter grid.
+
+    Raises:
+        ValueError: If X is not 2D or X/y lengths mismatch.
+    """
+    X = np.asarray(X)
+    y = np.asarray(y).reshape(-1)
+    if X.ndim != 2:
+        raise ValueError("X must be 2D (n_samples, n_features)")
+    if X.shape[0] != y.shape[0]:
+        raise ValueError("X and y must have the same number of samples")
+    n_features = X.shape[1]
+    cols = min(max_cols, n_features)
+    rows = int(np.ceil(n_features / cols))
+    fig, axes = plt.subplots(rows, cols, figsize=figsize or (4 * cols, 3 * rows), squeeze=False)
+    names = feature_names or [f"x{i + 1}" for i in range(n_features)]
+    for j in range(rows * cols):
+        r, c = divmod(j, cols)
+        ax = axes[r, c]
+        if j < n_features:
+            ax.scatter(X[:, j], y, s=12, alpha=0.7)
+            ax.set_xlabel(names[j])
+            ax.set_ylabel("y")
+            ax.grid(True, alpha=0.2)
+        else:
+            ax.axis("off")
+    fig.suptitle("Feature vs Target", y=0.98)
+    fig.tight_layout()
+    if save_path:
+        fig.savefig(save_path, dpi=300, bbox_inches="tight")
+    return fig
+
+
+def plot_correlation_heatmap(
+    X: np.ndarray,
+    y: np.ndarray | None = None,
+    *,
+    feature_names: list[str] | None = None,
+    include_target: bool = True,
+    figsize: tuple[int, int] | None = None,
+    save_path: str | None = None,
+) -> Figure:
+    """Correlation matrix heatmap for features (optionally including target).
+
+    Args:
+        X: Array of shape (n_samples, n_features) with the input features.
+        y: Optional target array of shape (n_samples,) to include in the heatmap.
+        feature_names: Optional list with one name per feature; defaults to x1..xN.
+        include_target: Whether to include y (when provided) in the correlation matrix.
+        figsize: Optional custom figure size.
+        save_path: Optional path to save the figure to disk.
+
+    Returns:
+        A Matplotlib Figure with the correlation heatmap.
+
+    Raises:
+        ValueError: If X is not 2D.
+    """
+    X = np.asarray(X)
+    if X.ndim != 2:
+        raise ValueError("X must be 2D (n_samples, n_features)")
+    data = X
+    labels = feature_names or [f"x{i + 1}" for i in range(X.shape[1])]
+    if include_target and y is not None:
+        y1 = np.asarray(y).reshape(-1, 1)
+        data = np.hstack([X, y1])
+        labels = [*labels, "y"]
+    corr = np.corrcoef(data, rowvar=False)
+    fig, ax = plt.subplots(figsize=figsize or (3 + len(labels) * 0.6, 3 + len(labels) * 0.6))
+    im = ax.imshow(corr, cmap="coolwarm", vmin=-1, vmax=1)
+    ax.set_xticks(range(len(labels)))
+    ax.set_yticks(range(len(labels)))
+    ax.set_xticklabels(labels, rotation=45, ha="right")
+    ax.set_yticklabels(labels)
+    fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+    ax.set_title("Correlation Heatmap")
+    fig.tight_layout()
+    if save_path:
+        fig.savefig(save_path, dpi=300, bbox_inches="tight")
+    return fig
+
+
+def plot_target_distribution(
+    y: np.ndarray, *, bins: int = 30, figsize: tuple[int, int] | None = None, save_path: str | None = None
+) -> Figure:
+    """Histogram view of the target distribution.
+
+    Args:
+        y: Array-like of shape (n_samples,) with the target values.
+        bins: Number of histogram bins.
+        figsize: Optional custom figure size.
+        save_path: Optional path to save the figure to disk.
+
+    Returns:
+        A Matplotlib Figure containing the histogram.
+    """
+    y = np.asarray(y).reshape(-1)
+    fig, ax = plt.subplots(figsize=figsize or (6, 4))
+    ax.hist(y, bins=bins, color="slateblue", alpha=0.85)
+    ax.set_title("Target Distribution")
+    ax.set_xlabel("y")
+    ax.grid(True, alpha=0.2)
+    fig.tight_layout()
+    if save_path:
+        fig.savefig(save_path, dpi=300, bbox_inches="tight")
+    return fig
+
+
+# ----------------------------------
+# Model assessment (post-fit)
+# ----------------------------------
+
+
+def plot_training_curve(
+    losses: list[float], *, figsize: tuple[int, int] | None = None, save_path: str | None = None
+) -> Figure:
+    """Plot training loss per epoch.
+
+    Args:
+        losses: Sequence of loss values, one per epoch.
+        figsize: Optional custom figure size.
+        save_path: Optional path to save the figure to disk.
+
+    Returns:
+        A Matplotlib Figure with the loss curve.
+    """
+    fig, ax = plt.subplots(figsize=figsize or (7, 4))
+    ax.plot(range(1, len(losses) + 1), losses, "b-", linewidth=2, label="Loss")
+    ax.set_xlabel("Epoch")
+    ax.set_ylabel("Loss")
+    ax.set_title("Training Curve")
+    ax.grid(True, alpha=0.3)
+    ax.legend()
+    fig.tight_layout()
+    if save_path:
+        fig.savefig(save_path, dpi=300, bbox_inches="tight")
+    return fig
+
+
+def plot_predictions_vs_target(
+    y_true: np.ndarray, y_pred: np.ndarray, *, figsize: tuple[int, int] | None = None, save_path: str | None = None
+) -> Figure:
+    """Scatter of predictions vs true values with identity line and R^2.
+
+    Args:
+        y_true: Array-like of shape (n_samples,) with ground-truth values.
+        y_pred: Array-like of shape (n_samples,) with predicted values.
+        figsize: Optional custom figure size.
+        save_path: Optional path to save the figure to disk.
+
+    Returns:
+        A Matplotlib Figure showing y_true vs y_pred.
+
+    Raises:
+        ValueError: If y_true and y_pred lengths differ.
+    """
+    y_true = np.asarray(y_true).reshape(-1)
+    y_pred = np.asarray(y_pred).reshape(-1)
+    if y_true.shape[0] != y_pred.shape[0]:
+        raise ValueError("y_true and y_pred must have the same length")
+    fig, ax = plt.subplots(figsize=figsize or (6, 5))
+    ax.scatter(y_true, y_pred, alpha=0.6, s=20)
+    lo = float(min(y_true.min(), y_pred.min()))
+    hi = float(max(y_true.max(), y_pred.max()))
+    ax.plot([lo, hi], [lo, hi], "r--", linewidth=1.5)
+    ax.set_xlabel("True")
+    ax.set_ylabel("Pred")
+    ax.set_title("Predictions vs True")
+    # R^2
+    ss_res = float(np.sum((y_true - y_pred) ** 2))
+    ss_tot = float(np.sum((y_true - np.mean(y_true)) ** 2))
+    r2 = 1.0 - ss_res / ss_tot if ss_tot != 0 else 0.0
+    ax.text(0.05, 0.95, f"R² = {r2:.4f}", transform=ax.transAxes, va="top", bbox={"facecolor": "white", "alpha": 0.8})
+    ax.grid(True, alpha=0.3)
+    fig.tight_layout()
+    if save_path:
+        fig.savefig(save_path, dpi=300, bbox_inches="tight")
+    return fig
+
+
+def plot_residuals(
+    y_true: np.ndarray, y_pred: np.ndarray, *, figsize: tuple[int, int] | None = None, save_path: str | None = None
+) -> Figure:
+    """Residuals vs prediction scatter and residual histogram.
+
+    Args:
+        y_true: Array-like of shape (n_samples,) with ground-truth values.
+        y_pred: Array-like of shape (n_samples,) with predicted values.
+        figsize: Optional custom figure size.
+        save_path: Optional path to save the figure to disk.
+
+    Returns:
+        A Matplotlib Figure with residual diagnostics.
+
+    Raises:
+        ValueError: If y_true and y_pred lengths differ.
+    """
+    y_true = np.asarray(y_true).reshape(-1)
+    y_pred = np.asarray(y_pred).reshape(-1)
+    if y_true.shape[0] != y_pred.shape[0]:
+        raise ValueError("y_true and y_pred must have the same length")
+    resid = y_true - y_pred
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=figsize or (10, 4))
+    ax1.scatter(y_pred, resid, s=20, alpha=0.6)
+    ax1.axhline(0.0, color="r", linestyle="--", linewidth=1)
+    ax1.set_xlabel("Pred")
+    ax1.set_ylabel("Residual")
+    ax1.set_title("Residuals vs Pred")
+    ax1.grid(True, alpha=0.3)
+    ax2.hist(resid, bins=30, color="teal", alpha=0.8)
+    ax2.set_title("Residuals Histogram")
+    ax2.grid(True, alpha=0.2)
+    fig.tight_layout()
+    if save_path:
+        fig.savefig(save_path, dpi=300, bbox_inches="tight")
+    return fig
+
+
+def plot_predictions_for_model(
+    model: ANFIS,
+    X: np.ndarray,
+    y_true: np.ndarray,
+    *,
+    figsize: tuple[int, int] | None = None,
+    save_path: str | None = None,
+) -> Figure:
+    """Compute predictions from the model then call plot_predictions_vs_target.
+
+    Args:
+        model: Trained ANFIS model used to compute predictions.
+        X: Input array of shape (n_samples, n_features).
+        y_true: Ground-truth array of shape (n_samples,) or (n_samples, 1).
+        figsize: Optional custom figure size.
+        save_path: Optional path to save the figure to disk.
+
+    Returns:
+        A Matplotlib Figure showing y_true vs model predictions.
+    """
+    y_pred = model.predict(X)
+    return plot_predictions_vs_target(y_true, y_pred, figsize=figsize, save_path=save_path)
+
+
+def plot_residuals_for_model(
+    model: ANFIS,
+    X: np.ndarray,
+    y_true: np.ndarray,
+    *,
+    figsize: tuple[int, int] | None = None,
+    save_path: str | None = None,
+) -> Figure:
+    """Compute predictions from the model then call plot_residuals.
+
+    Args:
+        model: Trained ANFIS model used to compute predictions.
+        X: Input array of shape (n_samples, n_features).
+        y_true: Ground-truth array of shape (n_samples,) or (n_samples, 1).
+        figsize: Optional custom figure size.
+        save_path: Optional path to save the figure to disk.
+
+    Returns:
+        A Matplotlib Figure with residual diagnostics.
+    """
+    y_pred = model.predict(X)
+    return plot_residuals(y_true, y_pred, figsize=figsize, save_path=save_path)
+
+
+# ----------------------------------
+# ANFIS internals
+# ----------------------------------
+
+
+def plot_membership_functions(
+    model: ANFIS,
+    *,
+    input_name: str | None = None,
+    num_points: int = 500,
+    figsize: tuple[int, int] | None = None,
+    save_path: str | None = None,
+) -> Figure:
+    """Plot membership functions for all inputs or a specific input.
+
+    Args:
+        model: ANFIS model providing membership functions.
+        input_name: If provided, only plot MFs for this named input.
+        num_points: Number of points to sample for each MF curve.
+        figsize: Optional custom figure size.
+        save_path: Optional path to save the figure to disk.
+
+    Returns:
+        A Matplotlib Figure with one subplot per input.
+
+    Raises:
+        ValueError: If input_name is provided but not found in the model.
+    """
+    input_mfs = model.membership_layer.membership_functions
+    if input_name is not None:
+        if input_name not in input_mfs:
+            raise ValueError(f"Input '{input_name}' not found in model")
+        targets = {input_name: input_mfs[input_name]}
+    else:
+        targets = input_mfs
+    n = len(targets)
+    fig, axes = plt.subplots(n, 1, figsize=figsize or (8, max(2 * n, 3)), squeeze=False)
+    for row, (name, mfs) in enumerate(targets.items()):
+        ax = axes[row, 0]
+        x_lo, x_hi = _infer_mf_range(mfs)
+        x = np.linspace(x_lo, x_hi, num_points)
+        for i, mf in enumerate(mfs):
+            ax.plot(x, mf.forward(x), label=f"MF{i + 1}")
+        ax.set_title(f"Membership: {name}")
+        ax.set_xlabel("x")
+        ax.set_ylabel("μ")
+        ax.set_ylim(0, 1.05)
+        ax.grid(True, alpha=0.2)
+        ax.legend(ncol=min(4, len(mfs)))
+    fig.tight_layout()
+    if save_path:
+        fig.savefig(save_path, dpi=300, bbox_inches="tight")
+    return fig
+
+
+def plot_rule_activations(
+    model: ANFIS,
+    X: np.ndarray,
+    *,
+    sample_idx: int = 0,
+    figsize: tuple[int, int] | None = None,
+    save_path: str | None = None,
+) -> Figure:
+    """Bar plots of raw and normalized rule activations for one sample.
+
+    Args:
+        model: ANFIS model to compute rule activations.
+        X: Input array of shape (n_samples, n_features).
+        sample_idx: Index of the sample to visualize.
+        figsize: Optional custom figure size.
+        save_path: Optional path to save the figure to disk.
+
+    Returns:
+        A Matplotlib Figure with two bar plots (raw and normalized activations).
+
+    Raises:
+        ValueError: If sample_idx is out of range for X.
+    """
+    if not (0 <= sample_idx < len(X)):
+        raise ValueError("sample_idx out of range")
+    x = X[sample_idx : sample_idx + 1]
+    mem = model.membership_layer.forward(x)
+    rule = model.rule_layer.forward(mem)
+    norm = model.normalization_layer.forward(rule)
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=figsize or (10, 4))
+    idx = np.arange(1, rule.shape[1] + 1)
+    ax1.bar(idx, rule[0], color="skyblue", alpha=0.8)
+    ax1.set_title("Firing Strengths")
+    ax1.set_xlabel("Rule")
+    ax1.set_ylabel("Strength")
+    ax1.grid(True, alpha=0.2)
+    ax2.bar(idx, norm[0], color="salmon", alpha=0.8)
+    ax2.set_title("Normalized Activations")
+    ax2.set_xlabel("Rule")
+    ax2.set_ylabel("Activation")
+    ax2.grid(True, alpha=0.2)
+    fig.tight_layout()
+    if save_path:
+        fig.savefig(save_path, dpi=300, bbox_inches="tight")
+    return fig
+
+
+def _infer_mf_range(mfs: list[MembershipFunction]) -> tuple[float, float]:
+    """Best-effort input range for plotting membership functions."""
+    mins, maxs = [], []
+    for mf in mfs:
+        p = mf.parameters
+        name = mf.__class__.__name__.lower()
+        if "gaussian" in name:
+            mean = float(p.get("mean", 0.0))
+            sigma = float(p.get("sigma", 1.0))
+            mins.append(mean - 3 * sigma)
+            maxs.append(mean + 3 * sigma)
+        elif "triangular" in name:
+            mins.append(float(p.get("a", -1)))
+            maxs.append(float(p.get("c", 1)))
+        elif "trapezoidal" in name:
+            mins.append(float(p.get("a", -1)))
+            maxs.append(float(p.get("d", 1)))
+        elif "bell" in name:
+            c = float(p.get("c", 0.0))
+            a = float(p.get("a", 1.0))
+            mins.append(c - 3 * a)
+            maxs.append(c + 3 * a)
+        else:
+            mins.append(-5.0)
+            maxs.append(5.0)
+    lo = min(mins) if mins else -5.0
+    hi = max(maxs) if maxs else 5.0
+    pad = (hi - lo) * 0.1
+    return (lo - pad, hi + pad)
+
+
+# -----------------------------
+# OO convenience wrapper
+# -----------------------------
+
 
 class ANFISVisualizer:
-    """Visualization utilities for ANFIS models."""
+    """Thin OO wrapper around the functional API."""
 
     def __init__(self, model: ANFIS):
-        """Initialize visualizer with ANFIS model."""
+        """Create a visualizer bound to a given ANFIS model.
+
+        Args:
+            model: The ANFIS instance to use for model-based plots.
+        """
         self.model = model
 
-    def plot_membership_functions(self, input_name: str = None, figsize: tuple[int, int] = (12, 8)) -> Figure:
-        """Plot membership functions for all inputs or specific input.
+    # EDA
+    def plot_feature_histograms(self, X: np.ndarray, **kwargs) -> Figure:  # pragma: no cover - thin wrapper
+        """Wrapper for plot_feature_histograms.
 
-        Parameters:
-            input_name: Name of specific input to plot (None for all)
-            figsize: Figure size (width, height)
-
-        Returns:
-            matplotlib Figure object
+        Args:
+            X: Input features array.
+            **kwargs: Forwarded to plot_feature_histograms.
         """
-        input_mfs = self.model.membership_layer.membership_functions
+        return plot_feature_histograms(X, **kwargs)
 
-        if input_name:
-            if input_name not in input_mfs:
-                raise ValueError(f"Input '{input_name}' not found in model")
-            inputs_to_plot = {input_name: input_mfs[input_name]}
-        else:
-            inputs_to_plot = input_mfs
+    def plot_feature_vs_target(self, X: np.ndarray, y: np.ndarray, **kwargs) -> Figure:  # pragma: no cover
+        """Wrapper for plot_feature_vs_target.
 
-        n_inputs = len(inputs_to_plot)
-        fig, axes = plt.subplots(n_inputs, 1, figsize=figsize)
-
-        if n_inputs == 1:
-            axes = [axes]
-
-        for idx, (name, mfs) in enumerate(inputs_to_plot.items()):
-            ax = axes[idx]
-
-            # Determine input range for plotting
-            x_range = self._get_input_range(mfs)
-            x = np.linspace(x_range[0], x_range[1], 500)
-
-            # Plot each membership function
-            for i, mf in enumerate(mfs):
-                y = mf.forward(x)
-                ax.plot(x, y, label=f"MF{i + 1}", linewidth=2)
-
-            ax.set_title(f"Membership Functions for Input: {name}")
-            ax.set_xlabel("Input Value")
-            ax.set_ylabel("Membership Degree")
-            ax.grid(True, alpha=0.3)
-            ax.legend()
-            ax.set_ylim(0, 1.1)
-
-        plt.tight_layout()
-        return fig
-
-    def plot_training_curves(self, losses: list[float], figsize: tuple[int, int] = (10, 6)) -> Figure:
-        """Plot training loss curves.
-
-        Parameters:
-            losses: List of loss values from training
-            figsize: Figure size (width, height)
-
-        Returns:
-            matplotlib Figure object
+        Args:
+            X: Input features array.
+            y: Target array.
+            **kwargs: Forwarded to plot_feature_vs_target.
         """
-        fig, ax = plt.subplots(figsize=figsize)
+        return plot_feature_vs_target(X, y, **kwargs)
 
-        epochs = range(1, len(losses) + 1)
-        ax.plot(epochs, losses, "b-", linewidth=2, label="Training Loss")
-        ax.set_xlabel("Epoch")
-        ax.set_ylabel("Loss")
-        ax.set_title("ANFIS Training Progress")
-        ax.grid(True, alpha=0.3)
-        ax.legend()
+    def plot_correlation_heatmap(
+        self, X: np.ndarray, y: np.ndarray | None = None, **kwargs
+    ) -> Figure:  # pragma: no cover
+        """Wrapper for plot_correlation_heatmap.
 
-        # Add final loss annotation
-        final_loss = losses[-1]
-        ax.annotate(
-            f"Final Loss: {final_loss:.6f}",
-            xy=(len(losses), final_loss),
-            xytext=(len(losses) * 0.7, max(losses) * 0.8),
-            arrowprops={"arrowstyle": "->", "color": "red"},
-            fontsize=10,
-            ha="center",
-        )
+        Args:
+            X: Input features array.
+            y: Optional target array.
+            **kwargs: Forwarded to plot_correlation_heatmap.
+        """
+        return plot_correlation_heatmap(X, y, **kwargs)
 
-        plt.tight_layout()
-        return fig
+    def plot_target_distribution(self, y: np.ndarray, **kwargs) -> Figure:  # pragma: no cover
+        """Wrapper for plot_target_distribution.
 
-    def plot_prediction_vs_target(
-        self, X: np.ndarray, y_true: np.ndarray, figsize: tuple[int, int] = (10, 6)
-    ) -> Figure:
-        """Plot predictions vs actual values.
+        Args:
+            y: Target array.
+            **kwargs: Forwarded to plot_target_distribution.
+        """
+        return plot_target_distribution(y, **kwargs)
 
-        Parameters:
-            X: Input data
-            y_true: True target values
-            figsize: Figure size (width, height)
+    # Model assessment
+    def plot_training_curves(self, losses: list[float], **kwargs) -> Figure:  # pragma: no cover
+        """Wrapper for plot_training_curve.
 
-        Returns:
-            matplotlib Figure object
+        Args:
+            losses: Sequence of losses.
+            **kwargs: Forwarded to plot_training_curve.
+        """
+        return plot_training_curve(losses, **kwargs)
+
+    def plot_prediction_vs_target(self, X: np.ndarray, y_true: np.ndarray, **kwargs) -> Figure:  # pragma: no cover
+        """Predict with bound model and call plot_predictions_vs_target.
+
+        Args:
+            X: Input features array.
+            y_true: Target array.
+            **kwargs: Forwarded to plot_predictions_vs_target.
         """
         y_pred = self.model.predict(X)
+        return plot_predictions_vs_target(y_true, y_pred, **kwargs)
 
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=figsize)
+    def plot_residuals(self, X: np.ndarray, y_true: np.ndarray, **kwargs) -> Figure:  # pragma: no cover
+        """Predict with bound model and call plot_residuals.
 
-        # Prediction vs Target scatter plot
-        ax1.scatter(y_true, y_pred, alpha=0.6, s=30)
-        min_val = min(y_true.min(), y_pred.min())
-        max_val = max(y_true.max(), y_pred.max())
-        ax1.plot([min_val, max_val], [min_val, max_val], "r--", linewidth=2)
-        ax1.set_xlabel("True Values")
-        ax1.set_ylabel("Predictions")
-        ax1.set_title("Predictions vs True Values")
-        ax1.grid(True, alpha=0.3)
-
-        # Calculate R²
-        r_squared = self._calculate_r_squared(y_true, y_pred)
-        ax1.text(
-            0.05,
-            0.95,
-            f"R² = {r_squared:.4f}",
-            transform=ax1.transAxes,
-            fontsize=12,
-            bbox={"boxstyle": "round", "facecolor": "wheat", "alpha": 0.8},
-        )
-
-        # Residuals plot
-        residuals = y_true - y_pred
-        ax2.scatter(y_pred, residuals, alpha=0.6, s=30)
-        ax2.axhline(y=0, color="r", linestyle="--")
-        ax2.set_xlabel("Predictions")
-        ax2.set_ylabel("Residuals")
-        ax2.set_title("Residual Plot")
-        ax2.grid(True, alpha=0.3)
-
-        plt.tight_layout()
-        return fig
+        Args:
+            X: Input features array.
+            y_true: Target array.
+            **kwargs: Forwarded to plot_residuals.
+        """
+        y_pred = self.model.predict(X)
+        return plot_residuals(y_true, y_pred, **kwargs)
 
     def plot_1d_function_approximation(
-        self, X: np.ndarray, y_true: np.ndarray, n_points: int = 200, figsize: tuple[int, int] = (12, 6)
-    ) -> Figure:
-        """Plot 1D function approximation results.
+        self, X: np.ndarray, y_true: np.ndarray, n_points: int = 200, **kwargs
+    ) -> Figure:  # pragma: no cover
+        """Plot 1D function approximation curve and training data using the model.
 
-        Parameters:
-            X: Input data (must be 1D)
-            y_true: True target values
-            n_points: Number of points for smooth curve
-            figsize: Figure size (width, height)
+        Args:
+            X: Input data with a single feature, shape (n_samples, 1).
+            y_true: Target values, shape (n_samples,) or (n_samples, 1).
+            n_points: Number of points for the smooth prediction curve.
+            **kwargs: Forwarded to Matplotlib (e.g., figsize=(w, h)).
 
-        Returns:
-            matplotlib Figure object
+        Raises:
+            ValueError: If X does not have exactly one feature.
         """
         if X.shape[1] != 1:
             raise ValueError("This method is only for 1D inputs")
-
-        # Create smooth curve for visualization
         x_min, x_max = X.min(), X.max()
         x_smooth = np.linspace(x_min, x_max, n_points).reshape(-1, 1)
         y_smooth = self.model.predict(x_smooth)
-
-        fig, ax = plt.subplots(figsize=figsize)
-
-        # Plot training data
-        ax.scatter(X.flatten(), y_true.flatten(), alpha=0.6, s=50, color="red", label="Training Data")
-
-        # Plot ANFIS approximation
-        ax.plot(x_smooth.flatten(), y_smooth.flatten(), "b-", linewidth=2, label="ANFIS Approximation")
-
-        ax.set_xlabel("Input")
-        ax.set_ylabel("Output")
-        ax.set_title("ANFIS Function Approximation")
+        fig, ax = plt.subplots(figsize=kwargs.get("figsize") or (8, 4))
+        ax.scatter(X.flatten(), y_true.flatten(), alpha=0.6, s=30, color="red", label="Data")
+        ax.plot(x_smooth.flatten(), y_smooth.flatten(), "b-", linewidth=2, label="ANFIS")
+        ax.set_xlabel("x")
+        ax.set_ylabel("y")
+        ax.set_title("Function Approximation (1D)")
         ax.grid(True, alpha=0.3)
         ax.legend()
-
-        plt.tight_layout()
+        fig.tight_layout()
         return fig
 
-    def plot_rule_activations(self, X: np.ndarray, sample_idx: int = 0, figsize: tuple[int, int] = (10, 6)) -> Figure:
-        """Plot rule activation levels for a specific sample.
+    # Internals
+    def plot_membership_functions(self, **kwargs) -> Figure:  # pragma: no cover
+        """Wrapper for plot_membership_functions.
 
-        Parameters:
-            X: Input data
-            sample_idx: Index of sample to analyze
-            figsize: Figure size (width, height)
-
-        Returns:
-            matplotlib Figure object
+        Args:
+            **kwargs: Forwarded to plot_membership_functions.
         """
-        if sample_idx >= len(X):
-            raise ValueError(f"Sample index {sample_idx} out of range")
+        return plot_membership_functions(self.model, **kwargs)
 
-        # Get rule activations
-        x_sample = X[sample_idx : sample_idx + 1]  # Keep 2D shape
+    def plot_rule_activations(self, X: np.ndarray, **kwargs) -> Figure:  # pragma: no cover
+        """Wrapper for plot_rule_activations.
 
-        # Forward pass to get intermediate outputs
-        membership_output = self.model.membership_layer.forward(x_sample)
-        rule_output = self.model.rule_layer.forward(membership_output)
-        normalized_output = self.model.normalization_layer.forward(rule_output)
-
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=figsize)
-
-        # Rule firing strengths
-        rule_strengths = rule_output[0]  # First (only) sample
-        rule_numbers = range(1, len(rule_strengths) + 1)
-
-        bars1 = ax1.bar(rule_numbers, rule_strengths, alpha=0.7, color="skyblue")
-        ax1.set_xlabel("Rule Number")
-        ax1.set_ylabel("Firing Strength")
-        ax1.set_title("Rule Firing Strengths")
-        ax1.grid(True, alpha=0.3)
-
-        # Add value labels on bars
-        for bar, strength in zip(bars1, rule_strengths, strict=False):
-            height = bar.get_height()
-            ax1.text(bar.get_x() + bar.get_width() / 2.0, height, f"{strength:.3f}", ha="center", va="bottom")
-
-        # Normalized rule activations
-        normalized_strengths = normalized_output[0]  # First (only) sample
-
-        bars2 = ax2.bar(rule_numbers, normalized_strengths, alpha=0.7, color="lightcoral")
-        ax2.set_xlabel("Rule Number")
-        ax2.set_ylabel("Normalized Activation")
-        ax2.set_title("Normalized Rule Activations")
-        ax2.grid(True, alpha=0.3)
-
-        # Add value labels on bars
-        for bar, strength in zip(bars2, normalized_strengths, strict=False):
-            height = bar.get_height()
-            ax2.text(bar.get_x() + bar.get_width() / 2.0, height, f"{strength:.3f}", ha="center", va="bottom")
-
-        plt.tight_layout()
-        return fig
-
-    def _get_input_range(self, mfs: list[MembershipFunction]) -> tuple[float, float]:
-        """Estimate appropriate range for plotting membership functions."""
-        # Try to extract range information from MF parameters
-        min_vals, max_vals = [], []
-
-        for mf in mfs:
-            params = mf.parameters
-
-            if hasattr(mf, "__class__") and "Gaussian" in mf.__class__.__name__:
-                # For Gaussian: mean ± 3*sigma covers ~99.7% of the function
-                mean = params.get("mean", 0)
-                sigma = params.get("sigma", 1)
-                min_vals.append(mean - 3 * sigma)
-                max_vals.append(mean + 3 * sigma)
-
-            elif hasattr(mf, "__class__") and "Triangular" in mf.__class__.__name__:
-                # For Triangular: use a, c parameters
-                min_vals.append(params.get("a", -1))
-                max_vals.append(params.get("c", 1))
-
-            elif hasattr(mf, "__class__") and "Trapezoidal" in mf.__class__.__name__:
-                # For Trapezoidal: use a, d parameters
-                min_vals.append(params.get("a", -1))
-                max_vals.append(params.get("d", 1))
-
-            else:
-                # Default range
-                min_vals.append(-5)
-                max_vals.append(5)
-
-        range_min = min(min_vals) if min_vals else -5
-        range_max = max(max_vals) if max_vals else 5
-
-        # Add some margin
-        margin = (range_max - range_min) * 0.1
-        return (range_min - margin, range_max + margin)
-
-    def _calculate_r_squared(self, y_true: np.ndarray, y_pred: np.ndarray) -> float:
-        """Calculate R-squared coefficient of determination."""
-        ss_res = np.sum((y_true - y_pred) ** 2)
-        ss_tot = np.sum((y_true - np.mean(y_true)) ** 2)
-        r_squared = 1 - (ss_res / ss_tot) if ss_tot != 0 else 0
-        return r_squared
+        Args:
+            X: Input features array.
+            **kwargs: Forwarded to plot_rule_activations.
+        """
+        return plot_rule_activations(self.model, X, **kwargs)
 
 
-def quick_plot_training(losses: list[float], save_path: str | None = None):
-    """Quick function to plot training curves."""
-    fig, ax = plt.subplots(figsize=(10, 6))
-    ax.plot(losses, "b-", linewidth=2)
-    ax.set_xlabel("Epoch")
-    ax.set_ylabel("Loss")
-    ax.set_title("Training Progress")
-    ax.grid(True, alpha=0.3)
+# -----------------------------
+# Quick helpers
+# -----------------------------
 
+
+def quick_plot_training(losses: list[float], save_path: str | None = None, *, show: bool = False) -> Figure:
+    """Quick plot for training curve.
+
+    Args:
+        losses: Sequence of loss values, one per epoch.
+        save_path: Optional path to save the figure to disk.
+        show: If True and backend is interactive, call plt.show().
+
+    Returns:
+        A Matplotlib Figure with the loss curve.
+    """
+    fig = plot_training_curve(losses)
     if save_path:
-        plt.savefig(save_path, dpi=300, bbox_inches="tight")
+        fig.savefig(save_path, dpi=300, bbox_inches="tight")
+    if show and "agg" not in str(mpl.get_backend()).lower():
+        plt.show()
+    return fig
 
-    plt.show()
 
+def quick_plot_results(
+    X: np.ndarray, y_true: np.ndarray, model: ANFIS, save_path: str | None = None, *, show: bool = False
+) -> Figure:
+    """Quick plot for predictions vs target using a model.
 
-def quick_plot_results(X: np.ndarray, y_true: np.ndarray, model: ANFIS, save_path: str | None = None):
-    """Quick function to plot prediction results."""
-    visualizer = ANFISVisualizer(model)
+    Args:
+        X: Input features array.
+        y_true: Ground-truth target array.
+        model: Trained ANFIS model used to compute predictions.
+        save_path: Optional path to save the figure to disk.
+        show: If True and backend is interactive, call plt.show().
 
-    if X.shape[1] == 1:
-        # 1D function approximation
-        _fig = visualizer.plot_1d_function_approximation(X, y_true)
-    else:
-        # Multi-dimensional: use prediction vs target plot
-        _fig = visualizer.plot_prediction_vs_target(X, y_true)
-
+    Returns:
+        A Matplotlib Figure showing y_true vs model predictions.
+    """
+    fig = plot_predictions_for_model(model, X, y_true)
     if save_path:
-        plt.savefig(save_path, dpi=300, bbox_inches="tight")
-
-    plt.show()
+        fig.savefig(save_path, dpi=300, bbox_inches="tight")
+    if show and "agg" not in str(mpl.get_backend()).lower():
+        plt.show()
+    return fig
