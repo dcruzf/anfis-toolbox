@@ -17,6 +17,16 @@ from .membership import (
     TriangularMF,
     ZShapedMF,
 )
+from .metrics import (
+    mean_absolute_error,
+    mean_absolute_percentage_error,
+    mean_squared_error,
+    mean_squared_logarithmic_error,
+    pearson_correlation,
+    r2_score,
+    root_mean_squared_error,
+    symmetric_mean_absolute_percentage_error,
+)
 from .model import ANFIS
 
 # Import validation utilities (optional)
@@ -115,6 +125,15 @@ __all__ = [
     # Easy model creation
     "ANFISBuilder",
     "QuickANFIS",
+    # Metrics
+    "mean_absolute_error",
+    "mean_absolute_percentage_error",
+    "mean_squared_error",
+    "root_mean_squared_error",
+    "symmetric_mean_absolute_percentage_error",
+    "r2_score",
+    "pearson_correlation",
+    "mean_squared_logarithmic_error",
     # Validation and metrics
     "ANFISValidator",
     "ANFISMetrics",

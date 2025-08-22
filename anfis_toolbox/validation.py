@@ -4,8 +4,9 @@ import logging
 import time
 
 import numpy as np
-from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.model_selection import KFold, train_test_split
+
+from anfis_toolbox.metrics import mean_absolute_error, mean_squared_error, r2_score
 
 from .model import ANFIS
 
