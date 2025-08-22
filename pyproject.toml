@@ -10,20 +10,9 @@ authors = [{ name = "Daniel França", email = "daniel@ci.ufpb.br" }]
 license = { text = "MIT" }
 dependencies = [
     "numpy>=1.24.4",
+    "matplotlib>=3.5.0"
 ]
 requires-python = ">=3.10"
-
-[project.optional-dependencies]
-visualization = [
-    "matplotlib>=3.5.0",
-]
-validation = [
-    "scikit-learn>=1.0.0",
-]
-all = [
-    "matplotlib>=3.5.0",
-    "scikit-learn>=1.0.0",
-]
 
 [tool.hatch.version]
 path = 'anfis_toolbox/__init__.py'
@@ -39,7 +28,6 @@ include = ["/README.md", "/Makefile", "/anfis_toolbox", "/tests"]
 
 [tool.hatch.envs.hatch-test]
 installer = "uv"
-features = ["all"]
 dependencies = [
     "coverage[toml]>=7.6.1",
     "pytest>=7.0.0",

@@ -28,49 +28,9 @@ from .metrics import (
     symmetric_mean_absolute_percentage_error,
 )
 from .model import ANFIS
+from .model_selection import KFold, train_test_split
 from .optim import HybridTrainer, SGDTrainer
-
-# Import validation utilities (optional)
-try:
-    from .validation import ANFISMetrics, ANFISValidator, quick_evaluate
-
-    _HAS_VALIDATION = True
-except ImportError:  # pragma: no cover
-    _HAS_VALIDATION = False
-
-    # Create dummy classes for documentation
-    class ANFISValidator:
-        """Dummy class for validation when scikit-learn is not available."""
-
-        def __init__(self, *args, **kwargs):  # pragma: no cover
-            """Initialize dummy validator."""
-            raise ImportError(  # pragma: no cover
-                "Validation features require scikit-learn. Install with: pip install anfis-toolbox[validation]"
-            )
-
-    class ANFISMetrics:
-        """Dummy class for metrics when scikit-learn is not available."""
-
-        @staticmethod
-        def regression_metrics(*args, **kwargs):  # pragma: no cover
-            """Dummy method for regression metrics when scikit-learn is not available."""
-            raise ImportError(  # pragma: no cover
-                "Validation features require scikit-learn. Install with: pip install anfis-toolbox[validation]"
-            )
-
-        @staticmethod
-        def model_complexity_metrics(*args, **kwargs):  # pragma: no cover
-            """Dummy method for model complexity metrics when scikit-learn is not available."""
-            raise ImportError(  # pragma: no cover
-                "Validation features require scikit-learn. Install with: pip install anfis-toolbox[validation]"
-            )
-
-    def quick_evaluate(*args, **kwargs):  # pragma: no cover
-        """Dummy function for quick evaluation when scikit-learn is not available."""
-        raise ImportError(  # pragma: no cover
-            "Validation features require scikit-learn. Install with: pip install anfis-toolbox[validation]"
-        )
-
+from .validation import ANFISMetrics, ANFISValidator, quick_evaluate
 
 # Optional imports with graceful fallback
 try:
@@ -142,6 +102,9 @@ __all__ = [
     "ANFISValidator",
     "ANFISMetrics",
     "quick_evaluate",
+    # Model selection helpers
+    "KFold",
+    "train_test_split",
     # Visualization (may raise ImportError if matplotlib not available)
     "ANFISVisualizer",
     "quick_plot_training",

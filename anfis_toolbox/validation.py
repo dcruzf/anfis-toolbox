@@ -4,11 +4,10 @@ import logging
 import time
 
 import numpy as np
-from sklearn.model_selection import KFold, train_test_split
 
-from anfis_toolbox.metrics import mean_absolute_error, mean_squared_error, r2_score
-
+from .metrics import mean_absolute_error, mean_squared_error, r2_score
 from .model import ANFIS
+from .model_selection import KFold, train_test_split
 
 
 class ANFISValidator:
