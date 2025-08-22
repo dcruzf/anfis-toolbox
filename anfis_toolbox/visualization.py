@@ -1,7 +1,5 @@
 """Visualization utilities for ANFIS models."""
 
-from typing import Optional
-
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.figure import Figure
@@ -222,7 +220,7 @@ class ANFISVisualizer:
         ax1.grid(True, alpha=0.3)
 
         # Add value labels on bars
-        for bar, strength in zip(bars1, rule_strengths):
+        for bar, strength in zip(bars1, rule_strengths, strict=False):
             height = bar.get_height()
             ax1.text(bar.get_x() + bar.get_width() / 2.0, height, f"{strength:.3f}", ha="center", va="bottom")
 
@@ -236,7 +234,7 @@ class ANFISVisualizer:
         ax2.grid(True, alpha=0.3)
 
         # Add value labels on bars
-        for bar, strength in zip(bars2, normalized_strengths):
+        for bar, strength in zip(bars2, normalized_strengths, strict=False):
             height = bar.get_height()
             ax2.text(bar.get_x() + bar.get_width() / 2.0, height, f"{strength:.3f}", ha="center", va="bottom")
 
@@ -288,7 +286,7 @@ class ANFISVisualizer:
         return r_squared
 
 
-def quick_plot_training(losses: list[float], save_path: Optional[str] = None):
+def quick_plot_training(losses: list[float], save_path: str | None = None):
     """Quick function to plot training curves."""
     fig, ax = plt.subplots(figsize=(10, 6))
     ax.plot(losses, "b-", linewidth=2)
@@ -303,7 +301,7 @@ def quick_plot_training(losses: list[float], save_path: Optional[str] = None):
     plt.show()
 
 
-def quick_plot_results(X: np.ndarray, y_true: np.ndarray, model: ANFIS, save_path: Optional[str] = None):
+def quick_plot_results(X: np.ndarray, y_true: np.ndarray, model: ANFIS, save_path: str | None = None):
     """Quick function to plot prediction results."""
     visualizer = ANFISVisualizer(model)
 

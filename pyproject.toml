@@ -11,7 +11,7 @@ license = { text = "MIT" }
 dependencies = [
     "numpy>=1.24.4",
 ]
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 
 [project.optional-dependencies]
 visualization = [
@@ -47,7 +47,7 @@ dependencies = [
 ]
 
 [[tool.hatch.envs.hatch-test.matrix]]
-python = ["3.13", "3.12", "3.11", "3.10", "3.9"]
+python = ["3.13", "3.12", "3.11", "3.10"]
 
 [tool.hatch.envs.hatch-test.scripts]
 run = "pytest{env:HATCH_TEST_ARGS:} {args}"

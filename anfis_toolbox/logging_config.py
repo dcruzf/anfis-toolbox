@@ -2,10 +2,9 @@
 
 import logging
 import sys
-from typing import Optional
 
 
-def setup_logging(level: str = "INFO", format_string: Optional[str] = None) -> None:
+def setup_logging(level: str = "INFO", format_string: str | None = None) -> None:
     """Setup logging configuration for ANFIS toolbox.
 
     Parameters:

@@ -207,7 +207,7 @@ class ANFIS:
                 if not mf_params_list:
                     continue
                 # Only update up to the available MFs for this input
-                for mf, mf_params in zip(self.input_mfs[name], mf_params_list):
+                for mf, mf_params in zip(self.input_mfs[name], mf_params_list, strict=False):
                     mf.parameters = mf_params.copy()
 
     def get_gradients(self) -> dict[str, np.ndarray]:
@@ -408,31 +408,31 @@ class ANFIS:
         return loss
 
     def fit(
-        self, x: np.ndarray, y: np.ndarray, epochs: int = 100, learning_rate: float = 0.01, verbose: bool = True
+        self,
+        x: np.ndarray,
+        y: np.ndarray,
+        epochs: int = 100,
+        learning_rate: float = 0.01,
+        verbose: bool = True,
+        trainer: None | object = None,
     ) -> list[float]:
-        """Trains the ANFIS model on the given dataset.
+        """Trains the ANFIS model.
 
-        Parameters:
-            x (np.ndarray): Training input data with shape (n_samples, n_inputs).
-            y (np.ndarray): Training target data with shape (n_samples, 1).
-            epochs (int): Number of training epochs.
-            learning_rate (float): Learning rate for parameter updates.
-            verbose (bool): Whether to log training progress.
-
-        Returns:
-            list: List of loss values for each epoch.
+        If a trainer is provided (see `anfis_toolbox.optim`), delegates training to it,
+        preserving a scikit-learn-style `fit(X, y)` entry point. If no trainer is
+        provided, uses the built-in backprop training loop (as before).
         """
-        losses = []
+        if trainer is not None:
+            # Prefer explicit parameters on the trainer instance
+            return trainer.fit(self, x, y)
 
+        # Backward-compatible built-in loop
+        losses: list[float] = []
         for epoch in range(epochs):
-            # Perform training step
             loss = self.train_step(x, y, learning_rate)
             losses.append(loss)
-
-            # Log progress
             if verbose and (epoch + 1) % max(1, epochs // 10) == 0:
                 logger.info("Epoch %d/%d, Loss: %.6f", epoch + 1, epochs, loss)
-
         return losses
 
     def __str__(self) -> str:

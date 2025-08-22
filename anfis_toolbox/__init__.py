@@ -28,6 +28,7 @@ from .metrics import (
     symmetric_mean_absolute_percentage_error,
 )
 from .model import ANFIS
+from .optim import HybridTrainer, SGDTrainer
 
 # Import validation utilities (optional)
 try:
@@ -118,6 +119,9 @@ __all__ = [
     "RuleLayer",
     "NormalizationLayer",
     "ConsequentLayer",
+    # Optimizers/trainers
+    "SGDTrainer",
+    "HybridTrainer",
     # Logging
     "setup_logging",
     "enable_training_logs",

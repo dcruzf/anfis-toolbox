@@ -177,7 +177,7 @@ class TestANFISBuilder:
         widths_high = [mf.parameters["sigma"] for mf in mfs_high]
 
         # Higher overlap should result in wider functions
-        assert all(w_h > w_l for w_h, w_l in zip(widths_high, widths_low))
+        assert all(w_h > w_l for w_h, w_l in zip(widths_high, widths_low, strict=False))
 
     def test_different_n_mfs(self):
         """Test creating different numbers of membership functions."""

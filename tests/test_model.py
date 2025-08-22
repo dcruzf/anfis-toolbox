@@ -7,6 +7,7 @@ import pytest
 
 from anfis_toolbox import ANFIS
 from anfis_toolbox.membership import GaussianMF
+from anfis_toolbox.optim import HybridTrainer, SGDTrainer
 
 # Disable logging during tests to keep output clean
 logging.getLogger("anfis_toolbox").setLevel(logging.CRITICAL)
@@ -200,6 +201,30 @@ def test_anfis_fit(sample_anfis):
     # Losses should generally decrease (may not be monotonic due to noise)
     # We'll just check that the final loss is reasonable
     assert losses[-1] < 100.0  # Should be much lower for this simple problem
+
+
+def test_trainer_api_sgd_and_hybrid_and_fit_compat():
+    # Simple data
+    rng = np.random.default_rng(0)
+    X = rng.normal(size=(30, 2))
+    y = (X[:, 0] - 0.5 * X[:, 1]).reshape(-1, 1)
+
+    model1 = _make_simple_model()
+    # Use trainer argument on fit (sklearn-style entry)
+    sgd = SGDTrainer(learning_rate=0.05, epochs=5, batch_size=None, shuffle=False, verbose=False)
+    losses1 = model1.fit(X, y, trainer=sgd)
+    assert len(losses1) == 5
+
+    model2 = _make_simple_model()
+    # Explicit HybridTrainer
+    hyb = HybridTrainer(learning_rate=0.1, epochs=5, verbose=False)
+    losses2 = hyb.fit(model2, X, y)
+    assert len(losses2) == 5
+
+    # Backward-compatible path still works (no trainer param)
+    model3 = _make_simple_model()
+    losses3 = model3.fit(X, y, epochs=5, learning_rate=0.05, verbose=False)
+    assert len(losses3) == 5
 
 
 def test_anfis_nonlinear_function():
