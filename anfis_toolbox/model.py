@@ -135,7 +135,21 @@ class ANFIS:
         Returns:
             np.ndarray: Predictions with shape (batch_size, 1).
         """
-        return self.forward(x)
+        # Accept Python lists or 1D arrays by coercing to correct 2D shape
+        x_arr = np.asarray(x, dtype=float)
+        if x_arr.ndim == 1:
+            # Single sample; ensure feature count matches
+            if x_arr.size != self.n_inputs:
+                raise ValueError(f"Expected {self.n_inputs} features, got {x_arr.size} in 1D input")
+            x_arr = x_arr.reshape(1, self.n_inputs)
+        elif x_arr.ndim == 2:
+            # Validate feature count
+            if x_arr.shape[1] != self.n_inputs:
+                raise ValueError(f"Expected input with {self.n_inputs} features, got {x_arr.shape[1]}")
+        else:
+            raise ValueError("Expected input with shape (batch_size, n_inputs)")
+
+        return self.forward(x_arr)
 
     def reset_gradients(self):
         """Resets all gradients in the model to zero.
@@ -246,6 +260,10 @@ class ANFIS:
         Returns:
             float: Mean squared error loss for this training step.
         """
+        # Ensure y is (batch_size, 1)
+        if y.ndim == 1:
+            y = y.reshape(-1, 1)
+
         batch_size = x.shape[0]
 
         # Reset gradients from previous step
