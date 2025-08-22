@@ -201,12 +201,14 @@ class ANFIS:
 
         # Set membership function parameters
         if "membership" in parameters:
+            membership_params = parameters["membership"]
             for name in self.input_names:
-                if name in parameters["membership"]:
-                    mf_params_list = parameters["membership"][name]
-                    for i, mf_params in enumerate(mf_params_list):
-                        if i < len(self.input_mfs[name]):
-                            self.input_mfs[name][i].parameters = mf_params.copy()
+                mf_params_list = membership_params.get(name)
+                if not mf_params_list:
+                    continue
+                # Only update up to the available MFs for this input
+                for mf, mf_params in zip(self.input_mfs[name], mf_params_list):
+                    mf.parameters = mf_params.copy()
 
     def get_gradients(self) -> dict[str, np.ndarray]:
         """Retrieves all gradients from the model.
@@ -281,17 +283,11 @@ class ANFIS:
 
         # === LEAST SQUARES METHOD FOR CONSEQUENT PARAMETERS ===
         # Build the design matrix A for least squares: A * theta = y
-        # Each row corresponds to one sample, each column to one consequent parameter
-        A = np.zeros((batch_size, self.n_rules * (self.n_inputs + 1)))
-
-        for i in range(batch_size):
-            for j in range(self.n_rules):
-                # For each rule j, the contribution is w_j * [x1, x2, ..., xn, 1]
-                start_idx = j * (self.n_inputs + 1)
-                end_idx = start_idx + self.n_inputs + 1
-
-                # w_j * [x_i1, x_i2, ..., x_in, 1]
-                A[i, start_idx:end_idx] = normalized_weights[i, j] * np.concatenate([x[i], [1.0]])
+        # Vectorized construction: for each rule j, create block w_j * [x, 1]
+        ones_col = np.ones((batch_size, 1), dtype=float)
+        x_bar = np.concatenate([x, ones_col], axis=1)  # shape (batch, n_inputs+1)
+        A_blocks = [normalized_weights[:, j : j + 1] * x_bar for j in range(self.n_rules)]
+        A = np.concatenate(A_blocks, axis=1)
 
         # Solve least squares: theta = (A^T A)^(-1) A^T y
         try:
@@ -332,10 +328,7 @@ class ANFIS:
         self.membership_layer.backward(gradients)
 
         # Update only membership function parameters (antecedent parameters)
-        for name in self.input_names:
-            for mf in self.input_mfs[name]:
-                for param_name, gradient in mf.gradients.items():
-                    mf.parameters[param_name] -= learning_rate * gradient
+        self._apply_membership_gradients(learning_rate)
 
         return loss
 
@@ -375,6 +368,13 @@ class ANFIS:
                 logger.info("Epoch %d/%d, Loss: %.6f (Hybrid)", epoch + 1, epochs, loss)
 
         return losses
+
+    def _apply_membership_gradients(self, learning_rate: float) -> None:
+        """Apply gradient descent update to membership function parameters only."""
+        for name in self.input_names:
+            for mf in self.input_mfs[name]:
+                for param_name, gradient in mf.gradients.items():
+                    mf.parameters[param_name] -= learning_rate * gradient
 
     def train_step(self, x: np.ndarray, y: np.ndarray, learning_rate: float = 0.01) -> float:
         """Performs one training step with pure backpropagation (modern approach).

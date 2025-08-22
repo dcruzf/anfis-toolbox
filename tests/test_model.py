@@ -337,3 +337,67 @@ def test_anfis_hybrid_vs_backprop_comparison():
 
     # Reset to critical level for other tests
     logger.setLevel(logging.CRITICAL)
+
+
+def _make_simple_model(n_inputs: int = 2, n_mfs: int = 2) -> ANFIS:
+    input_mfs = {}
+    for i in range(n_inputs):
+        input_mfs[f"x{i + 1}"] = [GaussianMF(mean=0.0, sigma=1.0), GaussianMF(mean=1.0, sigma=1.0)][:n_mfs]
+    return ANFIS(input_mfs)
+
+
+def test_predict_invalid_shapes():
+    model = _make_simple_model(n_inputs=2, n_mfs=2)
+    # 1D wrong feature count
+    with pytest.raises(ValueError, match="Expected 2 features"):
+        model.predict(np.array([1.0, 2.0, 3.0]))
+    # 2D wrong feature count
+    with pytest.raises(ValueError, match="Expected input with 2 features"):
+        model.predict(np.zeros((4, 3)))
+    # Higher dimensional input
+    with pytest.raises(ValueError, match="Expected input with shape"):
+        model.predict(np.zeros((2, 2, 2)))
+
+
+def test_str_and_repr_cover():
+    model = _make_simple_model()
+    s = str(model)
+    r = repr(model)
+    assert "ANFIS Model" in s
+    assert "ANFIS(" in r
+
+
+def test_fit_logging_branch_and_hybrid_logging(monkeypatch, caplog):
+    # Small dataset
+    X = np.array([[0.0, 0.0], [1.0, 2.0], [2.0, 1.0], [1.5, -0.5]])
+    y = (X[:, 0] + X[:, 1]).reshape(-1, 1)
+    model = _make_simple_model()
+
+    # Trigger logging with epochs=1 (always logs at least once)
+    caplog.set_level("INFO")
+    losses = model.fit(X, y, epochs=1, learning_rate=0.01, verbose=True)
+    assert len(losses) == 1
+
+    # For hybrid, force the pseudo-inverse fallback to exercise the except path
+    def raise_lin_alg_error(*args, **kwargs):  # pragma: no cover - covered by branch
+        raise np.linalg.LinAlgError
+
+    monkeypatch.setattr(np.linalg, "solve", raise_lin_alg_error)
+    hyb_losses = model.fit_hybrid(X, y, epochs=1, learning_rate=0.01, verbose=True)
+    assert len(hyb_losses) == 1
+
+
+def test_membership_functions_property_and_parameter_set_get():
+    model = _make_simple_model()
+    # Property alias
+    assert model.membership_functions is model.input_mfs
+
+    params = model.get_parameters()
+    # Modify one consequent parameter and one MF parameter
+    _original_consequent = params["consequent"].copy()
+    # ensure consequent has correct shape; if uninitialized, run a forward/backward to fill (not needed)
+    # tweak membership mean of first MF of x1
+    params["membership"]["x1"][0]["mean"] += 0.123
+    model.set_parameters(params)
+    new_params = model.get_parameters()
+    assert np.isclose(new_params["membership"]["x1"][0]["mean"], params["membership"]["x1"][0]["mean"])
