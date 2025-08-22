@@ -267,25 +267,15 @@ class NormalizationLayer:
             np.ndarray: Gradient of loss with respect to original weights.
                        Shape: (batch_size, n_rules)
         """
-        w = self.last["w"]
-        sum_w = self.last["sum_w"]
+        w = self.last["w"]  # (batch_size, n_rules)
+        sum_w = self.last["sum_w"]  # (batch_size, 1)
 
-        batch_size, n_rules = w.shape
-        dL_dw = np.zeros_like(w)
-
-        # Compute gradients using the quotient rule
-        for b in range(batch_size):
-            for i in range(n_rules):
-                for j in range(n_rules):
-                    if i == j:
-                        # Derivative of w_i / sum_w with respect to w_i
-                        grad = (sum_w[b, 0] - w[b, i]) / (sum_w[b, 0] ** 2)
-                    else:
-                        # Derivative of w_i / sum_w with respect to w_j (j ≠ i)
-                        grad = -w[b, j] / (sum_w[b, 0] ** 2)
-
-                    # Apply chain rule: dL/dw = dL/dnorm_w * dnorm_w/dw
-                    dL_dw[b, i] += dL_dnorm_w[b, j] * grad
+        # Jacobian-vector product without building the full Jacobian:
+        # (J^T g)_j = (sum_w * g_j - (g · w)) / sum_w^2
+        g = dL_dnorm_w  # (batch_size, n_rules)
+        s = sum_w  # (batch_size, 1)
+        gw_dot = np.sum(g * w, axis=1, keepdims=True)  # (batch_size, 1)
+        dL_dw = (s * g - gw_dot) / (s**2)  # (batch_size, n_rules)
 
         return dL_dw
 
