@@ -4,14 +4,17 @@ import numpy as np
 import pytest
 
 from anfis_toolbox.metrics import (
+    classification_entropy,
     mean_absolute_error,
     mean_absolute_percentage_error,
     mean_squared_error,
     mean_squared_logarithmic_error,
+    partition_coefficient,
     pearson_correlation,
     r2_score,
     root_mean_squared_error,
     symmetric_mean_absolute_percentage_error,
+    xie_beni_index,
 )
 
 
@@ -191,3 +194,67 @@ def test_msle_negative_inputs_raise():
         mean_squared_logarithmic_error(np.array([-1.0, 0.0]), np.array([0.0, 0.0]))
     with pytest.raises(ValueError):
         mean_squared_logarithmic_error(np.array([0.0, 0.0]), np.array([0.0, -1.0]))
+
+
+def test_partition_coefficient_invalid_ndim_and_empty():
+    # Invalid ndim
+    with pytest.raises(ValueError, match="U must be a 2D membership matrix"):
+        partition_coefficient(np.array([0.5, 0.5]))
+    # Empty returns 0.0
+    U_empty = np.zeros((0, 3))
+    assert np.isclose(partition_coefficient(U_empty), 0.0)
+
+
+def test_classification_entropy_invalid_ndim_and_empty():
+    # Invalid ndim
+    with pytest.raises(ValueError, match="U must be a 2D membership matrix"):
+        classification_entropy(np.array([0.5, 0.5]))
+    # Empty returns 0.0
+    U_empty = np.zeros((0, 2))
+    assert np.isclose(classification_entropy(U_empty), 0.0)
+
+
+def test_xb_invalid_dims_and_shape_mismatches_and_k_lt_2():
+    X = np.array([[0.0, 0.0], [1.0, 0.0]])
+    U = np.array([[0.6, 0.4], [0.5, 0.5]])
+    C = np.array([[0.0, 0.0], [1.0, 0.0]])
+
+    # X 3D invalid
+    with pytest.raises(ValueError, match="X must be 1D or 2D"):
+        xie_beni_index(np.zeros((2, 2, 1)), U, C)
+    # U invalid ndim
+    with pytest.raises(ValueError, match="U must be a 2D membership matrix"):
+        xie_beni_index(X, np.array([0.5, 0.5]), C)
+    # C invalid ndim
+    with pytest.raises(ValueError, match="C must be a 2D centers matrix"):
+        xie_beni_index(X, U, np.array([0.0, 0.0]))
+    # X and U sample mismatch
+    with pytest.raises(ValueError, match="X and U must have the same number of samples"):
+        xie_beni_index(X[:1], U, C)
+    # C and X feature mismatch
+    with pytest.raises(ValueError, match="C and X must have the same number of features"):
+        xie_beni_index(X, U, np.array([[0.0], [1.0]]))
+    # k < 2 -> inf
+    assert np.isinf(xie_beni_index(X, U[:, :1], C[:1]))
+
+
+def test_xb_denominator_epsilon_guard_and_1d_X_path():
+    # Centers identical -> min inter-center dist = 0, epsilon path engaged
+    X = np.array([[1.0, 0.0], [2.0, 0.0]])
+    U = np.array([[0.7, 0.3], [0.4, 0.6]])
+    C = np.array([[0.0, 0.0], [0.0, 0.0]])  # identical centers
+    m = 2.0
+    # Compute expected numerator
+    d2 = ((X[:, None, :] - C[None, :, :]) ** 2).sum(axis=2)
+    num = np.sum((U**m) * d2)
+    epsilon = 1e-12
+    expected = num / (X.shape[0] * epsilon)
+    xb = xie_beni_index(X, U, C, m=m, epsilon=epsilon)
+    assert np.isclose(xb, expected)
+
+    # 1D X should be reshaped internally and produce finite XB
+    X1d = np.array([0.0, 1.0, 2.0])
+    U1d = np.array([[1.0, 0.0], [0.5, 0.5], [0.0, 1.0]])
+    C1d = np.array([[0.0], [2.0]])
+    xb1d = xie_beni_index(X1d, U1d, C1d)
+    assert np.isfinite(xb1d) and xb1d >= 0.0
