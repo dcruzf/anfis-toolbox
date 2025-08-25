@@ -342,6 +342,103 @@ class TestANFISBuilder:
         assert len(mfs) == 2
         assert all(isinstance(mf, BellMF) for mf in mfs)
 
+    def test_add_input_from_data_fcm_triangular(self):
+        rng = np.random.RandomState(4)
+        x = np.concatenate([rng.normal(-2.0, 0.2, 50), rng.normal(2.0, 0.2, 50)])
+        builder = ANFISBuilder()
+        builder.add_input_from_data("x", x, n_mfs=2, mf_type="triangular", init="fcm", random_state=5)
+        mfs = builder.input_mfs["x"]
+        assert len(mfs) == 2
+        assert all(isinstance(mf, TriangularMF) for mf in mfs)
+        for mf in mfs:
+            a, b, c = mf.parameters["a"], mf.parameters["b"], mf.parameters["c"]
+            assert a < b < c
+
+    def test_add_input_from_data_fcm_trapezoidal(self):
+        rng = np.random.RandomState(6)
+        x = np.concatenate([rng.normal(-1.5, 0.3, 60), rng.normal(1.5, 0.3, 60)])
+        builder = ANFISBuilder()
+        builder.add_input_from_data("x", x, n_mfs=2, mf_type="trapezoidal", init="fcm", random_state=7)
+        mfs = builder.input_mfs["x"]
+        assert len(mfs) == 2
+        assert all(isinstance(mf, TrapezoidalMF) for mf in mfs)
+        for mf in mfs:
+            a, b, c, d = (mf.parameters[k] for k in ("a", "b", "c", "d"))
+            assert a < b <= c < d
+
+    def test_add_input_from_data_fcm_sigmoidal(self):
+        rng = np.random.RandomState(8)
+        x = np.concatenate([rng.normal(-0.5, 0.1, 40), rng.normal(0.5, 0.1, 40)])
+        builder = ANFISBuilder()
+        builder.add_input_from_data("x", x, n_mfs=2, mf_type="sigmoidal", init="fcm", random_state=9)
+        mfs = builder.input_mfs["x"]
+        assert len(mfs) == 2
+        assert all(isinstance(mf, SigmoidalMF) for mf in mfs)
+        # slopes should be positive
+        for mf in mfs:
+            assert mf.parameters["a"] > 0
+
+    def test_add_input_from_data_fcm_sshape_zshape(self):
+        rng = np.random.RandomState(10)
+        x = np.concatenate([rng.normal(-3.0, 0.4, 80), rng.normal(3.0, 0.4, 80)])
+        builder = ANFISBuilder()
+        builder.add_input_from_data("xs", x, n_mfs=2, mf_type="sshape", init="fcm", random_state=11)
+        builder.add_input_from_data("xz", x, n_mfs=2, mf_type="zshape", init="fcm", random_state=11)
+        mfs_s = builder.input_mfs["xs"]
+        mfs_z = builder.input_mfs["xz"]
+        assert all(isinstance(mf, SShapedMF) for mf in mfs_s)
+        assert all(isinstance(mf, ZShapedMF) for mf in mfs_z)
+        for mf in mfs_s + mfs_z:
+            a, b = mf.parameters["a"], mf.parameters["b"]
+            assert a < b
+
+    def test_add_input_from_data_fcm_pi(self):
+        rng = np.random.RandomState(12)
+        x = np.concatenate([rng.normal(-2.5, 0.2, 50), rng.normal(2.5, 0.2, 50)])
+        builder = ANFISBuilder()
+        builder.add_input_from_data("x", x, n_mfs=2, mf_type="pi", init="fcm", random_state=13)
+        mfs = builder.input_mfs["x"]
+        assert len(mfs) == 2
+        assert all(isinstance(mf, PiMF) for mf in mfs)
+        for mf in mfs:
+            a, b, c, d = (mf.parameters[k] for k in ("a", "b", "c", "d"))
+            assert a < b <= c < d
+
+    def test_add_input_from_data_fcm_fallbacks_constant_data(self):
+        """Constant data triggers fallback branches ensuring valid parameter ordering."""
+        x = np.full(20, 1.234)
+        # Triangular fallback
+        b1 = ANFISBuilder()
+        b1.add_input_from_data("x", x, n_mfs=2, mf_type="triangular", init="fcm", random_state=0)
+        for mf in b1.input_mfs["x"]:
+            a, b, c = mf.parameters["a"], mf.parameters["b"], mf.parameters["c"]
+            assert a < b < c
+        # Trapezoidal fallback
+        b2 = ANFISBuilder()
+        b2.add_input_from_data("x", x, n_mfs=2, mf_type="trapezoidal", init="fcm", random_state=0)
+        for mf in b2.input_mfs["x"]:
+            a, b, c, d = (mf.parameters[k] for k in ("a", "b", "c", "d"))
+            assert a < b <= c < d
+        # S/Z-shape fallbacks
+        b3 = ANFISBuilder()
+        b3.add_input_from_data("xs", x, n_mfs=2, mf_type="sshape", init="fcm", random_state=0)
+        b3.add_input_from_data("xz", x, n_mfs=2, mf_type="zshape", init="fcm", random_state=0)
+        for mf in b3.input_mfs["xs"] + b3.input_mfs["xz"]:
+            a, b = mf.parameters["a"], mf.parameters["b"]
+            assert a < b
+        # Pi fallback
+        b4 = ANFISBuilder()
+        b4.add_input_from_data("x", x, n_mfs=2, mf_type="pi", init="fcm", random_state=0)
+        for mf in b4.input_mfs["x"]:
+            a, b, c, d = (mf.parameters[k] for k in ("a", "b", "c", "d"))
+            assert a < b <= c < d
+
+    def test_add_input_from_data_fcm_unsupported_type_raises(self):
+        x = np.linspace(0, 1, 10)
+        builder = ANFISBuilder()
+        with pytest.raises(ValueError):
+            builder.add_input_from_data("x", x, n_mfs=2, mf_type="unknown", init="fcm", random_state=0)
+
     def test_add_input_from_data_fcm_insufficient_samples_raises(self):
         builder = ANFISBuilder()
         with pytest.raises(ValueError):

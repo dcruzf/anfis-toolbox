@@ -121,12 +121,13 @@ class ANFISBuilder:
         n_mfs: int,
         mf_type: str,
         random_state: int | None,
-    ) -> list[GaussianMF] | list[BellMF]:
+    ) -> list:
         """Create MFs from 1D data via FCM.
 
         - Centers are FCM cluster centers.
-        - Widths come from weighted within-cluster variance with weights U^m.
-        - Supports 'gaussian' and 'bell'.
+                - Widths come from weighted within-cluster variance with weights U^m.
+                - Supports: 'gaussian', 'bell'/'gbell', 'triangular', 'trapezoidal',
+                    'sigmoidal'/'sigmoid', 'sshape'/'s', 'zshape'/'z', 'pi'/'pimf'.
         """
         x = np.asarray(data_1d, dtype=float).reshape(-1, 1)
         if x.shape[0] < n_mfs:
@@ -153,12 +154,95 @@ class ANFISBuilder:
         sigmas = sigmas[order]
 
         key = mf_type.strip().lower()
-        if key in {"gaussian"}:
+        # Shared helpers
+        rmin = float(np.min(x))
+        rmax = float(np.max(x))
+        # Map a width from sigma (ensure positive and with a reasonable floor)
+        min_w = max(float(np.median(np.diff(np.sort(centers)))) if centers.size > 1 else float(np.std(x)), 1e-3)
+        widths = np.maximum(2.0 * sigmas, min_w)
+
+        if key == "gaussian":
             return [GaussianMF(mean=float(c), sigma=float(s)) for c, s in zip(centers, sigmas, strict=False)]
         if key in {"bell", "gbell"}:
             # map sigma to bell half-width a; keep b=2 by default
             return [BellMF(a=float(s), b=2.0, c=float(c)) for c, s in zip(centers, sigmas, strict=False)]
-        raise ValueError("FCM init supports only 'gaussian' or 'bell' MF types")
+        if key == "triangular":
+            mfs: list[TriangularMF] = []
+            for c, w in zip(centers, widths, strict=False):
+                a = float(max(c - w / 2.0, rmin))
+                cc = float(min(c + w / 2.0, rmax))
+                b = float(c)
+                # ensure ordering a < b < c
+                if not (a < b < cc):
+                    eps = 1e-6
+                    a, b, cc = c - 2 * eps, c, c + 2 * eps
+                mfs.append(TriangularMF(a, b, cc))
+            return mfs
+        if key == "trapezoidal":
+            mfs: list[TrapezoidalMF] = []
+            plateau_frac = 0.3
+            for c, w in zip(centers, widths, strict=False):
+                a = float(c - w / 2.0)
+                d = float(c + w / 2.0)
+                b = float(a + (w * (1 - plateau_frac)) / 2.0)
+                cr = float(b + w * plateau_frac)
+                # clamp
+                a = max(a, rmin)
+                d = min(d, rmax)
+                b = max(b, a + 1e-6)
+                cr = min(cr, d - 1e-6)
+                if not (a < b <= cr < d):
+                    eps = 1e-6
+                    a, b, cr, d = c - 2 * eps, c - eps, c + eps, c + 2 * eps
+                mfs.append(TrapezoidalMF(a, b, cr, d))
+            return mfs
+        if key in {"sigmoidal", "sigmoid"}:
+            # slope a from width: width ≈ 4.4 / a
+            mfs: list[SigmoidalMF] = []
+            for c, w in zip(centers, widths, strict=False):
+                a = 4.4 / max(float(w), 1e-8)
+                mfs.append(SigmoidalMF(a=float(a), c=float(c)))
+            return mfs
+        if key in {"sshape", "s"}:
+            mfs: list[SShapedMF] = []
+            for c, w in zip(centers, widths, strict=False):
+                a = float(max(c - w / 2.0, rmin))
+                b = float(min(c + w / 2.0, rmax))
+                if a >= b:
+                    eps = 1e-6
+                    a, b = c - eps, c + eps
+                mfs.append(SShapedMF(a, b))
+            return mfs
+        if key in {"zshape", "z"}:
+            mfs: list[ZShapedMF] = []
+            for c, w in zip(centers, widths, strict=False):
+                a = float(max(c - w / 2.0, rmin))
+                b = float(min(c + w / 2.0, rmax))
+                if a >= b:
+                    eps = 1e-6
+                    a, b = c - eps, c + eps
+                mfs.append(ZShapedMF(a, b))
+            return mfs
+        if key in {"pi", "pimf"}:
+            mfs: list[PiMF] = []
+            plateau_frac = 0.3
+            for c, w in zip(centers, widths, strict=False):
+                a = float(c - w / 2.0)
+                d = float(c + w / 2.0)
+                b = float(a + (w * (1 - plateau_frac)) / 2.0)
+                cr = float(b + w * plateau_frac)
+                # clamp and ensure ordering
+                a = max(a, rmin)
+                d = min(d, rmax)
+                b = max(b, a + 1e-6)
+                cr = min(cr, d - 1e-6)
+                if not (a < b <= cr < d):
+                    eps = 1e-6
+                    a, b, cr, d = c - 2 * eps, c - eps, c + eps, c + 2 * eps
+                mfs.append(PiMF(a, b, cr, d))
+            return mfs
+        supported = "gaussian, bell/gbell, triangular, trapezoidal, sigmoidal/sigmoid, sshape/s, zshape/z, pi/pimf"
+        raise ValueError(f"FCM init supports: {supported}")
 
     def _create_gaussian_mfs(self, range_min: float, range_max: float, n_mfs: int, overlap: float) -> list[GaussianMF]:
         """Create evenly spaced Gaussian membership functions."""
