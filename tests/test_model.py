@@ -146,40 +146,26 @@ def test_anfis_parameter_management(sample_anfis):
             assert params_current["membership"][name][i]["sigma"] == 2.0
 
 
-def test_anfis_train_step(sample_anfis):
-    """Test single training step."""
-    # Create simple training data
-    x = np.array([[0.0, 0.0], [1.0, 1.0]])  # (2, 2)
-    y = np.array([[1.0], [2.0]])  # (2, 1)
-
-    # Get initial parameters
+def test_backprop_updates_params_via_trainer(sample_anfis):
+    """Ensure backprop updates occur via SGDTrainer."""
+    x = np.array([[0.0, 0.0], [1.0, 1.0]])
+    y = np.array([[1.0], [2.0]])
     params_initial = sample_anfis.get_parameters()
-
-    # Perform training step
-    loss = sample_anfis.train_step(x, y, learning_rate=0.1)
-
-    # Check that loss is a finite number
-    assert np.isfinite(loss)
-    assert loss >= 0  # MSE is non-negative
-
-    # Check that parameters changed
+    trainer = SGDTrainer(learning_rate=0.1, epochs=1, verbose=False)
+    losses = trainer.fit(sample_anfis, x, y)
+    assert len(losses) == 1 and np.isfinite(losses[0]) and losses[0] >= 0
     params_after = sample_anfis.get_parameters()
-
-    # At least some parameters should have changed
-    param_changed = False
-    if not np.allclose(params_initial["consequent"], params_after["consequent"]):
-        param_changed = True
-
-    for name in ["x1", "x2"]:
-        for i in range(len(params_initial["membership"][name])):
-            if (
-                params_initial["membership"][name][i]["mean"] != params_after["membership"][name][i]["mean"]
-                or params_initial["membership"][name][i]["sigma"] != params_after["membership"][name][i]["sigma"]
-            ):
-                param_changed = True
-                break
-
-    assert param_changed, "No parameters were updated during training step"
+    param_changed = not np.allclose(params_initial["consequent"], params_after["consequent"])
+    if not param_changed:
+        for name in ["x1", "x2"]:
+            for i in range(len(params_initial["membership"][name])):
+                if (
+                    params_initial["membership"][name][i]["mean"] != params_after["membership"][name][i]["mean"]
+                    or params_initial["membership"][name][i]["sigma"] != params_after["membership"][name][i]["sigma"]
+                ):
+                    param_changed = True
+                    break
+    assert param_changed
 
 
 def test_anfis_fit(sample_anfis):
@@ -310,7 +296,10 @@ def test_anfis_edge_cases():
 
     # Single training step should work
     y = np.array([[1.0], [2.0], [0.0]])
-    loss = model.train_step(x, y)
+    # Use SGDTrainer single-epoch backprop to simulate one step
+    from anfis_toolbox.optim import SGDTrainer
+
+    loss = SGDTrainer(learning_rate=0.1, epochs=1, verbose=False).fit(model, x, y)[0]
     assert np.isfinite(loss)
 
 
@@ -328,13 +317,12 @@ def test_anfis_hybrid_algorithm():
     x = np.random.randn(20, 2)
     y = np.sum(x, axis=1, keepdims=True) + 0.1 * np.random.randn(20, 1)
 
-    # Test hybrid training step
-    loss = model.hybrid_train_step(x, y, learning_rate=0.1)
-    assert np.isfinite(loss)
-    assert loss >= 0
+    # Ensure a single-epoch hybrid fit works (via default HybridTrainer)
+    losses_once = model.fit(x, y, epochs=1, learning_rate=0.1, verbose=False)
+    assert len(losses_once) == 1 and np.isfinite(losses_once[0]) and losses_once[0] >= 0
 
-    # Test hybrid training over multiple epochs
-    losses = model.fit_hybrid(x, y, epochs=10, learning_rate=0.1, verbose=False)
+    # Test hybrid training over multiple epochs via default fit (HybridTrainer)
+    losses = model.fit(x, y, epochs=10, learning_rate=0.1, verbose=False)
 
     assert len(losses) == 10
     assert all(np.isfinite(loss) and loss >= 0 for loss in losses)
@@ -356,7 +344,7 @@ def test_anfis_hybrid_vs_backprop_comparison():
     y = x**2
 
     # Train both models
-    losses_hybrid = model_hybrid.fit_hybrid(x, y, epochs=20, learning_rate=0.1, verbose=False)
+    losses_hybrid = model_hybrid.fit(x, y, epochs=20, learning_rate=0.1, verbose=False)
     losses_backprop = model_backprop.fit(x, y, epochs=20, learning_rate=0.1, verbose=False)
 
     # Both should converge
@@ -447,7 +435,7 @@ def test_fit_logging_branch_and_hybrid_logging(monkeypatch, caplog):
         raise np.linalg.LinAlgError
 
     monkeypatch.setattr(np.linalg, "solve", raise_lin_alg_error)
-    hyb_losses = model.fit_hybrid(X, y, epochs=1, learning_rate=0.01, verbose=True)
+    hyb_losses = model.fit(X, y, epochs=1, learning_rate=0.01, verbose=True)
     assert len(hyb_losses) == 1
 
 
@@ -509,3 +497,23 @@ def test_set_parameters_membership_missing_name_skips_safely():
     assert params_after["membership"]["x1"][0]["mean"] == partial_membership["x1"][0]["mean"]
     # x2 unchanged
     assert params_after["membership"]["x2"] == params_before["membership"]["x2"]
+
+
+def test_hybrid_lsm_fallback_runs_with_pseudoinverse(monkeypatch):
+    """Force LinAlgError in LSM to exercise pseudo-inverse fallback and log warning."""
+    rng = np.random.default_rng(7)
+    X = rng.normal(size=(10, 2))
+    y = (X[:, 0] + 0.3 * X[:, 1]).reshape(-1, 1)
+
+    model = _make_simple_model()
+
+    # Force np.linalg.solve to raise LinAlgError
+    def _raise(*args, **kwargs):  # pragma: no cover - executed by this test
+        raise np.linalg.LinAlgError
+
+    monkeypatch.setattr(np.linalg, "solve", _raise)
+
+    # One epoch fit triggers the hybrid fallback path inside HybridTrainer
+    losses = model.fit(X, y, epochs=1, learning_rate=0.01, verbose=False)
+    # Should complete without error and return a finite loss
+    assert len(losses) == 1 and np.isfinite(losses[0])

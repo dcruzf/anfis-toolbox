@@ -66,10 +66,14 @@ class ANFISValidator:
             # Train model
             start_time = time.time()
             if method.lower() == "hybrid":
-                fold_model.fit_hybrid(X_train, y_train, epochs=epochs, learning_rate=learning_rate, verbose=False)
+                # Default fit uses HybridTrainer
+                fold_model.fit(X_train, y_train, epochs=epochs, learning_rate=learning_rate, verbose=False)
             else:
-                y_train_fit = y_train if y_train.ndim == 2 else y_train.reshape(-1, 1)
-                fold_model.fit(X_train, y_train_fit, epochs=epochs, learning_rate=learning_rate, verbose=False)
+                # Use SGDTrainer explicitly for backprop branch
+                from .optim import SGDTrainer
+
+                trainer = SGDTrainer(learning_rate=learning_rate, epochs=epochs, verbose=False)
+                fold_model.fit(X_train, y_train, trainer=trainer)
 
             training_time = time.time() - start_time
 
@@ -119,10 +123,13 @@ class ANFISValidator:
         # Train model
         start_time = time.time()
         if method.lower() == "hybrid":
-            losses = self.model.fit_hybrid(X_train, y_train, epochs=epochs, learning_rate=learning_rate, verbose=False)
+            # Default fit uses HybridTrainer
+            losses = self.model.fit(X_train, y_train, epochs=epochs, learning_rate=learning_rate, verbose=False)
         else:
-            y_train_fit = y_train if y_train.ndim == 2 else y_train.reshape(-1, 1)
-            losses = self.model.fit(X_train, y_train_fit, epochs=epochs, learning_rate=learning_rate, verbose=False)
+            from .optim import SGDTrainer
+
+            trainer = SGDTrainer(learning_rate=learning_rate, epochs=epochs, verbose=False)
+            losses = self.model.fit(X_train, y_train, trainer=trainer)
 
         training_time = time.time() - start_time
 
@@ -208,12 +215,12 @@ class ANFISValidator:
             # Train
             start_time = time.time()
             if method.lower() == "hybrid":
-                size_model.fit_hybrid(
-                    X_train_size, y_train_size, epochs=epochs, learning_rate=learning_rate, verbose=False
-                )
+                size_model.fit(X_train_size, y_train_size, epochs=epochs, learning_rate=learning_rate, verbose=False)
             else:
-                y_train_fit = y_train_size if y_train_size.ndim == 2 else y_train_size.reshape(-1, 1)
-                size_model.fit(X_train_size, y_train_fit, epochs=epochs, learning_rate=learning_rate, verbose=False)
+                from .optim import SGDTrainer
+
+                trainer = SGDTrainer(learning_rate=learning_rate, epochs=epochs, verbose=False)
+                size_model.fit(X_train_size, y_train_size, trainer=trainer)
 
             training_time = time.time() - start_time
 

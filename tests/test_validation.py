@@ -117,7 +117,7 @@ def test_model_complexity_metrics_and_quick_evaluate_print(capsys):
     assert cm["n_inputs"] == 1 and cm["n_rules"] == model.n_rules
     assert cm["total_parameters"] == cm["n_premise_parameters"] + cm["n_consequent_parameters"]
     # quick_evaluate print path
-    _ = model.fit_hybrid(X, y, epochs=1, learning_rate=0.01, verbose=False)
+    _ = model.fit(X, y, epochs=1, learning_rate=0.01, verbose=False)
     from anfis_toolbox.validation import quick_evaluate
 
     metrics = quick_evaluate(model, X, y, print_results=True)
@@ -131,7 +131,7 @@ def test_model_complexity_metrics_and_quick_evaluate_print(capsys):
 def test_quick_evaluate_no_print_branch():
     X, y = make_data(n=10, d=1)
     model = QuickANFIS.for_regression(X, n_mfs=2)
-    _ = model.fit_hybrid(X, y, epochs=1, learning_rate=0.01, verbose=False)
+    _ = model.fit(X, y, epochs=1, learning_rate=0.01, verbose=False)
     from anfis_toolbox.validation import quick_evaluate
 
     metrics = quick_evaluate(model, X, y, print_results=False)

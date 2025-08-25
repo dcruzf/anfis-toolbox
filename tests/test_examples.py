@@ -9,7 +9,7 @@ def test_example_1():
 
     # 2. Create and train model (one line!)
     model = QuickANFIS.for_regression(X, n_mfs=3)
-    _losses = model.fit_hybrid(X, y, epochs=50)
+    _losses = model.fit(X, y, epochs=50)
 
     # 3. Evaluate and use
     _metrics = quick_evaluate(model, X, y)
@@ -27,7 +27,7 @@ def test_example_2():
 
     # 2. Create and train model (one line!)
     model = QuickANFIS.for_regression(X, n_mfs=3)
-    _losses = model.fit_hybrid(X, y, epochs=50)
+    _losses = model.fit(X, y, epochs=50)
 
     # 3. Evaluate and use
     _metrics = quick_evaluate(model, X, y)
@@ -45,7 +45,7 @@ def test_example_3():
 
     # Create and train model
     model = QuickANFIS.for_regression(X, n_mfs=4, mf_type="gaussian")
-    _losses = model.fit_hybrid(X, y, epochs=10, learning_rate=0.01)
+    _losses = model.fit(X, y, epochs=10, learning_rate=0.01)
 
     # Evaluate and visualize
     # Evaluate (placeholder)
