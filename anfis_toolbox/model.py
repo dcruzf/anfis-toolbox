@@ -405,7 +405,7 @@ class ANFIS:
         # Update parameters
         self.update_parameters(learning_rate)
 
-        return loss
+        return float(loss)
 
     def fit(
         self,
@@ -420,20 +420,17 @@ class ANFIS:
 
         If a trainer is provided (see `anfis_toolbox.optim`), delegates training to it,
         preserving a scikit-learn-style `fit(X, y)` entry point. If no trainer is
-        provided, uses the built-in backprop training loop (as before).
+        provided, uses a default SGDTrainer from `anfis_toolbox.optim` configured with
+        the given `epochs`, `learning_rate`, and `verbose`.
         """
-        if trainer is not None:
-            # Prefer explicit parameters on the trainer instance
-            return trainer.fit(self, x, y)
+        if trainer is None:
+            # Lazy import to avoid unnecessary dependency at module import time
+            from .optim import HybridTrainer
 
-        # Backward-compatible built-in loop
-        losses: list[float] = []
-        for epoch in range(epochs):
-            loss = self.train_step(x, y, learning_rate)
-            losses.append(loss)
-            if verbose and (epoch + 1) % max(1, epochs // 10) == 0:
-                logger.info("Epoch %d/%d, Loss: %.6f", epoch + 1, epochs, loss)
-        return losses
+            trainer = HybridTrainer(learning_rate=learning_rate, epochs=epochs, verbose=verbose)
+
+        # Delegate training to the provided or default trainer
+        return trainer.fit(self, x, y)
 
     def __str__(self) -> str:
         """Returns string representation of the ANFIS model."""

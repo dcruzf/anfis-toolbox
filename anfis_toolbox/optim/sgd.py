@@ -26,7 +26,8 @@ class SGDTrainer:
     def fit(self, model, X: np.ndarray, y: np.ndarray) -> list[float]:
         """Train the model using pure backpropagation.
 
-        Returns a list of loss values per epoch to preserve current API.
+        Uses the model's forward/backward/update APIs directly, without requiring
+        a model.train_step method. Returns a list of loss values per epoch.
         """
         X = np.asarray(X, dtype=float)
         y = np.asarray(y, dtype=float)
@@ -39,7 +40,12 @@ class SGDTrainer:
         for _ in range(self.epochs):
             if self.batch_size is None:
                 # Full-batch gradient descent
-                loss = model.train_step(X, y, learning_rate=self.learning_rate)
+                model.reset_gradients()
+                y_pred = model.forward(X)
+                loss = float(np.mean((y_pred - y) ** 2))
+                dL_dy = 2 * (y_pred - y) / y.shape[0]
+                model.backward(dL_dy)
+                model.update_parameters(self.learning_rate)
                 losses.append(loss)
             else:
                 # Mini-batch SGD
@@ -50,7 +56,12 @@ class SGDTrainer:
                 for start in range(0, n_samples, self.batch_size):
                     end = start + self.batch_size
                     batch_idx = indices[start:end]
-                    batch_loss = model.train_step(X[batch_idx], y[batch_idx], learning_rate=self.learning_rate)
+                    model.reset_gradients()
+                    y_pred_b = model.forward(X[batch_idx])
+                    batch_loss = float(np.mean((y_pred_b - y[batch_idx]) ** 2))
+                    dL_dy_b = 2 * (y_pred_b - y[batch_idx]) / y[batch_idx].shape[0]
+                    model.backward(dL_dy_b)
+                    model.update_parameters(self.learning_rate)
                     batch_losses.append(batch_loss)
                 # For compatibility, record epoch loss as mean of batch losses
                 losses.append(float(np.mean(batch_losses)))
