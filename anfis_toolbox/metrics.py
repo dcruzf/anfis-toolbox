@@ -145,3 +145,101 @@ def mean_squared_logarithmic_error(y_true, y_pred) -> float:
         raise ValueError("mean_squared_logarithmic_error requires non-negative y_true and y_pred")
     diff = np.log1p(yt) - np.log1p(yp)
     return float(np.mean(diff * diff))
+
+
+# -----------------------------
+# Clustering metrics (FCM)
+# -----------------------------
+
+
+def partition_coefficient(U: np.ndarray) -> float:
+    """Bezdek's Partition Coefficient (PC) in [1/k, 1]. Higher is crisper.
+
+    Parameters:
+        U: Membership matrix of shape (n_samples, n_clusters).
+
+    Returns:
+        PC value as float.
+    """
+    U = np.asarray(U, dtype=float)
+    if U.ndim != 2:
+        raise ValueError("U must be a 2D membership matrix")
+    n = U.shape[0]
+    if n == 0:
+        return 0.0
+    return float(np.sum(U * U) / float(n))
+
+
+def classification_entropy(U: np.ndarray, epsilon: float = 1e-12) -> float:
+    """Classification Entropy (CE). Lower is better (crisper).
+
+    Parameters:
+        U: Membership matrix of shape (n_samples, n_clusters).
+        epsilon: Small constant to avoid log(0).
+
+    Returns:
+        CE value as float.
+    """
+    U = np.asarray(U, dtype=float)
+    if U.ndim != 2:
+        raise ValueError("U must be a 2D membership matrix")
+    n = U.shape[0]
+    if n == 0:
+        return 0.0
+    Uc = np.clip(U, float(epsilon), 1.0)
+    return float(-np.sum(Uc * np.log(Uc)) / float(n))
+
+
+def xie_beni_index(
+    X: np.ndarray,
+    U: np.ndarray,
+    C: np.ndarray,
+    m: float = 2.0,
+    epsilon: float = 1e-12,
+) -> float:
+    """Xie–Beni index (XB). Lower is better.
+
+    XB = sum_i sum_k u_ik^m ||x_i - v_k||^2 / (n * min_{p!=q} ||v_p - v_q||^2)
+
+    Parameters:
+        X: Data array, shape (n_samples, n_features) or (n_samples,).
+        U: Membership matrix, shape (n_samples, n_clusters).
+        C: Cluster centers, shape (n_clusters, n_features).
+        m: Fuzzifier (>1).
+        epsilon: Small constant to avoid division by zero.
+
+    Returns:
+        XB value as float (np.inf when centers < 2).
+    """
+    X = np.asarray(X, dtype=float)
+    if X.ndim == 1:
+        X = X.reshape(-1, 1)
+    if X.ndim != 2:
+        raise ValueError("X must be 1D or 2D array-like")
+    U = np.asarray(U, dtype=float)
+    C = np.asarray(C, dtype=float)
+    if U.ndim != 2:
+        raise ValueError("U must be a 2D membership matrix")
+    if C.ndim != 2:
+        raise ValueError("C must be a 2D centers matrix")
+    if X.shape[0] != U.shape[0]:
+        raise ValueError("X and U must have the same number of samples")
+    if C.shape[1] != X.shape[1]:
+        raise ValueError("C and X must have the same number of features")
+    if C.shape[0] < 2:
+        return float(np.inf)
+    m = float(m)
+
+    # distances (n,k)
+    d2 = ((X[:, None, :] - C[None, :, :]) ** 2).sum(axis=2)
+    num = float(np.sum((U**m) * d2))
+
+    # min squared distance between distinct centers
+    diffs = C[:, None, :] - C[None, :, :]
+    dist2 = (diffs * diffs).sum(axis=2)
+    k = C.shape[0]
+    idx = np.arange(k)
+    dist2[idx, idx] = np.inf
+    den = float(np.min(dist2))
+    den = max(den, float(epsilon))
+    return num / (float(X.shape[0]) * den)

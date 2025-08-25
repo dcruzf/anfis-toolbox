@@ -7,6 +7,10 @@ from __future__ import annotations
 
 import numpy as np
 
+from .metrics import classification_entropy as _ce
+from .metrics import partition_coefficient as _pc
+from .metrics import xie_beni_index as _xb
+
 
 class FuzzyCMeans:
     """Fuzzy C-Means clustering.
@@ -52,9 +56,6 @@ class FuzzyCMeans:
             X = X.reshape(-1, 1)
         if X.ndim != 2:
             raise ValueError("X must be 1D or 2D array-like")
-        if X.shape[0] < self.n_clusters:
-            # FCM can run, but it's ill-conditioned; keep explicit error to avoid degenerate solutions
-            raise ValueError("n_samples must be >= n_clusters")
         return X
 
     def _init_membership(self, n_samples: int) -> np.ndarray:
@@ -78,6 +79,8 @@ class FuzzyCMeans:
         """
         X = self._check_X(X)
         n, _ = X.shape
+        if n < self.n_clusters:
+            raise ValueError("n_samples must be >= n_clusters")
         U = self._init_membership(n)
         m = self.m
 
@@ -132,37 +135,20 @@ class FuzzyCMeans:
         """Bezdek's Partition Coefficient (PC) in [1/k, 1]. Higher is crisper."""
         if self.membership_ is None:
             raise RuntimeError("Fit the model before calling partition_coefficient().")
-        U = self.membership_
-        n = U.shape[0]
-        return float(np.sum(U**2) / n)
+        return _pc(self.membership_)
 
     def classification_entropy(self) -> float:
         """Classification Entropy (CE). Lower is better (crisper)."""
         if self.membership_ is None:
             raise RuntimeError("Fit the model before calling classification_entropy().")
-        U = np.clip(self.membership_, 1e-12, 1.0)
-        n = U.shape[0]
-        return float(-np.sum(U * np.log(U)) / n)
+        return _ce(self.membership_)
 
     def xie_beni_index(self, X: np.ndarray) -> float:
-        """Xie–Beni index (XB). Lower is better.
+        """Xie-Beni index (XB). Lower is better.
 
         XB = sum_i sum_k u_ik^m ||x_i - v_k||^2 / (n * min_{p!=q} ||v_p - v_q||^2)
         """
         if self.membership_ is None or self.cluster_centers_ is None:
             raise RuntimeError("Fit the model before calling xie_beni_index().")
         X = self._check_X(X)
-        U = self.membership_
-        C = self.cluster_centers_
-        m = self.m
-        d2 = self._pairwise_sq_dists(X, C)
-        num = float(np.sum((U**m) * d2))
-        # min squared distance between distinct centers
-        if C.shape[0] < 2:
-            return np.inf
-        diffs = C[:, None, :] - C[None, :, :]
-        dist2 = (diffs**2).sum(axis=2)
-        dist2 += np.eye(C.shape[0]) * np.inf
-        den = float(np.min(dist2))
-        den = max(den, 1e-12)
-        return num / (X.shape[0] * den)
+        return _xb(X, self.membership_, self.cluster_centers_, m=self.m)

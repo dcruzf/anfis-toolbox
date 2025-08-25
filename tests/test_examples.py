@@ -45,7 +45,7 @@ def test_example_3():
 
     # Create and train model
     model = QuickANFIS.for_regression(X, n_mfs=4, mf_type="gaussian")
-    _losses = model.fit_hybrid(X, y, epochs=100, learning_rate=0.01)
+    _losses = model.fit_hybrid(X, y, epochs=10, learning_rate=0.01)
 
     # Evaluate and visualize
     # Evaluate (placeholder)

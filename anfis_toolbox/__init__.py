@@ -19,14 +19,17 @@ from .membership import (
     ZShapedMF,
 )
 from .metrics import (
+    classification_entropy,
     mean_absolute_error,
     mean_absolute_percentage_error,
     mean_squared_error,
     mean_squared_logarithmic_error,
+    partition_coefficient,
     pearson_correlation,
     r2_score,
     root_mean_squared_error,
     symmetric_mean_absolute_percentage_error,
+    xie_beni_index,
 )
 from .model import ANFIS
 from .model_selection import KFold, train_test_split
@@ -99,6 +102,10 @@ __all__ = [
     "r2_score",
     "pearson_correlation",
     "mean_squared_logarithmic_error",
+    # Clustering metrics
+    "partition_coefficient",
+    "classification_entropy",
+    "xie_beni_index",
     # Validation and metrics
     "ANFISValidator",
     "ANFISMetrics",
