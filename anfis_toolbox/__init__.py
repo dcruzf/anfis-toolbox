@@ -4,6 +4,7 @@ __version__ = "0.1.0"
 
 # Import builders for easy model creation
 from .builders import ANFISBuilder, QuickANFIS
+from .clustering import FuzzyCMeans
 from .layers import ConsequentLayer, MembershipLayer, NormalizationLayer, RuleLayer
 from .logging_config import disable_training_logs, enable_training_logs, setup_logging
 from .membership import (
@@ -109,4 +110,6 @@ __all__ = [
     "ANFISVisualizer",
     "quick_plot_training",
     "quick_plot_results",
+    # Clustering
+    "FuzzyCMeans",
 ]
