@@ -2,6 +2,7 @@
 
 import numpy as np
 
+from .clustering import FuzzyCMeans
 from .membership import (
     BellMF,
     GaussianMF,
@@ -84,6 +85,8 @@ class ANFISBuilder:
         mf_type: str = "gaussian",
         overlap: float = 0.5,
         margin: float = 0.10,
+        init: str = "grid",
+        random_state: int | None = None,
     ) -> "ANFISBuilder":
         """Add an input inferring range_min/range_max from data with a margin.
 
@@ -94,12 +97,68 @@ class ANFISBuilder:
             mf_type: Membership function type (see add_input)
             overlap: Overlap factor between adjacent MFs
             margin: Fraction of (max-min) to pad on each side
+            init: Initialization strategy: "grid" (default) or "fcm". When "fcm",
+                clusters from the data determine MF centers and widths (supports
+                'gaussian' and 'bell').
+            random_state: Optional seed for deterministic FCM initialization.
         """
         arr = np.asarray(data, dtype=float).reshape(-1)
+        if init.strip().lower() == "fcm":
+            self.input_mfs[name] = self._create_mfs_from_fcm(arr, n_mfs, mf_type, random_state)
+            # store observed range for reference
+            self.input_ranges[name] = (float(np.min(arr)), float(np.max(arr)))
+            return self
+        # default grid-based placement with margins
         rmin = float(np.min(arr))
         rmax = float(np.max(arr))
         pad = (rmax - rmin) * float(margin)
         return self.add_input(name, rmin - pad, rmax + pad, n_mfs, mf_type, overlap)
+
+    # FCM-based MF creation for 1D inputs
+    def _create_mfs_from_fcm(
+        self,
+        data_1d: np.ndarray,
+        n_mfs: int,
+        mf_type: str,
+        random_state: int | None,
+    ) -> list[GaussianMF] | list[BellMF]:
+        """Create MFs from 1D data via FCM.
+
+        - Centers are FCM cluster centers.
+        - Widths come from weighted within-cluster variance with weights U^m.
+        - Supports 'gaussian' and 'bell'.
+        """
+        x = np.asarray(data_1d, dtype=float).reshape(-1, 1)
+        if x.shape[0] < n_mfs:
+            raise ValueError("n_samples must be >= n_mfs for FCM initialization")
+        fcm = FuzzyCMeans(n_clusters=n_mfs, m=2.0, random_state=random_state)
+        fcm.fit(x)
+        centers = fcm.cluster_centers_.reshape(-1)  # (k,)
+        U = fcm.membership_  # (n,k)
+        m = fcm.m
+        # weighted variance per cluster
+        # num_k = sum_i u_ik^m * (x_i - c_k)^2, den_k = sum_i u_ik^m
+        diffs = x[:, 0][:, None] - centers[None, :]
+        num = np.sum((U**m) * (diffs * diffs), axis=0)
+        den = np.maximum(np.sum(U**m, axis=0), 1e-12)
+        sigmas = np.sqrt(num / den)
+        # fallback if any sigma is ~0
+        spacing = np.diff(np.sort(centers))
+        default_sigma = float(np.median(spacing)) if spacing.size else max(float(np.std(x)), 1e-3)
+        sigmas = np.where(sigmas > 1e-12, sigmas, max(default_sigma, 1e-3))
+
+        # Order by center for deterministic layout
+        order = np.argsort(centers)
+        centers = centers[order]
+        sigmas = sigmas[order]
+
+        key = mf_type.strip().lower()
+        if key in {"gaussian"}:
+            return [GaussianMF(mean=float(c), sigma=float(s)) for c, s in zip(centers, sigmas, strict=False)]
+        if key in {"bell", "gbell"}:
+            # map sigma to bell half-width a; keep b=2 by default
+            return [BellMF(a=float(s), b=2.0, c=float(c)) for c, s in zip(centers, sigmas, strict=False)]
+        raise ValueError("FCM init supports only 'gaussian' or 'bell' MF types")
 
     def _create_gaussian_mfs(self, range_min: float, range_max: float, n_mfs: int, overlap: float) -> list[GaussianMF]:
         """Create evenly spaced Gaussian membership functions."""
@@ -273,13 +332,21 @@ class QuickANFIS:
     """Quick setup class for common ANFIS use cases."""
 
     @staticmethod
-    def for_regression(X: np.ndarray, n_mfs: int = 3, mf_type: str = "gaussian") -> ANFIS:
+    def for_regression(
+        X: np.ndarray,
+        n_mfs: int = 3,
+        mf_type: str = "gaussian",
+        init: str = "grid",
+        random_state: int | None = None,
+    ) -> ANFIS:
         """Create ANFIS model automatically configured for regression data.
 
         Parameters:
             X: Input training data (n_samples, n_features)
             n_mfs: Number of membership functions per input
             mf_type: Type of membership functions
+            init: Initialization strategy per input: 'grid' (default) or 'fcm'.
+            random_state: Optional seed for deterministic FCM.
 
         Returns:
             Configured ANFIS model
@@ -291,15 +358,23 @@ class QuickANFIS:
 
         for i in range(X.shape[1]):
             col_data = X[:, i]
-            range_min = float(np.min(col_data))
-            range_max = float(np.max(col_data))
-
-            # Add some margin
-            margin = (range_max - range_min) * 0.1
-            range_min -= margin
-            range_max += margin
-
-            builder.add_input(f"x{i + 1}", range_min, range_max, n_mfs, mf_type)
+            if init.strip().lower() == "fcm":
+                builder.add_input_from_data(
+                    f"x{i + 1}",
+                    col_data,
+                    n_mfs=n_mfs,
+                    mf_type=mf_type,
+                    init="fcm",
+                    random_state=random_state,
+                )
+            else:
+                range_min = float(np.min(col_data))
+                range_max = float(np.max(col_data))
+                # Add some margin
+                margin = (range_max - range_min) * 0.1
+                range_min -= margin
+                range_max += margin
+                builder.add_input(f"x{i + 1}", range_min, range_max, n_mfs, mf_type)
 
         return builder.build()
 

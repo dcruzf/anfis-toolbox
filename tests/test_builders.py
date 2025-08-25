@@ -320,6 +320,47 @@ class TestANFISBuilder:
         assert len(mfs) == 2
         assert all(isinstance(mf, SigmoidalMF) for mf in mfs)
 
+    def test_add_input_from_data_fcm_gaussian(self):
+        """FCM init maps clusters to Gaussian MFs with deterministic centers."""
+        rng = np.random.RandomState(0)
+        x = np.concatenate([rng.normal(-2.0, 0.2, 40), rng.normal(2.0, 0.2, 40)])
+        builder = ANFISBuilder()
+        builder.add_input_from_data("x", x, n_mfs=2, mf_type="gaussian", init="fcm", random_state=7)
+        mfs = builder.input_mfs["x"]
+        assert len(mfs) == 2
+        assert all(isinstance(mf, GaussianMF) for mf in mfs)
+        centers = np.array([mf.parameters["mean"] for mf in mfs])
+        assert np.all(np.diff(centers) > 0)  # sorted order
+
+    def test_add_input_from_data_fcm_bell(self):
+        """FCM init also supports Bell MFs via alias 'gbell'."""
+        rng = np.random.RandomState(1)
+        x = np.concatenate([rng.normal(-1.0, 0.1, 30), rng.normal(1.0, 0.1, 30)])
+        builder = ANFISBuilder()
+        builder.add_input_from_data("x", x, n_mfs=2, mf_type="gbell", init="fcm", random_state=3)
+        mfs = builder.input_mfs["x"]
+        assert len(mfs) == 2
+        assert all(isinstance(mf, BellMF) for mf in mfs)
+
+    def test_add_input_from_data_fcm_insufficient_samples_raises(self):
+        builder = ANFISBuilder()
+        with pytest.raises(ValueError):
+            builder.add_input_from_data("x", np.array([0.0]), n_mfs=2, mf_type="gaussian", init="fcm")
+
+    def test_quick_for_regression_with_fcm(self):
+        """QuickANFIS.for_regression supports init='fcm'."""
+        rng = np.random.RandomState(2)
+        X = np.column_stack(
+            [
+                np.concatenate([rng.normal(-1.0, 0.1, 40), rng.normal(1.0, 0.1, 40)]),
+                np.concatenate([rng.normal(0.0, 0.5, 40), rng.normal(3.0, 0.5, 40)]),
+            ]
+        )
+        model = QuickANFIS.for_regression(X, n_mfs=2, mf_type="gaussian", init="fcm", random_state=11)
+        # 2 inputs, 2 MFs each -> 4 rules
+        assert model.n_inputs == 2
+        assert model.n_rules == 4
+
 
 class TestQuickANFIS:
     """Test cases for QuickANFIS class."""

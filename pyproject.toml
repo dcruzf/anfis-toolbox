@@ -75,3 +75,8 @@ xfail_strict = true
 source = ['anfis_toolbox']
 branch = true
 relative_files = true
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4.1",
+]
