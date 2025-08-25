@@ -66,6 +66,7 @@ docs:
     --with mkdocstrings --with mkdocstrings-python \
     --with mkdocs-awesome-pages-plugin \
     --with mkdocs-git-revision-date-localized-plugin \
+	--with mkdocs-jupyter \
     --with ruff \
     mkdocs serve -a 127.0.0.1:8000
 
@@ -75,6 +76,7 @@ docs-build: .uv
 		--with mkdocstrings --with mkdocstrings-python \
 		--with mkdocs-awesome-pages-plugin \
 		--with mkdocs-git-revision-date-localized-plugin \
+		--with mkdocs-jupyter \
 		--with ruff \
 		mkdocs build
 
