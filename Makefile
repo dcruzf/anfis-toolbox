@@ -40,6 +40,10 @@ lint: .uv
 test: .hatch
 	uv tool run hatch test -c
 
+.PHONY: test-no-viz ## Run tests skipping visualization tests (faster)
+test-no-viz: .uv
+	uv tool run hatch test -c -k "not test_visualization"
+
 .PHONY: test-all ## Run tests with coverage
 test-all: .hatch
 	uv tool run hatch test -c --all
