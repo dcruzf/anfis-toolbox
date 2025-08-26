@@ -4,6 +4,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
+from ..losses import mse_grad, mse_loss
 from .base import BaseTrainer
 
 
@@ -88,8 +89,8 @@ class SGDTrainer(BaseTrainer):
         """Forward -> MSE -> backward -> update parameters; returns loss."""
         model.reset_gradients()
         y_pred = model.forward(Xb)
-        loss = float(np.mean((y_pred - yb) ** 2))
-        dL_dy = 2 * (y_pred - yb) / yb.shape[0]
+        loss = mse_loss(yb, y_pred)
+        dL_dy = mse_grad(yb, y_pred)
         model.backward(dL_dy)
         model.update_parameters(self.learning_rate)
         return loss

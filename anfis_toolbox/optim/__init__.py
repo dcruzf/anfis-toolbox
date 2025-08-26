@@ -35,6 +35,7 @@ Task compatibility and guidance:
 from .adam import AdamTrainer
 from .base import BaseTrainer
 from .hybrid import HybridTrainer
+from .pso import PSOTrainer
 from .rmsprop import RMSPropTrainer
 from .sgd import SGDTrainer
 
@@ -44,4 +45,5 @@ __all__ = [
     "HybridTrainer",
     "AdamTrainer",
     "RMSPropTrainer",
+    "PSOTrainer",
 ]

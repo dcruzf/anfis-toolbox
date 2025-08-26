@@ -5,6 +5,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
+from ..losses import mse_grad, mse_loss
 from .base import BaseTrainer
 
 
@@ -55,7 +56,7 @@ class HybridTrainer(BaseTrainer):
 
             # Compute output and loss with updated consequents
             y_pred = model.consequent_layer.forward(X, normalized_weights)
-            loss = float(np.mean((y_pred - y) ** 2))
+            loss = mse_loss(y, y_pred)
 
             # Backpropagate for antecedent (membership) parameters only
             dL_dy = 2 * (y_pred - y) / y.shape[0]
@@ -100,8 +101,8 @@ class HybridTrainer(BaseTrainer):
 
         # Loss and backward for antecedents only
         y_pred = model.consequent_layer.forward(Xb, normalized_weights)
-        loss = float(np.mean((y_pred - yb) ** 2))
-        dL_dy = 2 * (y_pred - yb) / yb.shape[0]
+        loss = mse_loss(yb, y_pred)
+        dL_dy = mse_grad(yb, y_pred)
         dL_dnorm_w, _ = model.consequent_layer.backward(dL_dy)
         dL_dw = model.normalization_layer.backward(dL_dnorm_w)
         gradients = model.rule_layer.backward(dL_dw)

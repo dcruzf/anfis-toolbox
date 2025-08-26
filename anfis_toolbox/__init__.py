@@ -7,6 +7,7 @@ from .builders import ANFISBuilder, QuickANFIS
 from .clustering import FuzzyCMeans
 from .layers import ConsequentLayer, MembershipLayer, NormalizationLayer, RuleLayer
 from .logging_config import disable_training_logs, enable_training_logs, setup_logging
+from .losses import cross_entropy_grad, cross_entropy_loss, mse_grad, mse_loss
 from .membership import (
     BellMF,
     Gaussian2MF,
@@ -108,6 +109,11 @@ __all__ = [
     "softmax",
     "cross_entropy",
     "log_loss",
+    # Losses (training objectives)
+    "mse_loss",
+    "mse_grad",
+    "cross_entropy_loss",
+    "cross_entropy_grad",
     "mean_absolute_error",
     "mean_absolute_percentage_error",
     "mean_squared_error",
