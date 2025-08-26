@@ -7,6 +7,7 @@ from .builders import ANFISBuilder, QuickANFIS
 from .clustering import FuzzyCMeans
 from .layers import ConsequentLayer, MembershipLayer, NormalizationLayer, RuleLayer
 from .logging_config import disable_training_logs, enable_training_logs, setup_logging
+from .losses import cross_entropy_grad, cross_entropy_loss, mse_grad, mse_loss
 from .membership import (
     BellMF,
     Gaussian2MF,
@@ -22,7 +23,10 @@ from .membership import (
     ZShapedMF,
 )
 from .metrics import (
+    accuracy,
     classification_entropy,
+    cross_entropy,
+    log_loss,
     mean_absolute_error,
     mean_absolute_percentage_error,
     mean_squared_error,
@@ -31,10 +35,11 @@ from .metrics import (
     pearson_correlation,
     r2_score,
     root_mean_squared_error,
+    softmax,
     symmetric_mean_absolute_percentage_error,
     xie_beni_index,
 )
-from .model import ANFIS
+from .model import ANFIS, ANFISClassifier
 from .model_selection import KFold, train_test_split
 from .optim import HybridTrainer, SGDTrainer
 from .validation import ANFISMetrics, ANFISValidator, quick_evaluate
@@ -73,6 +78,7 @@ except ImportError:  # pragma: no cover
 __all__ = [
     # Core components
     "ANFIS",
+    "ANFISClassifier",
     "MembershipFunction",
     "GaussianMF",
     "Gaussian2MF",
@@ -100,6 +106,14 @@ __all__ = [
     "ANFISBuilder",
     "QuickANFIS",
     # Metrics
+    "softmax",
+    "cross_entropy",
+    "log_loss",
+    # Losses (training objectives)
+    "mse_loss",
+    "mse_grad",
+    "cross_entropy_loss",
+    "cross_entropy_grad",
     "mean_absolute_error",
     "mean_absolute_percentage_error",
     "mean_squared_error",
@@ -108,6 +122,7 @@ __all__ = [
     "r2_score",
     "pearson_correlation",
     "mean_squared_logarithmic_error",
+    "accuracy",
     # Clustering metrics
     "partition_coefficient",
     "classification_entropy",

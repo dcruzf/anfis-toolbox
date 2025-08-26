@@ -388,3 +388,79 @@ class ConsequentLayer:
         """
         self.gradients = np.zeros_like(self.parameters)
         self.last = {}
+
+
+class ClassificationConsequentLayer:
+    """Consequent layer that produces per-class logits for classification.
+
+    Each rule i has a vector of class logits with a linear function of inputs:
+    f_i(x) = W_i x + b_i, where W_i has shape (n_classes, n_inputs) and b_i (n_classes,).
+    We store parameters as a single array of shape (n_rules, n_classes, n_inputs + 1).
+    """
+
+    def __init__(self, n_rules: int, n_inputs: int, n_classes: int, random_state: int | None = None):
+        """Initializes the layer with the specified number of rules, inputs, and classes.
+
+        Args:
+            n_rules (int): Number of fuzzy rules in the layer.
+            n_inputs (int): Number of input features.
+            n_classes (int): Number of output classes.
+            random_state (int | None): Random seed for parameter initialization.
+
+        Attributes:
+            n_rules (int): Stores the number of fuzzy rules.
+            n_inputs (int): Stores the number of input features.
+            n_classes (int): Stores the number of output classes.
+
+
+            parameters (np.ndarray): Randomly initialized parameters for each rule, class, and input (including bias).
+            gradients (np.ndarray): Gradient values initialized to zeros, matching the shape of parameters.
+            last (dict): Dictionary for storing intermediate results or state.
+        """
+        self.n_rules = n_rules
+        self.n_inputs = n_inputs
+        self.n_classes = n_classes
+        if random_state is None:
+            self.parameters = np.random.randn(n_rules, n_classes, n_inputs + 1)
+        else:
+            rng = np.random.default_rng(random_state)
+            self.parameters = rng.normal(size=(n_rules, n_classes, n_inputs + 1))
+        self.gradients = np.zeros_like(self.parameters)
+        self.last = {}
+
+    def forward(self, x: np.ndarray, norm_w: np.ndarray) -> np.ndarray:
+        """Computes the forward pass for the classification consequent layer."""
+        batch = x.shape[0]
+        X_aug = np.hstack([x, np.ones((batch, 1))])  # (b, d+1)
+        # Compute per-rule class logits: (b, r, k)
+        f = np.einsum("bd,rkd->brk", X_aug, self.parameters)
+        # Weighted sum over rules -> logits (b, k)
+        logits = np.einsum("br,brk->bk", norm_w, f)
+        self.last = {"X_aug": X_aug, "norm_w": norm_w, "f": f}
+        return logits
+
+    def backward(self, dL_dlogits: np.ndarray):
+        """Computes the backward pass for the classification consequent layer."""
+        X_aug = self.last["X_aug"]  # (b, d+1)
+        norm_w = self.last["norm_w"]  # (b, r)
+        f = self.last["f"]  # (b, r, k)
+
+        # Gradients w.r.t. per-rule parameters
+        self.gradients = np.zeros_like(self.parameters)
+        # dL/df_{brk} = dL/dlogits_{bk} * norm_w_{br}
+        dL_df = dL_dlogits[:, None, :] * norm_w[:, :, None]  # (b, r, k)
+        # Accumulate over batch: grad[r,k,d] = sum_b dL_df[b,r,k] * X_aug[b,d]
+        self.gradients = np.einsum("brk,bd->rkd", dL_df, X_aug)
+
+        # dL/dnorm_w: sum_k dL/dlogits_{bk} * f_{brk}
+        dL_dnorm_w = np.einsum("bk,brk->br", dL_dlogits, f)
+
+        # dL/dx: sum_r sum_k dL/dlogits_{bk} * norm_w_{br} * W_{r,k,:}
+        W = self.parameters[:, :, :-1]  # (r,k,d)
+        dL_dx = np.einsum("bk,br,rkd->bd", dL_dlogits, norm_w, W)
+        return dL_dnorm_w, dL_dx
+
+    def reset(self):
+        """Resets the gradients and cached values."""
+        self.gradients = np.zeros_like(self.parameters)
+        self.last = {}
