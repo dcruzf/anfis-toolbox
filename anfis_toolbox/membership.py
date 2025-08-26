@@ -160,6 +160,172 @@ class GaussianMF(MembershipFunction):
         self.gradients["sigma"] += dL_dsigma
 
 
+class Gaussian2MF(MembershipFunction):
+    """Gaussian combination Membership Function (two-sided Gaussian).
+
+    This membership function uses Gaussian tails on both sides with an optional
+    flat region in the middle.
+
+    Parameters:
+        sigma1 (float): Standard deviation of the left Gaussian tail (must be > 0).
+        c1 (float): Center of the left Gaussian tail.
+        sigma2 (float): Standard deviation of the right Gaussian tail (must be > 0).
+        c2 (float): Center of the right Gaussian tail. Must satisfy c1 <= c2.
+
+    Definition (with c1 <= c2):
+        - For x < c1: μ(x) = exp(-((x - c1)^2) / (2*sigma1^2))
+        - For c1 <= x <= c2: μ(x) = 1
+        - For x > c2: μ(x) = exp(-((x - c2)^2) / (2*sigma2^2))
+
+    Special case (c1 == c2): asymmetric Gaussian centered at c1 with sigma1 on the
+    left side and sigma2 on the right side (no flat region).
+    """
+
+    def __init__(self, sigma1: float = 1.0, c1: float = 0.0, sigma2: float = 1.0, c2: float = 0.0):
+        """Initialize the membership function with two Gaussian components.
+
+        Args:
+            sigma1 (float, optional): Standard deviation of the first Gaussian. Must be positive. Defaults to 1.0.
+            c1 (float, optional): Center of the first Gaussian. Defaults to 0.0.
+            sigma2 (float, optional): Standard deviation of the second Gaussian. Must be positive. Defaults to 1.0.
+            c2 (float, optional): Center of the second Gaussian. Must satisfy c1 <= c2. Defaults to 0.0.
+
+        Raises:
+            ValueError: If sigma1 or sigma2 are not positive.
+            ValueError: If c1 > c2.
+
+        Attributes:
+            parameters (dict): Dictionary containing the parameters 'sigma1', 'c1', 'sigma2', 'c2'.
+            gradients (dict): Dictionary containing the gradients for each parameter, initialized to 0.0.
+        """
+        super().__init__()
+        if sigma1 <= 0:
+            raise ValueError(f"Parameter 'sigma1' must be positive, got sigma1={sigma1}")
+        if sigma2 <= 0:
+            raise ValueError(f"Parameter 'sigma2' must be positive, got sigma2={sigma2}")
+        if c1 > c2:
+            raise ValueError(f"Parameters must satisfy c1 <= c2, got c1={c1}, c2={c2}")
+
+        self.parameters = {"sigma1": float(sigma1), "c1": float(c1), "sigma2": float(sigma2), "c2": float(c2)}
+        self.gradients = {"sigma1": 0.0, "c1": 0.0, "sigma2": 0.0, "c2": 0.0}
+
+    def forward(self, x: np.ndarray) -> np.ndarray:
+        """Computes the output of a generalized bell-shaped membership function for the given input array.
+
+        The function divides the input space into three regions based on parameters `c1` and `c2`:
+        - Left region (`x < c1`): Applies a Gaussian function centered at `c1` with standard deviation `sigma1`.
+        - Middle region (`c1 <= x <= c2`): Output is 1.0 (full membership).
+        - Right region (`x > c2`): Applies a Gaussian function centered at `c2` with standard deviation `sigma2`.
+        Parameters
+        ----------
+        x : np.ndarray
+            Input array of values for which to compute the membership degree.
+
+        Returns:
+        -------
+        np.ndarray
+            Array of membership degrees corresponding to each input value.
+        """
+        x = np.asarray(x, dtype=float)
+        self.last_input = x
+
+        s1 = self.parameters["sigma1"]
+        c1 = self.parameters["c1"]
+        s2 = self.parameters["sigma2"]
+        c2 = self.parameters["c2"]
+
+        y = np.zeros_like(x, dtype=float)
+
+        # Regions
+        left_mask = x < c1
+        mid_mask = (x >= c1) & (x <= c2)
+        right_mask = x > c2
+
+        if np.any(left_mask):
+            xl = x[left_mask]
+            y[left_mask] = np.exp(-((xl - c1) ** 2) / (2.0 * s1 * s1))
+
+        if np.any(mid_mask):
+            y[mid_mask] = 1.0
+
+        if np.any(right_mask):
+            xr = x[right_mask]
+            y[right_mask] = np.exp(-((xr - c2) ** 2) / (2.0 * s2 * s2))
+
+        self.last_output = y
+        return y
+
+    def backward(self, dL_dy: np.ndarray):
+        """Computes and accumulates gradients of the membership function parameters with respect to the loss.
+
+        This method performs the backward pass for a piecewise membership function consisting of two Gaussian tails
+        and a flat middle region. It calculates the gradients for the parameters `c1`, `sigma1` (left Gaussian)
+        and `c2`, `sigma2` (right Gaussian) based on the provided upstream gradient `dL_dy`.
+        The gradients are accumulated in `self.gradients` for each parameter:
+            - "c1": center of the left Gaussian tail
+            - "sigma1": standard deviation of the left Gaussian tail
+            - "c2": center of the right Gaussian tail
+            - "sigma2": standard deviation of the right Gaussian tail
+        The flat middle region does not contribute to the gradients.
+        Parameters
+        ----------
+        dL_dy : np.ndarray
+            The upstream gradient of the loss with respect to the output of the membership function.
+
+        Returns:
+        -------
+        None
+            Gradients are accumulated in `self.gradients` in-place.
+        """
+        if self.last_input is None or self.last_output is None:
+            return
+
+        x = self.last_input
+        dL_dy = np.asarray(dL_dy)
+
+        s1 = self.parameters["sigma1"]
+        c1 = self.parameters["c1"]
+        s2 = self.parameters["sigma2"]
+        c2 = self.parameters["c2"]
+
+        # Regions
+        left_mask = x < c1
+        mid_mask = (x >= c1) & (x <= c2)
+        right_mask = x > c2
+
+        # Left Gaussian tail contributions (treat like a GaussianMF on that region)
+        if np.any(left_mask):
+            xl = x[left_mask]
+            yl = np.exp(-((xl - c1) ** 2) / (2.0 * s1 * s1))
+            z1 = (xl - c1) / s1
+            # Match GaussianMF derivative conventions
+            dmu_dc1 = yl * z1 / s1
+            dmu_dsigma1 = yl * (z1**2) / s1
+
+            dL_dc1 = np.sum(dL_dy[left_mask] * dmu_dc1)
+            dL_dsigma1 = np.sum(dL_dy[left_mask] * dmu_dsigma1)
+
+            self.gradients["c1"] += float(dL_dc1)
+            self.gradients["sigma1"] += float(dL_dsigma1)
+
+        # Mid region (flat) contributes no gradients
+        _ = mid_mask  # placeholder to document intentional no-op
+
+        # Right Gaussian tail contributions
+        if np.any(right_mask):
+            xr = x[right_mask]
+            yr = np.exp(-((xr - c2) ** 2) / (2.0 * s2 * s2))
+            z2 = (xr - c2) / s2
+            dmu_dc2 = yr * z2 / s2
+            dmu_dsigma2 = yr * (z2**2) / s2
+
+            dL_dc2 = np.sum(dL_dy[right_mask] * dmu_dc2)
+            dL_dsigma2 = np.sum(dL_dy[right_mask] * dmu_dsigma2)
+
+            self.gradients["c2"] += float(dL_dc2)
+            self.gradients["sigma2"] += float(dL_dsigma2)
+
+
 class TriangularMF(MembershipFunction):
     """Triangular Membership Function.
 

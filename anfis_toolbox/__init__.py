@@ -9,6 +9,7 @@ from .layers import ConsequentLayer, MembershipLayer, NormalizationLayer, RuleLa
 from .logging_config import disable_training_logs, enable_training_logs, setup_logging
 from .membership import (
     BellMF,
+    Gaussian2MF,
     GaussianMF,
     MembershipFunction,
     PiMF,
@@ -72,6 +73,7 @@ __all__ = [
     "ANFIS",
     "MembershipFunction",
     "GaussianMF",
+    "Gaussian2MF",
     "TriangularMF",
     "TrapezoidalMF",
     "BellMF",
