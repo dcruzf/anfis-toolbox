@@ -5,7 +5,13 @@ from pathlib import Path
 
 import pytest
 
-from anfis_toolbox.config import ANFISConfig, ANFISModelManager
+from anfis_toolbox.config import (
+    PREDEFINED_CONFIGS,
+    ANFISConfig,
+    ANFISModelManager,
+    create_config_from_preset,
+    list_presets,
+)
 from anfis_toolbox.model import ANFIS
 
 
@@ -669,3 +675,47 @@ class TestExtractConfig:
             for mf_info in mf_list:
                 assert mf_info["type"] in ["CustomMF1", "CustomMF2", "CustomMF3"]
                 assert isinstance(mf_info["parameters"], dict)
+
+
+def test_create_config_from_preset_success_and_list_presets():
+    # Ensure list_presets exposes all descriptions
+    presets = list_presets()
+    assert isinstance(presets, dict)
+    for name, info in PREDEFINED_CONFIGS.items():
+        assert name in presets
+        assert presets[name] == info["description"]
+
+    # Build config from a known preset and verify content
+    cfg = create_config_from_preset("1d_function")
+    assert isinstance(cfg, ANFISConfig)
+    d = cfg.to_dict()
+    assert d["inputs"].keys() == {"x"}
+    assert d["training"]["method"] == PREDEFINED_CONFIGS["1d_function"]["training"]["method"]
+
+
+def test_create_config_from_preset_invalid_name():
+    import pytest
+
+    with pytest.raises(ValueError) as exc:
+        create_config_from_preset("does_not_exist")
+    # Error message lists available presets
+    for name in PREDEFINED_CONFIGS.keys():
+        assert name in str(exc.value)
+
+
+def test_save_model_config_extraction_failure_logs_warning(tmp_path, caplog):
+    # Hit the warning path when _extract_config raises (lines 169-170)
+    from unittest.mock import patch
+
+    model = TestANFISModelManager().create_simple_model()
+    model_file = tmp_path / "model.pkl"
+    cfg_file = model_file.with_suffix(".config.json")
+
+    with patch.object(ANFISModelManager, "_extract_config", side_effect=RuntimeError("boom")):
+        caplog.set_level("WARNING")
+        ANFISModelManager.save_model(model, model_file, include_config=True)
+        # Model is still saved
+        assert model_file.exists()
+        # Config should not be created and a warning should be logged
+        assert not cfg_file.exists()
+        assert any("Could not save model configuration" in rec.message for rec in caplog.records)

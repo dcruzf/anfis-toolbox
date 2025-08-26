@@ -60,8 +60,8 @@ nav:
     - Introduction: guide/introduction.md
   - Membership Functions: guide/membership_functions.md
   - Examples:
-    - Overview: examples/index.md
-    - Basic Usage: examples/basic.md
+    - Basic Example: examples/basic_example.ipynb
+    - Intermediate Example: examples/intermediate_example.ipynb
   - API Reference:
     - Overview: api/overview.md
     - Core: api/core.md
@@ -90,7 +90,8 @@ plugins:
   - git-revision-date-localized:
       enable_creation_date: true
       type: timeago
-
+  - mkdocs-jupyter:
+      execute: false
 markdown_extensions:
   - abbr
   - admonition

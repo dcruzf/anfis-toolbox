@@ -4,6 +4,7 @@ __version__ = "0.1.0"
 
 # Import builders for easy model creation
 from .builders import ANFISBuilder, QuickANFIS
+from .clustering import FuzzyCMeans
 from .layers import ConsequentLayer, MembershipLayer, NormalizationLayer, RuleLayer
 from .logging_config import disable_training_logs, enable_training_logs, setup_logging
 from .membership import (
@@ -17,49 +18,23 @@ from .membership import (
     TriangularMF,
     ZShapedMF,
 )
+from .metrics import (
+    classification_entropy,
+    mean_absolute_error,
+    mean_absolute_percentage_error,
+    mean_squared_error,
+    mean_squared_logarithmic_error,
+    partition_coefficient,
+    pearson_correlation,
+    r2_score,
+    root_mean_squared_error,
+    symmetric_mean_absolute_percentage_error,
+    xie_beni_index,
+)
 from .model import ANFIS
-
-# Import validation utilities (optional)
-try:  # pragma: no cover
-    from .validation import ANFISMetrics, ANFISValidator, quick_evaluate
-
-    _HAS_VALIDATION = True
-except ImportError:
-    _HAS_VALIDATION = False
-
-    # Create dummy classes for documentation
-    class ANFISValidator:
-        """Dummy class for validation when scikit-learn is not available."""
-
-        def __init__(self, *args, **kwargs):  # pragma: no cover
-            """Initialize dummy validator."""
-            raise ImportError(  # pragma: no cover
-                "Validation features require scikit-learn. Install with: pip install anfis-toolbox[validation]"
-            )
-
-    class ANFISMetrics:
-        """Dummy class for metrics when scikit-learn is not available."""
-
-        @staticmethod
-        def regression_metrics(*args, **kwargs):  # pragma: no cover
-            """Dummy method for regression metrics when scikit-learn is not available."""
-            raise ImportError(  # pragma: no cover
-                "Validation features require scikit-learn. Install with: pip install anfis-toolbox[validation]"
-            )
-
-        @staticmethod
-        def model_complexity_metrics(*args, **kwargs):  # pragma: no cover
-            """Dummy method for model complexity metrics when scikit-learn is not available."""
-            raise ImportError(  # pragma: no cover
-                "Validation features require scikit-learn. Install with: pip install anfis-toolbox[validation]"
-            )
-
-    def quick_evaluate(*args, **kwargs):  # pragma: no cover
-        """Dummy function for quick evaluation when scikit-learn is not available."""
-        raise ImportError(  # pragma: no cover
-            "Validation features require scikit-learn. Install with: pip install anfis-toolbox[validation]"
-        )
-
+from .model_selection import KFold, train_test_split
+from .optim import HybridTrainer, SGDTrainer
+from .validation import ANFISMetrics, ANFISValidator, quick_evaluate
 
 # Optional imports with graceful fallback
 try:
@@ -108,6 +83,9 @@ __all__ = [
     "RuleLayer",
     "NormalizationLayer",
     "ConsequentLayer",
+    # Optimizers/trainers
+    "SGDTrainer",
+    "HybridTrainer",
     # Logging
     "setup_logging",
     "enable_training_logs",
@@ -115,12 +93,30 @@ __all__ = [
     # Easy model creation
     "ANFISBuilder",
     "QuickANFIS",
+    # Metrics
+    "mean_absolute_error",
+    "mean_absolute_percentage_error",
+    "mean_squared_error",
+    "root_mean_squared_error",
+    "symmetric_mean_absolute_percentage_error",
+    "r2_score",
+    "pearson_correlation",
+    "mean_squared_logarithmic_error",
+    # Clustering metrics
+    "partition_coefficient",
+    "classification_entropy",
+    "xie_beni_index",
     # Validation and metrics
     "ANFISValidator",
     "ANFISMetrics",
     "quick_evaluate",
+    # Model selection helpers
+    "KFold",
+    "train_test_split",
     # Visualization (may raise ImportError if matplotlib not available)
     "ANFISVisualizer",
     "quick_plot_training",
     "quick_plot_results",
+    # Clustering
+    "FuzzyCMeans",
 ]

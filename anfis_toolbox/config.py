@@ -5,7 +5,7 @@ import logging
 import pickle
 from copy import deepcopy
 from pathlib import Path
-from typing import Any, Union
+from typing import Any
 
 from .builders import ANFISBuilder
 from .model import ANFIS
@@ -95,7 +95,7 @@ class ANFISConfig:
 
         return builder.build()
 
-    def save(self, filepath: Union[str, Path]):
+    def save(self, filepath: str | Path):
         """Save configuration to JSON file.
 
         Parameters:
@@ -108,7 +108,7 @@ class ANFISConfig:
             json.dump(self.config, f, indent=2)
 
     @classmethod
-    def load(cls, filepath: Union[str, Path]) -> "ANFISConfig":
+    def load(cls, filepath: str | Path) -> "ANFISConfig":
         """Load configuration from JSON file.
 
         Parameters:
@@ -144,7 +144,7 @@ class ANFISModelManager:
     """Model management utilities for saving/loading trained ANFIS models."""
 
     @staticmethod
-    def save_model(model: ANFIS, filepath: Union[str, Path], include_config: bool = True):
+    def save_model(model: ANFIS, filepath: str | Path, include_config: bool = True):
         """Save trained ANFIS model to file.
 
         Parameters:
@@ -170,7 +170,7 @@ class ANFISModelManager:
                 logging.warning("Could not save model configuration: %s", e)
 
     @staticmethod
-    def load_model(filepath: Union[str, Path]) -> ANFIS:
+    def load_model(filepath: str | Path) -> ANFIS:
         """Load trained ANFIS model from file.
 
         Parameters:

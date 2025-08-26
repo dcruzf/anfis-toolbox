@@ -4,10 +4,10 @@ import logging
 import time
 
 import numpy as np
-from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
-from sklearn.model_selection import KFold, train_test_split
 
+from .metrics import mean_absolute_error, mean_squared_error, r2_score
 from .model import ANFIS
+from .model_selection import KFold, train_test_split
 
 
 class ANFISValidator:
@@ -25,6 +25,10 @@ class ANFISValidator:
         epochs: int = 50,
         learning_rate: float = 0.01,
         method: str = "hybrid",
+        *,
+        n_mfs: int = 3,
+        shuffle: bool = True,
+        random_state: int | None = 42,
     ) -> dict[str, float]:
         """Perform cross-validation on the ANFIS model.
 
@@ -35,11 +39,14 @@ class ANFISValidator:
             epochs: Training epochs per fold
             learning_rate: Learning rate for training
             method: Training method ('hybrid' or 'backprop')
+            n_mfs: Number of membership functions per input for fold models
+            shuffle: Whether to shuffle data before splitting into folds
+            random_state: Random seed for reproducibility when shuffling
 
         Returns:
             Dictionary with cross-validation metrics
         """
-        kfold = KFold(n_splits=cv, shuffle=True, random_state=42)
+        kfold = KFold(n_splits=cv, shuffle=shuffle, random_state=random_state)
 
         fold_scores = {"mse": [], "mae": [], "r2": [], "training_time": []}
 
@@ -54,14 +61,19 @@ class ANFISValidator:
             # Import here to avoid circular imports
             from . import builders
 
-            fold_model = builders.QuickANFIS.for_regression(X_train, n_mfs=3)
+            fold_model = builders.QuickANFIS.for_regression(X_train, n_mfs=n_mfs)
 
             # Train model
             start_time = time.time()
             if method.lower() == "hybrid":
-                fold_model.fit_hybrid(X_train, y_train, epochs=epochs, learning_rate=learning_rate, verbose=False)
-            else:
+                # Default fit uses HybridTrainer
                 fold_model.fit(X_train, y_train, epochs=epochs, learning_rate=learning_rate, verbose=False)
+            else:
+                # Use SGDTrainer explicitly for backprop branch
+                from .optim import SGDTrainer
+
+                trainer = SGDTrainer(learning_rate=learning_rate, epochs=epochs, verbose=False)
+                fold_model.fit(X_train, y_train, trainer=trainer)
 
             training_time = time.time() - start_time
 
@@ -89,6 +101,8 @@ class ANFISValidator:
         epochs: int = 50,
         learning_rate: float = 0.01,
         method: str = "hybrid",
+        *,
+        random_state: int | None = 42,
     ) -> dict:
         """Train model with train-test split and return detailed evaluation.
 
@@ -104,14 +118,18 @@ class ANFISValidator:
             Dictionary with evaluation results
         """
         # Split data
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=42)
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=random_state)
 
         # Train model
         start_time = time.time()
         if method.lower() == "hybrid":
-            losses = self.model.fit_hybrid(X_train, y_train, epochs=epochs, learning_rate=learning_rate, verbose=False)
-        else:
+            # Default fit uses HybridTrainer
             losses = self.model.fit(X_train, y_train, epochs=epochs, learning_rate=learning_rate, verbose=False)
+        else:
+            from .optim import SGDTrainer
+
+            trainer = SGDTrainer(learning_rate=learning_rate, epochs=epochs, verbose=False)
+            losses = self.model.fit(X_train, y_train, trainer=trainer)
 
         training_time = time.time() - start_time
 
@@ -153,6 +171,9 @@ class ANFISValidator:
         epochs: int = 50,
         learning_rate: float = 0.01,
         method: str = "hybrid",
+        *,
+        n_mfs: int = 3,
+        random_state: int | None = 42,
     ) -> dict:
         """Generate learning curves for different training set sizes.
 
@@ -173,14 +194,15 @@ class ANFISValidator:
         results = {"train_sizes": [], "train_scores": [], "val_scores": [], "training_times": []}
 
         # Use 80% of data for learning curve, 20% fixed for validation
-        X_lc, X_val, y_lc, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
+        X_lc, X_val, y_lc, y_val = train_test_split(X, y, test_size=0.2, random_state=random_state)
 
         for size in train_sizes:
             logging.info("Training with %.0f%% of training data...", size * 100)
 
-            # Sample training data
-            n_samples = int(len(X_lc) * size)
-            indices = np.random.choice(len(X_lc), n_samples, replace=False)
+            # Sample training data reproducibly
+            n_samples = max(1, int(len(X_lc) * size))
+            rng = np.random.RandomState(random_state)
+            indices = rng.choice(len(X_lc), n_samples, replace=False)
             X_train_size = X_lc[indices]
             y_train_size = y_lc[indices]
 
@@ -188,16 +210,17 @@ class ANFISValidator:
             # Import here to avoid circular imports
             from . import builders
 
-            size_model = builders.QuickANFIS.for_regression(X_train_size, n_mfs=3)
+            size_model = builders.QuickANFIS.for_regression(X_train_size, n_mfs=n_mfs)
 
             # Train
             start_time = time.time()
             if method.lower() == "hybrid":
-                size_model.fit_hybrid(
-                    X_train_size, y_train_size, epochs=epochs, learning_rate=learning_rate, verbose=False
-                )
-            else:
                 size_model.fit(X_train_size, y_train_size, epochs=epochs, learning_rate=learning_rate, verbose=False)
+            else:
+                from .optim import SGDTrainer
+
+                trainer = SGDTrainer(learning_rate=learning_rate, epochs=epochs, verbose=False)
+                size_model.fit(X_train_size, y_train_size, trainer=trainer)
 
             training_time = time.time() - start_time
 
@@ -309,5 +332,8 @@ def quick_evaluate(
         print(f"Maximum Error:                {metrics['max_error']:.6f}")  # noqa: T201
         print(f"Standard Deviation of Error:  {metrics['std_error']:.6f}")  # noqa: T201
         print("=" * 50)  # noqa: T201
+    else:  # pragma: no cover - covered by explicit test path without printing
+        # No output requested; simply return the computed metrics
+        pass
 
     return metrics

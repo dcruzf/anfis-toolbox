@@ -40,6 +40,10 @@ lint: .uv
 test: .hatch
 	uv tool run hatch test -c
 
+.PHONY: test-no-viz ## Run tests skipping visualization tests (faster)
+test-no-viz: .uv
+	uv tool run hatch test -c -k "not test_visualization"
+
 .PHONY: test-all ## Run tests with coverage
 test-all: .hatch
 	uv tool run hatch test -c --all
@@ -62,6 +66,7 @@ docs:
     --with mkdocstrings --with mkdocstrings-python \
     --with mkdocs-awesome-pages-plugin \
     --with mkdocs-git-revision-date-localized-plugin \
+	--with mkdocs-jupyter \
     --with ruff \
     mkdocs serve -a 127.0.0.1:8000
 
@@ -71,12 +76,13 @@ docs-build: .uv
 		--with mkdocstrings --with mkdocstrings-python \
 		--with mkdocs-awesome-pages-plugin \
 		--with mkdocs-git-revision-date-localized-plugin \
+		--with mkdocs-jupyter \
 		--with ruff \
 		mkdocs build
 
 .PHONY: jupyter  ## Run Jupyter Lab with uvx
 jupyter: .uv
-	uv run --with jupyterlab --with plotly jupyter lab
+	uv run --with .[all] --with jupyterlab --with plotly jupyter lab
 
 
 .PHONY: clean  ## Clear local caches and build artifacts
