@@ -53,3 +53,14 @@ def test_adam_with_classifier_does_not_error_on_forward_backward():
     trainer = AdamTrainer(learning_rate=0.005, epochs=1, batch_size=5, shuffle=False, verbose=False)
     losses = trainer.fit(clf, X, y)
     assert len(losses) == 1 and np.isfinite(losses[0])
+
+
+def test_adam_accepts_1d_target_and_reshapes():
+    rng = np.random.default_rng(3)
+    X = rng.normal(size=(25, 2))
+    # 1D target to exercise the internal reshape branch
+    y = 0.7 * X[:, 0] - 0.1 * X[:, 1]
+    model = _make_regression_model(n_inputs=2)
+    trainer = AdamTrainer(learning_rate=0.01, epochs=1, batch_size=None, shuffle=False, verbose=False)
+    losses = trainer.fit(model, X, y)
+    assert len(losses) == 1 and np.isfinite(losses[0])
