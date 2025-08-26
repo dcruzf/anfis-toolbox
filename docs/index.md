@@ -64,7 +64,7 @@ That's it! 🎉 You just created and trained a neuro-fuzzy system!
 
 === "Full Installation"
 
-    Install with all features (visualization + validation):
+    Install with all features (visualization):
 
     ```bash
     pip install anfis-toolbox[all]
@@ -78,8 +78,7 @@ That's it! 🎉 You just created and trained a neuro-fuzzy system!
     # For visualization features
     pip install anfis-toolbox[visualization]
 
-    # For validation features
-    pip install anfis-toolbox[validation]
+    # Validation features are built-in (no extra needed)
     ```
 
 === "Development Installation"
@@ -124,7 +123,7 @@ visualizer.plot_training_curves(losses)  # Training progress
 visualizer.plot_prediction_vs_target(X, y)  # Model performance
 ```
 
-### ✅ Validation Made Easy
+### ✅ Validation Made Easy (Built-in)
 
 Comprehensive model evaluation with minimal code:
 

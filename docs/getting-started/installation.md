@@ -27,7 +27,7 @@ This gives you:
 - ✅ Model persistence and configuration
 - ✅ Basic utilities
 
-**Dependencies**: `numpy`, `scipy`
+**Dependencies**: `numpy`
 
 ### Full Installation (Recommended)
 
@@ -43,7 +43,7 @@ This includes everything from the basic installation plus:
 - ✅ **Validation**: Cross-validation, metrics, model comparison
 - ✅ **Examples**: Complete example datasets and notebooks
 
-**Additional Dependencies**: `matplotlib`, `scikit-learn`
+**Additional Dependencies**: `matplotlib`
 
 ### Feature-Specific Installation
 
@@ -62,19 +62,7 @@ pip install anfis-toolbox[visualization]
 - `plot_training_curves()`
 - `plot_prediction_vs_target()`
 
-#### Validation Features
-
-```bash
-pip install anfis-toolbox[validation]
-```
-
-**Adds**: `scikit-learn` for advanced metrics and validation
-
-- `ANFISValidator` class
-- `ANFISMetrics` utilities
-- Cross-validation support
-- Learning curves
-- Model comparison tools
+Validation features are now built-in and do not require scikit-learn. You can still install scikit-learn optionally; if present, compatible utilities will delegate to it.
 
 ### Development Installation
 
@@ -141,11 +129,9 @@ Final training loss: 0.0234
 
 #### Import Error: No module named 'sklearn'
 
-If you get this error when using validation features:
+Validation no longer requires scikit-learn. If you want to use scikit-learn alongside, install it with:
 
 ```bash
-pip install anfis-toolbox[validation]
-# or
 pip install scikit-learn
 ```
 
@@ -168,7 +154,7 @@ For better performance with large models:
 pip install numpy[mkl]
 
 # Or consider switching to conda
-conda install numpy scipy matplotlib scikit-learn
+conda install numpy matplotlib scikit-learn
 pip install anfis-toolbox
 ```
 

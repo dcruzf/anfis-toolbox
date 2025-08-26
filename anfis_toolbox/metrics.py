@@ -1,0 +1,245 @@
+"""Common metrics utilities for ANFIS Toolbox.
+
+This module provides lightweight, dependency-free metrics that are useful
+for training and evaluating ANFIS models.
+"""
+
+from __future__ import annotations
+
+import numpy as np
+
+
+def mean_squared_error(y_true, y_pred) -> float:
+    """Compute the mean squared error (MSE).
+
+    Parameters:
+        y_true: Array-like of true target values, shape (...,)
+        y_pred: Array-like of predicted values, same shape as y_true
+
+    Returns:
+        The mean of squared differences over all elements as a float.
+
+    Notes:
+        - Inputs are coerced to NumPy arrays with dtype=float.
+        - Broadcasting follows NumPy semantics. If shapes are not compatible
+          for element-wise subtraction, a ValueError will be raised by NumPy.
+    """
+    yt = np.asarray(y_true, dtype=float)
+    yp = np.asarray(y_pred, dtype=float)
+    diff = yt - yp
+    return float(np.mean(diff * diff))
+
+
+def mean_absolute_error(y_true, y_pred) -> float:
+    """Compute the mean absolute error (MAE).
+
+    Parameters:
+        y_true: Array-like of true target values, shape (...,)
+        y_pred: Array-like of predicted values, same shape as y_true
+
+    Returns:
+        The mean of absolute differences over all elements as a float.
+
+    Notes:
+        - Inputs are coerced to NumPy arrays with dtype=float.
+        - Broadcasting follows NumPy semantics. If shapes are not compatible
+          for element-wise subtraction, a ValueError will be raised by NumPy.
+    """
+    yt = np.asarray(y_true, dtype=float)
+    yp = np.asarray(y_pred, dtype=float)
+    return float(np.mean(np.abs(yt - yp)))
+
+
+def root_mean_squared_error(y_true, y_pred) -> float:
+    """Compute the root mean squared error (RMSE).
+
+    This is simply the square root of mean_squared_error.
+    """
+    mse = mean_squared_error(y_true, y_pred)
+    return float(np.sqrt(mse))
+
+
+def mean_absolute_percentage_error(y_true, y_pred, epsilon: float = 1e-12) -> float:
+    """Compute the mean absolute percentage error (MAPE) in percent.
+
+    MAPE = mean( abs((y_true - y_pred) / max(abs(y_true), epsilon)) ) * 100
+
+    Parameters:
+        y_true: Array-like of true target values.
+        y_pred: Array-like of predicted values, broadcastable to y_true.
+        epsilon: Small constant to avoid division by zero when y_true == 0.
+
+    Returns:
+        MAPE value as a percentage (float).
+    """
+    yt = np.asarray(y_true, dtype=float)
+    yp = np.asarray(y_pred, dtype=float)
+    denom = np.maximum(np.abs(yt), float(epsilon))
+    return float(np.mean(np.abs((yt - yp) / denom)) * 100.0)
+
+
+def symmetric_mean_absolute_percentage_error(y_true, y_pred, epsilon: float = 1e-12) -> float:
+    """Compute the symmetric mean absolute percentage error (SMAPE) in percent.
+
+    SMAPE = mean( 200 * |y_true - y_pred| / (|y_true| + |y_pred|) )
+    with an epsilon added to denominator to avoid division by zero.
+
+    Parameters:
+        y_true: Array-like of true target values.
+        y_pred: Array-like of predicted values, broadcastable to y_true.
+        epsilon: Small constant added to denominator to avoid division by zero.
+
+    Returns:
+        SMAPE value as a percentage (float).
+    """
+    yt = np.asarray(y_true, dtype=float)
+    yp = np.asarray(y_pred, dtype=float)
+    denom = np.maximum(np.abs(yt) + np.abs(yp), float(epsilon))
+    return float(np.mean(200.0 * np.abs(yt - yp) / denom))
+
+
+def r2_score(y_true, y_pred, epsilon: float = 1e-12) -> float:
+    """Compute the coefficient of determination R^2.
+
+    R^2 = 1 - SS_res / SS_tot, where SS_res = sum((y - y_hat)^2)
+    and SS_tot = sum((y - mean(y))^2). If SS_tot is ~0 (constant target),
+    returns 1.0 when predictions match the constant target (SS_res ~0),
+    otherwise 0.0.
+    """
+    yt = np.asarray(y_true, dtype=float)
+    yp = np.asarray(y_pred, dtype=float)
+    diff = yt - yp
+    ss_res = float(np.sum(diff * diff))
+    yt_mean = float(np.mean(yt))
+    ss_tot = float(np.sum((yt - yt_mean) ** 2))
+    if ss_tot <= float(epsilon):
+        return 1.0 if ss_res <= float(epsilon) else 0.0
+    return 1.0 - ss_res / ss_tot
+
+
+def pearson_correlation(y_true, y_pred, epsilon: float = 1e-12) -> float:
+    """Compute the Pearson correlation coefficient r.
+
+    Returns 0.0 when the standard deviation of either input is ~0 (undefined r).
+    """
+    yt = np.asarray(y_true, dtype=float)
+    yp = np.asarray(y_pred, dtype=float)
+    yt_centered = yt - np.mean(yt)
+    yp_centered = yp - np.mean(yp)
+    num = float(np.sum(yt_centered * yp_centered))
+    den = float(np.sqrt(np.sum(yt_centered * yt_centered) * np.sum(yp_centered * yp_centered)))
+    if den <= float(epsilon):
+        return 0.0
+    return num / den
+
+
+def mean_squared_logarithmic_error(y_true, y_pred) -> float:
+    """Compute the mean squared logarithmic error (MSLE).
+
+    Requires non-negative inputs. Uses log1p for numerical stability:
+    MSLE = mean( (log1p(y_true) - log1p(y_pred))^2 ).
+    """
+    yt = np.asarray(y_true, dtype=float)
+    yp = np.asarray(y_pred, dtype=float)
+    if np.any(yt < 0) or np.any(yp < 0):
+        raise ValueError("mean_squared_logarithmic_error requires non-negative y_true and y_pred")
+    diff = np.log1p(yt) - np.log1p(yp)
+    return float(np.mean(diff * diff))
+
+
+# -----------------------------
+# Clustering metrics (FCM)
+# -----------------------------
+
+
+def partition_coefficient(U: np.ndarray) -> float:
+    """Bezdek's Partition Coefficient (PC) in [1/k, 1]. Higher is crisper.
+
+    Parameters:
+        U: Membership matrix of shape (n_samples, n_clusters).
+
+    Returns:
+        PC value as float.
+    """
+    U = np.asarray(U, dtype=float)
+    if U.ndim != 2:
+        raise ValueError("U must be a 2D membership matrix")
+    n = U.shape[0]
+    if n == 0:
+        return 0.0
+    return float(np.sum(U * U) / float(n))
+
+
+def classification_entropy(U: np.ndarray, epsilon: float = 1e-12) -> float:
+    """Classification Entropy (CE). Lower is better (crisper).
+
+    Parameters:
+        U: Membership matrix of shape (n_samples, n_clusters).
+        epsilon: Small constant to avoid log(0).
+
+    Returns:
+        CE value as float.
+    """
+    U = np.asarray(U, dtype=float)
+    if U.ndim != 2:
+        raise ValueError("U must be a 2D membership matrix")
+    n = U.shape[0]
+    if n == 0:
+        return 0.0
+    Uc = np.clip(U, float(epsilon), 1.0)
+    return float(-np.sum(Uc * np.log(Uc)) / float(n))
+
+
+def xie_beni_index(
+    X: np.ndarray,
+    U: np.ndarray,
+    C: np.ndarray,
+    m: float = 2.0,
+    epsilon: float = 1e-12,
+) -> float:
+    """Xie–Beni index (XB). Lower is better.
+
+    XB = sum_i sum_k u_ik^m ||x_i - v_k||^2 / (n * min_{p!=q} ||v_p - v_q||^2)
+
+    Parameters:
+        X: Data array, shape (n_samples, n_features) or (n_samples,).
+        U: Membership matrix, shape (n_samples, n_clusters).
+        C: Cluster centers, shape (n_clusters, n_features).
+        m: Fuzzifier (>1).
+        epsilon: Small constant to avoid division by zero.
+
+    Returns:
+        XB value as float (np.inf when centers < 2).
+    """
+    X = np.asarray(X, dtype=float)
+    if X.ndim == 1:
+        X = X.reshape(-1, 1)
+    if X.ndim != 2:
+        raise ValueError("X must be 1D or 2D array-like")
+    U = np.asarray(U, dtype=float)
+    C = np.asarray(C, dtype=float)
+    if U.ndim != 2:
+        raise ValueError("U must be a 2D membership matrix")
+    if C.ndim != 2:
+        raise ValueError("C must be a 2D centers matrix")
+    if X.shape[0] != U.shape[0]:
+        raise ValueError("X and U must have the same number of samples")
+    if C.shape[1] != X.shape[1]:
+        raise ValueError("C and X must have the same number of features")
+    if C.shape[0] < 2:
+        return float(np.inf)
+    m = float(m)
+
+    # distances (n,k)
+    d2 = ((X[:, None, :] - C[None, :, :]) ** 2).sum(axis=2)
+    num = float(np.sum((U**m) * d2))
+
+    # min squared distance between distinct centers
+    diffs = C[:, None, :] - C[None, :, :]
+    dist2 = (diffs * diffs).sum(axis=2)
+    k = C.shape[0]
+    idx = np.arange(k)
+    dist2[idx, idx] = np.inf
+    den = float(np.min(dist2))
+    den = max(den, float(epsilon))
+    return num / (float(X.shape[0]) * den)

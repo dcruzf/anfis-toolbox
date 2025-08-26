@@ -25,6 +25,11 @@ def simple_rule_layer():
     return RuleLayer(input_names=["x1", "x2"], mf_per_input=[2, 2])
 
 
+def test_membership_layer_property(simple_membership_layer):
+    """Test MembershipLayer properties."""
+    assert simple_membership_layer.membership_functions
+
+
 def test_membership_layer_forward(simple_membership_layer):
     """Test MembershipLayer forward pass."""
     x = np.array([[0.0, 0.0], [1.0, 1.0]])  # shape (2, 2)
