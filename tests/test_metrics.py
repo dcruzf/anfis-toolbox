@@ -285,6 +285,19 @@ def test_cross_entropy_with_int_labels_and_one_hot_and_empty():
     assert np.isclose(cross_entropy([], np.zeros((0, 2))), 0.0)
 
 
+def test_cross_entropy_mismatch_errors():
+    # Integer labels length mismatch with logits batch size
+    logits = np.array([[1.0, -1.0], [0.5, 0.1]])  # n=2
+    y_int_bad = np.array([0])  # length 1 != 2
+    with pytest.raises(ValueError, match="y_true length must match logits batch size"):
+        cross_entropy(y_int_bad, logits)
+
+    # One-hot shape mismatch with logits
+    y_oh_bad = np.array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]])  # (2,3) vs logits (2,2)
+    with pytest.raises(ValueError, match="shape must match logits"):
+        cross_entropy(y_oh_bad, logits)
+
+
 def test_log_loss_int_and_one_hot_and_mismatch_errors():
     P = np.array([[0.8, 0.2], [0.1, 0.9]])
     y_int = np.array([0, 1])
@@ -307,3 +320,10 @@ def test_accuracy_from_logits_probs_and_indices_and_length_mismatch():
     assert acc1 == acc2 == acc3
     with pytest.raises(ValueError):
         accuracy(np.array([0, 1]), logits)
+
+
+def test_accuracy_with_one_hot_y_true():
+    # One-hot y_true; y_pred as class indices
+    y_oh = np.array([[1.0, 0.0], [0.0, 1.0], [0.0, 1.0]])
+    preds = np.array([0, 1, 1])
+    assert np.isclose(accuracy(y_oh, preds), 1.0)

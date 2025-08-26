@@ -120,3 +120,51 @@ def test_classifier_parameters_and_gradients_management():
     model.reset_gradients()
     grads2 = model.get_gradients()
     np.testing.assert_array_equal(grads2["consequent"], 0)
+
+
+def test_classifier_set_parameters_without_consequent_updates_only_membership():
+    rng = np.random.default_rng(3)
+    X = rng.normal(size=(10, 2))
+    model = QuickANFIS.for_classification(X, n_classes=2, n_mfs=2)
+    params_before = model.get_parameters()
+    # Build membership-only params dict
+    memb_only = {"membership": params_before["membership"]}
+    # tweak a membership param
+    first_name = next(iter(memb_only["membership"]))
+    memb_only["membership"][first_name][0]["mean"] += 0.123
+    model.set_parameters(memb_only)
+    params_after = model.get_parameters()
+    # Consequent unchanged
+    np.testing.assert_array_equal(params_after["consequent"], params_before["consequent"])
+    # Membership changed for the modified entry
+    assert np.isclose(params_after["membership"][first_name][0]["mean"], memb_only["membership"][first_name][0]["mean"])
+
+
+def test_classifier_set_parameters_without_membership_updates_only_consequent():
+    rng = np.random.default_rng(4)
+    X = rng.normal(size=(8, 1))
+    model = QuickANFIS.for_classification(X, n_classes=3, n_mfs=2)
+    params_before = model.get_parameters()
+    new_consequent = np.ones_like(params_before["consequent"]) * 2.5
+    model.set_parameters({"consequent": new_consequent})
+    params_after = model.get_parameters()
+    np.testing.assert_array_equal(params_after["consequent"], new_consequent)
+    assert params_after["membership"] == params_before["membership"]
+
+
+def test_classifier_set_parameters_membership_missing_name_skips_safely():
+    rng = np.random.default_rng(5)
+    X = rng.normal(size=(12, 2))
+    model = QuickANFIS.for_classification(X, n_classes=2, n_mfs=2)
+    params_before = model.get_parameters()
+    # Keep only one input's membership params to trigger the continue path
+    one_name = list(params_before["membership"].keys())[0]
+    partial_membership = {one_name: params_before["membership"][one_name]}
+    model.set_parameters({"membership": partial_membership})
+    params_after = model.get_parameters()
+    # Updated for provided name
+    assert params_after["membership"][one_name] == partial_membership[one_name]
+    # Unprovided input remains unchanged
+    remaining = [n for n in params_before["membership"].keys() if n != one_name]
+    for n in remaining:
+        assert params_after["membership"][n] == params_before["membership"][n]
