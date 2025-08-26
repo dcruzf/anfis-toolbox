@@ -5,6 +5,7 @@ import numpy as np
 from .clustering import FuzzyCMeans
 from .membership import (
     BellMF,
+    Gaussian2MF,
     GaussianMF,
     PiMF,
     SigmoidalMF,
@@ -27,6 +28,7 @@ class ANFISBuilder:
         self._dispatch = {
             # Canonical
             "gaussian": self._create_gaussian_mfs,
+            "gaussian2": self._create_gaussian2_mfs,
             "triangular": self._create_triangular_mfs,
             "trapezoidal": self._create_trapezoidal_mfs,
             "bell": self._create_bell_mfs,
@@ -59,7 +61,7 @@ class ANFISBuilder:
             range_max: Maximum value of the input range
             n_mfs: Number of membership functions (default: 3)
             mf_type: Type of membership functions. Supported:
-                'gaussian', 'triangular', 'trapezoidal',
+                'gaussian', 'gaussian2', 'triangular', 'trapezoidal',
                 'bell', 'sigmoidal', 'sshape', 'zshape', 'pi'
             overlap: Overlap factor between adjacent MFs (0.0 to 1.0)
 
@@ -163,6 +165,18 @@ class ANFISBuilder:
 
         if key == "gaussian":
             return [GaussianMF(mean=float(c), sigma=float(s)) for c, s in zip(centers, sigmas, strict=False)]
+        if key == "gaussian2":
+            mfs: list[Gaussian2MF] = []
+            plateau_frac = 0.3
+            for c, s, w in zip(centers, sigmas, widths, strict=False):
+                half_plateau = (w * plateau_frac) / 2.0
+                c1 = float(max(c - half_plateau, rmin))
+                c2 = float(min(c + half_plateau, rmax))
+                if not (c1 < c2):
+                    eps = 1e-6
+                    c1, c2 = c - eps, c + eps
+                mfs.append(Gaussian2MF(sigma1=float(s), c1=c1, sigma2=float(s), c2=c2))
+            return mfs
         if key in {"bell", "gbell"}:
             # map sigma to bell half-width a; keep b=2 by default
             return [BellMF(a=float(s), b=2.0, c=float(c)) for c, s in zip(centers, sigmas, strict=False)]
@@ -241,7 +255,9 @@ class ANFISBuilder:
                     a, b, cr, d = c - 2 * eps, c - eps, c + eps, c + 2 * eps
                 mfs.append(PiMF(a, b, cr, d))
             return mfs
-        supported = "gaussian, bell/gbell, triangular, trapezoidal, sigmoidal/sigmoid, sshape/s, zshape/z, pi/pimf"
+        supported = (
+            "gaussian, gaussian2, bell/gbell, triangular, trapezoidal, sigmoidal/sigmoid, sshape/s, zshape/z, pi/pimf"
+        )
         raise ValueError(f"FCM init supports: {supported}")
 
     def _create_gaussian_mfs(self, range_min: float, range_max: float, n_mfs: int, overlap: float) -> list[GaussianMF]:
@@ -255,6 +271,39 @@ class ANFISBuilder:
             sigma = (range_max - range_min) / (n_mfs - 1) * overlap
 
         return [GaussianMF(mean=center, sigma=sigma) for center in centers]
+
+    def _create_gaussian2_mfs(
+        self, range_min: float, range_max: float, n_mfs: int, overlap: float
+    ) -> list[Gaussian2MF]:
+        """Create evenly spaced two-sided Gaussian (Gaussian2) membership functions.
+
+        Uses Gaussian tails with a small central plateau per MF. The plateau width
+        is a fraction of the MF span controlled by overlap.
+        """
+        centers = np.linspace(range_min, range_max, n_mfs)
+
+        # Determine spacing and widths
+        if n_mfs == 1:
+            spacing = range_max - range_min
+            sigma = spacing * 0.25
+            width = spacing * 0.5
+        else:
+            spacing = (range_max - range_min) / (n_mfs - 1)
+            sigma = spacing * overlap
+            width = spacing * (1 + overlap)
+
+        plateau_frac = 0.3
+        half_plateau = (width * plateau_frac) / 2.0
+
+        mfs: list[Gaussian2MF] = []
+        for c in centers:
+            c1 = float(max(c - half_plateau, range_min))
+            c2 = float(min(c + half_plateau, range_max))
+            if not (c1 < c2):
+                eps = 1e-6
+                c1, c2 = c - eps, c + eps
+            mfs.append(Gaussian2MF(sigma1=float(sigma), c1=c1, sigma2=float(sigma), c2=c2))
+        return mfs
 
     def _create_triangular_mfs(
         self, range_min: float, range_max: float, n_mfs: int, overlap: float
