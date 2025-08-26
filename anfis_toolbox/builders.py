@@ -5,9 +5,13 @@ import numpy as np
 from .clustering import FuzzyCMeans
 from .membership import (
     BellMF,
+    DiffSigmoidalMF,
     Gaussian2MF,
     GaussianMF,
+    LinSShapedMF,
+    LinZShapedMF,
     PiMF,
+    ProdSigmoidalMF,
     SigmoidalMF,
     SShapedMF,
     TrapezoidalMF,
@@ -36,12 +40,20 @@ class ANFISBuilder:
             "sshape": self._create_sshape_mfs,
             "zshape": self._create_zshape_mfs,
             "pi": self._create_pi_mfs,
+            "linsshape": self._create_linsshape_mfs,
+            "linzshape": self._create_linzshape_mfs,
+            "diffsigmoidal": self._create_diff_sigmoidal_mfs,
+            "prodsigmoidal": self._create_prod_sigmoidal_mfs,
             # Aliases
             "gbell": self._create_bell_mfs,
             "sigmoid": self._create_sigmoidal_mfs,
             "s": self._create_sshape_mfs,
             "z": self._create_zshape_mfs,
             "pimf": self._create_pi_mfs,
+            "ls": self._create_linsshape_mfs,
+            "lz": self._create_linzshape_mfs,
+            "diffsigmoid": self._create_diff_sigmoidal_mfs,
+            "prodsigmoid": self._create_prod_sigmoidal_mfs,
         }
 
     def add_input(
@@ -217,6 +229,51 @@ class ANFISBuilder:
                 a = 4.4 / max(float(w), 1e-8)
                 mfs.append(SigmoidalMF(a=float(a), c=float(c)))
             return mfs
+        if key in {"linsshape", "ls"}:
+            mfs: list[LinSShapedMF] = []
+            for c, w in zip(centers, widths, strict=False):
+                a = float(max(c - w / 2.0, rmin))
+                b = float(min(c + w / 2.0, rmax))
+                if a >= b:
+                    eps = 1e-6
+                    a, b = c - eps, c + eps
+                mfs.append(LinSShapedMF(a, b))
+            return mfs
+        if key in {"linzshape", "lz"}:
+            mfs: list[LinZShapedMF] = []
+            for c, w in zip(centers, widths, strict=False):
+                a = float(max(c - w / 2.0, rmin))
+                b = float(min(c + w / 2.0, rmax))
+                if a >= b:
+                    eps = 1e-6
+                    a, b = c - eps, c + eps
+                mfs.append(LinZShapedMF(a, b))
+            return mfs
+        if key in {"diffsigmoidal", "diffsigmoid"}:
+            # Create plateau-like bands: two increasing sigmoids with centers symmetric around c
+            mfs: list[DiffSigmoidalMF] = []
+            for c, w in zip(centers, widths, strict=False):
+                c1 = float(max(c - w / 2.0, rmin))
+                c2 = float(min(c + w / 2.0, rmax))
+                if c1 >= c2:
+                    eps = 1e-6
+                    c1, c2 = c - eps, c + eps
+                a = 4.4 / max(float(w), 1e-8)
+                mfs.append(DiffSigmoidalMF(a1=float(a), c1=c1, a2=float(a), c2=c2))
+            return mfs
+        if key in {"prodsigmoidal", "prodsigmoid"}:
+            # Create bump-like bands: product of increasing and decreasing sigmoid
+            mfs: list[ProdSigmoidalMF] = []
+            for c, w in zip(centers, widths, strict=False):
+                c1 = float(max(c - w / 2.0, rmin))
+                c2 = float(min(c + w / 2.0, rmax))
+                if c1 >= c2:
+                    eps = 1e-6
+                    c1, c2 = c - eps, c + eps
+                a = 4.4 / max(float(w), 1e-8)
+                # s1 increasing at c1, s2 decreasing at c2 (use negative slope)
+                mfs.append(ProdSigmoidalMF(a1=float(a), c1=c1, a2=float(-a), c2=c2))
+            return mfs
         if key in {"sshape", "s"}:
             mfs: list[SShapedMF] = []
             for c, w in zip(centers, widths, strict=False):
@@ -380,6 +437,90 @@ class ANFISBuilder:
         # Choose slope a s.t. 0.1->0.9 transition ~ width: width ≈ 4.4 / a
         a = 4.4 / max(width, 1e-8)
         return [SigmoidalMF(a=float(a), c=float(c)) for c in centers]
+
+    def _create_linsshape_mfs(
+        self, range_min: float, range_max: float, n_mfs: int, overlap: float
+    ) -> list[LinSShapedMF]:
+        """Create linear S-shaped MFs across the range."""
+        centers = np.linspace(range_min, range_max, n_mfs)
+        if n_mfs == 1:
+            width = (range_max - range_min) * 0.5
+        else:
+            spacing = (range_max - range_min) / (n_mfs - 1)
+            width = spacing * (1 + overlap)
+        half = width / 2.0
+        mfs: list[LinSShapedMF] = []
+        for c in centers:
+            a = float(max(c - half, range_min))
+            b = float(min(c + half, range_max))
+            if a >= b:
+                eps = 1e-6
+                a, b = c - eps, c + eps
+            mfs.append(LinSShapedMF(a, b))
+        return mfs
+
+    def _create_linzshape_mfs(
+        self, range_min: float, range_max: float, n_mfs: int, overlap: float
+    ) -> list[LinZShapedMF]:
+        """Create linear Z-shaped MFs across the range."""
+        centers = np.linspace(range_min, range_max, n_mfs)
+        if n_mfs == 1:
+            width = (range_max - range_min) * 0.5
+        else:
+            spacing = (range_max - range_min) / (n_mfs - 1)
+            width = spacing * (1 + overlap)
+        half = width / 2.0
+        mfs: list[LinZShapedMF] = []
+        for c in centers:
+            a = float(max(c - half, range_min))
+            b = float(min(c + half, range_max))
+            if a >= b:
+                eps = 1e-6
+                a, b = c - eps, c + eps
+            mfs.append(LinZShapedMF(a, b))
+        return mfs
+
+    def _create_diff_sigmoidal_mfs(
+        self, range_min: float, range_max: float, n_mfs: int, overlap: float
+    ) -> list[DiffSigmoidalMF]:
+        """Create bands using difference of two sigmoids around evenly spaced centers."""
+        centers = np.linspace(range_min, range_max, n_mfs)
+        if n_mfs == 1:
+            width = (range_max - range_min) * 0.5
+        else:
+            spacing = (range_max - range_min) / (n_mfs - 1)
+            width = spacing * (1 + overlap)
+        mfs: list[DiffSigmoidalMF] = []
+        for c in centers:
+            c1 = float(max(c - width / 2.0, range_min))
+            c2 = float(min(c + width / 2.0, range_max))
+            if c1 >= c2:
+                eps = 1e-6
+                c1, c2 = c - eps, c + eps
+            a = 4.4 / max(float(width), 1e-8)
+            mfs.append(DiffSigmoidalMF(a1=float(a), c1=c1, a2=float(a), c2=c2))
+        return mfs
+
+    def _create_prod_sigmoidal_mfs(
+        self, range_min: float, range_max: float, n_mfs: int, overlap: float
+    ) -> list[ProdSigmoidalMF]:
+        """Create product-of-sigmoids MFs; use increasing and decreasing pair to form a bump."""
+        centers = np.linspace(range_min, range_max, n_mfs)
+        if n_mfs == 1:
+            width = (range_max - range_min) * 0.5
+        else:
+            spacing = (range_max - range_min) / (n_mfs - 1)
+            width = spacing * (1 + overlap)
+        mfs: list[ProdSigmoidalMF] = []
+        for c in centers:
+            c1 = float(max(c - width / 2.0, range_min))
+            c2 = float(min(c + width / 2.0, range_max))
+            if c1 >= c2:
+                eps = 1e-6
+                c1, c2 = c - eps, c + eps
+            a = 4.4 / max(float(width), 1e-8)
+            mfs.append(ProdSigmoidalMF(a1=float(a), c1=c1, a2=float(-a), c2=c2))
+        return mfs
 
     def _create_sshape_mfs(self, range_min: float, range_max: float, n_mfs: int, overlap: float) -> list[SShapedMF]:
         """Create S-shaped MFs with spans around evenly spaced centers."""
