@@ -1066,6 +1066,141 @@ class DiffSigmoidalMF(MembershipFunction):
         return dL_dy * dmu_dx
 
 
+class ProdSigmoidalMF(MembershipFunction):
+    """A membership function representing the product of two sigmoidal functions.
+
+    This class implements a fuzzy membership function defined as the product of two sigmoidals:
+        μ(x) = s1(x) * s2(x)
+    where:
+        s1(x) = 1 / (1 + exp(-a1 * (x - c1)))
+        s2(x) = 1 / (1 + exp(-a2 * (x - c2)))
+
+    Parameters
+    ----------
+    a1 : float
+        Slope parameter for the first sigmoidal function.
+    c1 : float
+        Center parameter for the first sigmoidal function.
+    a2 : float
+        Slope parameter for the second sigmoidal function.
+    c2 : float
+        Center parameter for the second sigmoidal function.
+
+    Methods:
+    -------
+    forward(x: np.ndarray) -> np.ndarray
+        Computes the membership value(s) for input x using the product of two sigmoidal functions.
+    backward(dL_dy: np.ndarray)
+        Computes the gradients of the parameters (a1, c1, a2, c2) with respect to the loss,
+        and returns the gradient with respect to the input x.
+
+    Attributes:
+    ----------
+    parameters : dict
+        Dictionary containing the parameters 'a1', 'c1', 'a2', 'c2'.
+    gradients : dict
+        Dictionary containing the gradients for each parameter.
+    last_input : np.ndarray or None
+        Stores the last input passed to forward().
+    last_output : np.ndarray or None
+        Stores the last output computed by forward().
+    """
+
+    def __init__(self, a1: float, c1: float, a2: float, c2: float):
+        """Initializes the membership function with specified parameters.
+
+        Args:
+            a1 (float): The first parameter for the membership function.
+            c1 (float): The second parameter for the membership function.
+            a2 (float): The third parameter for the membership function.
+            c2 (float): The fourth parameter for the membership function.
+
+        Attributes:
+            parameters (dict): Dictionary containing the membership function parameters.
+            gradients (dict): Dictionary containing gradients for each parameter, initialized to 0.0.
+            last_input: Stores the last input value (initialized to None).
+            last_output: Stores the last output value (initialized to None).
+        """
+        super().__init__()
+        self.parameters = {
+            "a1": float(a1),
+            "c1": float(c1),
+            "a2": float(a2),
+            "c2": float(c2),
+        }
+        self.gradients = dict.fromkeys(self.parameters, 0.0)
+        self.last_input = None
+        self.last_output = None
+
+    def forward(self, x: np.ndarray) -> np.ndarray:
+        """Computes the membership value(s) for input x using the product of two sigmoidal functions.
+
+        Args:
+            x (np.ndarray): Input array to the membership function.
+
+        Returns:
+            np.ndarray: Output array after applying the membership function.
+        """
+        x = np.asarray(x, dtype=float)
+        self.last_input = x
+        a1, c1 = self.parameters["a1"], self.parameters["c1"]
+        a2, c2 = self.parameters["a2"], self.parameters["c2"]
+
+        s1 = 1.0 / (1.0 + np.exp(-a1 * (x - c1)))
+        s2 = 1.0 / (1.0 + np.exp(-a2 * (x - c2)))
+        y = s1 * s2
+
+        self.last_output = y
+        self._s1, self._s2 = s1, s2  # store for backward
+        return y
+
+    def backward(self, dL_dy: np.ndarray):
+        """Computes the gradients with respect to the parameters.
+
+        Parameters
+        ----------
+        dL_dy : np.ndarray
+            The gradient of the loss with respect to the output of the membership function.
+
+        Returns:
+        -------
+        np.ndarray or None
+            The gradient of the loss with respect to the input, if last_input and last_output are set;
+            otherwise, returns None.
+
+        Notes:
+        -----
+        - Updates the gradients for parameters 'a1', 'c1', 'a2', and 'c2' using the chain rule.
+        - Assumes that `self.last_input`, `self.last_output`, `self.parameters`, and `self.gradients`
+          are properly initialized.
+        - The returned gradient with respect to the input can be used for further backpropagation.
+        """
+        if self.last_input is None or self.last_output is None:
+            return
+
+        x = self.last_input
+        dL_dy = np.asarray(dL_dy)
+        a1, c1 = self.parameters["a1"], self.parameters["c1"]
+        a2, c2 = self.parameters["a2"], self.parameters["c2"]
+        s1, s2 = self._s1, self._s2
+
+        # derivatives of sigmoids w.r.t. parameters
+        ds1_da1 = (x - c1) * s1 * (1 - s1)
+        ds1_dc1 = -a1 * s1 * (1 - s1)
+        ds2_da2 = (x - c2) * s2 * (1 - s2)
+        ds2_dc2 = -a2 * s2 * (1 - s2)
+
+        # parameter gradients using product rule
+        self.gradients["a1"] += float(np.sum(dL_dy * ds1_da1 * s2))
+        self.gradients["c1"] += float(np.sum(dL_dy * ds1_dc1 * s2))
+        self.gradients["a2"] += float(np.sum(dL_dy * s1 * ds2_da2))
+        self.gradients["c2"] += float(np.sum(dL_dy * s1 * ds2_dc2))
+
+        # gradient w.r.t. input (optional)
+        dmu_dx = a1 * s1 * (1 - s1) * s2 + a2 * s2 * (1 - s2) * s1
+        return dL_dy * dmu_dx
+
+
 class SShapedMF(MembershipFunction):
     """S-shaped Membership Function.
 
