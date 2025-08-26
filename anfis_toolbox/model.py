@@ -303,7 +303,7 @@ class ANFISClassifier:
     uses cross-entropy loss during training.
     """
 
-    def __init__(self, input_mfs: dict[str, list[MembershipFunction]], n_classes: int):
+    def __init__(self, input_mfs: dict[str, list[MembershipFunction]], n_classes: int, random_state: int | None = None):
         """Initialize the ANFIS model for classification.
 
         Args:
@@ -311,6 +311,7 @@ class ANFISClassifier:
                 Dictionary mapping input variable names to lists of their associated membership functions.
             n_classes (int):
                 Number of output classes. Must be greater than or equal to 2.
+            random_state (int | None): Random seed for parameter initialization.
 
         Raises:
             ValueError: If n_classes is less than 2.
@@ -337,7 +338,9 @@ class ANFISClassifier:
         self.membership_layer = MembershipLayer(input_mfs)
         self.rule_layer = RuleLayer(self.input_names, mf_per_input)
         self.normalization_layer = NormalizationLayer()
-        self.consequent_layer = ClassificationConsequentLayer(self.n_rules, self.n_inputs, self.n_classes)
+        self.consequent_layer = ClassificationConsequentLayer(
+            self.n_rules, self.n_inputs, self.n_classes, random_state=random_state
+        )
 
     @property
     def membership_functions(self) -> dict[str, list[MembershipFunction]]:

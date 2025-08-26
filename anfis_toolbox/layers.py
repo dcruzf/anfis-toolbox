@@ -398,18 +398,21 @@ class ClassificationConsequentLayer:
     We store parameters as a single array of shape (n_rules, n_classes, n_inputs + 1).
     """
 
-    def __init__(self, n_rules: int, n_inputs: int, n_classes: int):
+    def __init__(self, n_rules: int, n_inputs: int, n_classes: int, random_state: int | None = None):
         """Initializes the layer with the specified number of rules, inputs, and classes.
 
         Args:
             n_rules (int): Number of fuzzy rules in the layer.
             n_inputs (int): Number of input features.
             n_classes (int): Number of output classes.
+            random_state (int | None): Random seed for parameter initialization.
 
         Attributes:
             n_rules (int): Stores the number of fuzzy rules.
             n_inputs (int): Stores the number of input features.
             n_classes (int): Stores the number of output classes.
+
+
             parameters (np.ndarray): Randomly initialized parameters for each rule, class, and input (including bias).
             gradients (np.ndarray): Gradient values initialized to zeros, matching the shape of parameters.
             last (dict): Dictionary for storing intermediate results or state.
@@ -417,7 +420,11 @@ class ClassificationConsequentLayer:
         self.n_rules = n_rules
         self.n_inputs = n_inputs
         self.n_classes = n_classes
-        self.parameters = np.random.randn(n_rules, n_classes, n_inputs + 1)
+        if random_state is None:
+            self.parameters = np.random.randn(n_rules, n_classes, n_inputs + 1)
+        else:
+            rng = np.random.default_rng(random_state)
+            self.parameters = rng.normal(size=(n_rules, n_classes, n_inputs + 1))
         self.gradients = np.zeros_like(self.parameters)
         self.last = {}
 

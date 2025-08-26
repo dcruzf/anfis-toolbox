@@ -701,4 +701,4 @@ class QuickANFIS:
 
         # Build as usual and wrap into classifier
         input_mfs = builder.input_mfs
-        return ANFISClassifier(input_mfs, n_classes=n_classes)
+        return ANFISClassifier(input_mfs, n_classes=n_classes, random_state=random_state)
