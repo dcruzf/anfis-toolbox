@@ -8,8 +8,9 @@ import logging
 
 import numpy as np
 
-from .layers import ConsequentLayer, MembershipLayer, NormalizationLayer, RuleLayer
+from .layers import ClassificationConsequentLayer, ConsequentLayer, MembershipLayer, NormalizationLayer, RuleLayer
 from .membership import MembershipFunction
+from .metrics import cross_entropy, softmax
 
 # Setup logger for ANFIS
 logger = logging.getLogger(__name__)
@@ -293,3 +294,221 @@ class ANFIS:
     def __repr__(self) -> str:
         """Returns detailed representation of the ANFIS model."""
         return f"ANFIS(n_inputs={self.n_inputs}, n_rules={self.n_rules})"
+
+
+class ANFISClassifier:
+    """ANFIS model variant for classification with a softmax head.
+
+    Produces per-class logits aggregated from per-rule linear consequents and
+    uses cross-entropy loss during training.
+    """
+
+    def __init__(self, input_mfs: dict[str, list[MembershipFunction]], n_classes: int):
+        """Initialize the ANFIS model for classification.
+
+        Args:
+            input_mfs (dict[str, list[MembershipFunction]]):
+                Dictionary mapping input variable names to lists of their associated membership functions.
+            n_classes (int):
+                Number of output classes. Must be greater than or equal to 2.
+
+        Raises:
+            ValueError: If n_classes is less than 2.
+
+        Attributes:
+            input_mfs (dict[str, list[MembershipFunction]]): Membership functions for each input.
+            input_names (list[str]): Names of input variables.
+            n_inputs (int): Number of input variables.
+            n_classes (int): Number of output classes.
+            n_rules (int): Number of fuzzy rules, computed as the product of membership functions per input.
+            membership_layer (MembershipLayer): Layer for computing membership degrees.
+            rule_layer (RuleLayer): Layer for rule evaluation.
+            normalization_layer (NormalizationLayer): Layer for normalizing rule strengths.
+            consequent_layer (ClassificationConsequentLayer): Layer for computing class outputs.
+        """
+        if n_classes < 2:
+            raise ValueError("n_classes must be >= 2")
+        self.input_mfs = input_mfs
+        self.input_names = list(input_mfs.keys())
+        self.n_inputs = len(input_mfs)
+        self.n_classes = int(n_classes)
+        mf_per_input = [len(mfs) for mfs in input_mfs.values()]
+        self.n_rules = int(np.prod(mf_per_input))
+        self.membership_layer = MembershipLayer(input_mfs)
+        self.rule_layer = RuleLayer(self.input_names, mf_per_input)
+        self.normalization_layer = NormalizationLayer()
+        self.consequent_layer = ClassificationConsequentLayer(self.n_rules, self.n_inputs, self.n_classes)
+
+    @property
+    def membership_functions(self) -> dict[str, list[MembershipFunction]]:
+        """Returns the membership functions used in the model."""
+        return self.input_mfs
+
+    def forward(self, x: np.ndarray) -> np.ndarray:
+        """Performs a forward pass through the network."""
+        membership_outputs = self.membership_layer.forward(x)
+        rule_strengths = self.rule_layer.forward(membership_outputs)
+        normalized_weights = self.normalization_layer.forward(rule_strengths)
+        logits = self.consequent_layer.forward(x, normalized_weights)  # (b, k)
+        return logits
+
+    def backward(self, dL_dlogits: np.ndarray):
+        """Backpropagates the gradients through the network."""
+        dL_dnorm_w, _ = self.consequent_layer.backward(dL_dlogits)
+        dL_dw = self.normalization_layer.backward(dL_dnorm_w)
+        gradients = self.rule_layer.backward(dL_dw)
+        self.membership_layer.backward(gradients)
+
+    def predict_proba(self, x: np.ndarray) -> np.ndarray:
+        """Predicts the class probabilities for the given input."""
+        x_arr = np.asarray(x, dtype=float)
+        if x_arr.ndim == 1:
+            if x_arr.size != self.n_inputs:
+                raise ValueError(f"Expected {self.n_inputs} features, got {x_arr.size} in 1D input")
+            x_arr = x_arr.reshape(1, self.n_inputs)
+        elif x_arr.ndim == 2:
+            if x_arr.shape[1] != self.n_inputs:
+                raise ValueError(f"Expected input with {self.n_inputs} features, got {x_arr.shape[1]}")
+        else:
+            raise ValueError("Expected input with shape (batch_size, n_inputs)")
+        logits = self.forward(x_arr)
+        return softmax(logits, axis=1)
+
+    def predict(self, x: np.ndarray) -> np.ndarray:
+        """Predicts the class labels for the given input."""
+        proba = self.predict_proba(x)
+        return np.argmax(proba, axis=1)
+
+    def reset_gradients(self):
+        """Resets the gradients of the model's layers."""
+        self.membership_layer.reset()
+        self.consequent_layer.reset()
+
+    def get_parameters(self) -> dict[str, np.ndarray]:
+        """Retrieves the parameters of the model.
+
+        Returns:
+            dict[str, np.ndarray]: A dictionary containing:
+                - "membership": A nested dictionary where each input name maps to a list of parameter arrays
+                  for its associated membership functions.
+                - "consequent": An array of parameters for the consequent layer.
+        """
+        params = {"membership": {}, "consequent": self.consequent_layer.parameters.copy()}
+        for name in self.input_names:
+            params["membership"][name] = []
+            for mf in self.input_mfs[name]:
+                params["membership"][name].append(mf.parameters.copy())
+        return params
+
+    def set_parameters(self, parameters: dict[str, np.ndarray]):
+        """Sets the parameters for the ANFIS model's layers.
+
+        Parameters
+        ----------
+        parameters : dict[str, np.ndarray]
+            A dictionary containing parameter arrays for the model layers.
+            - "consequent": Parameters for the consequent layer.
+            - "membership": Dictionary mapping input names to lists of membership function parameters.
+        """
+        if "consequent" in parameters:
+            self.consequent_layer.parameters = parameters["consequent"].copy()
+        if "membership" in parameters:
+            membership_params = parameters["membership"]
+            for name in self.input_names:
+                mf_params_list = membership_params.get(name)
+                if not mf_params_list:
+                    continue
+                for mf, mf_params in zip(self.input_mfs[name], mf_params_list, strict=False):
+                    mf.parameters = mf_params.copy()
+
+    def get_gradients(self) -> dict[str, np.ndarray]:
+        """Computes and returns the gradients of the model parameters.
+
+        Returns:
+            dict[str, np.ndarray]: A dictionary containing gradients for both membership functions
+            and consequent layer parameters.
+        """
+        grads = {"membership": {}, "consequent": self.consequent_layer.gradients.copy()}
+        for name in self.input_names:
+            grads["membership"][name] = []
+            for mf in self.input_mfs[name]:
+                grads["membership"][name].append(mf.gradients.copy())
+        return grads
+
+    def update_parameters(self, learning_rate: float):
+        """Updates the parameters of the model using gradient descent.
+
+        This method applies the specified learning rate to update both the consequent layer parameters
+        and the parameters of each membership function (MF) in the input layers. The update is performed
+        by subtracting the product of the learning rate and the corresponding gradients from each parameter.
+
+        Args:
+            learning_rate (float): The step size used for updating the parameters during gradient descent.
+
+        Returns:
+            None
+        """
+        self.consequent_layer.parameters -= learning_rate * self.consequent_layer.gradients
+        for name in self.input_names:
+            for mf in self.input_mfs[name]:
+                for param_name, gradient in mf.gradients.items():
+                    mf.parameters[param_name] -= learning_rate * gradient
+
+    def _apply_membership_gradients(self, learning_rate: float) -> None:
+        for name in self.input_names:
+            for mf in self.input_mfs[name]:
+                for param_name, gradient in mf.gradients.items():
+                    mf.parameters[param_name] -= learning_rate * gradient
+
+    def fit(
+        self,
+        X: np.ndarray,
+        y: np.ndarray,
+        epochs: int = 100,
+        learning_rate: float = 0.01,
+        verbose: bool = True,
+    ) -> list[float]:
+        """Train with cross-entropy using simple gradient descent.
+
+        y can be integer labels (n,) or one-hot (n,k).
+        """
+        X = np.asarray(X, dtype=float)
+        yt = np.asarray(y)
+        if yt.ndim == 1:
+            # integer labels -> one-hot
+            n = yt.shape[0]
+            oh = np.zeros((n, self.n_classes), dtype=float)
+            oh[np.arange(n), yt.astype(int)] = 1.0
+            yt = oh
+        else:
+            if yt.shape[1] != self.n_classes:
+                raise ValueError("y one-hot must have n_classes columns")
+        losses: list[float] = []
+        for _ in range(epochs):
+            self.reset_gradients()
+            # Forward all the way to logits
+            membership_outputs = self.membership_layer.forward(X)
+            rule_strengths = self.rule_layer.forward(membership_outputs)
+            norm_w = self.normalization_layer.forward(rule_strengths)
+            logits = self.consequent_layer.forward(X, norm_w)
+            # Compute CE loss and its gradient w.r.t logits
+            loss = cross_entropy(yt, logits)
+            probs = softmax(logits, axis=1)
+            dL_dlogits = (probs - yt) / yt.shape[0]
+            # Backprop
+            dL_dnorm_w, _ = self.consequent_layer.backward(dL_dlogits)
+            dL_dw = self.normalization_layer.backward(dL_dnorm_w)
+            gradients = self.rule_layer.backward(dL_dw)
+            self.membership_layer.backward(gradients)
+            # Update params
+            self.update_parameters(learning_rate)
+            losses.append(float(loss))
+        return losses
+
+    def __repr__(self) -> str:
+        """Return a string representation of the ANFISClassifier.
+
+        Returns:
+            str: A formatted string describing the classifier's configuration.
+        """
+        return f"ANFISClassifier(n_inputs={self.n_inputs}, n_rules={self.n_rules}, n_classes={self.n_classes})"
