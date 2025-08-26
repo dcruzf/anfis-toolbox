@@ -5,9 +5,11 @@ from dataclasses import dataclass
 
 import numpy as np
 
+from .base import BaseTrainer
+
 
 @dataclass
-class HybridTrainer:
+class HybridTrainer(BaseTrainer):
     """Original Jang (1993) hybrid training: LSM for consequents + GD for antecedents."""
 
     learning_rate: float = 0.01
