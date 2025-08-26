@@ -60,10 +60,7 @@ class RMSPropTrainer(BaseTrainer):
         2) backward -> obtain gradients via ``model.get_gradients()``
         3) update parameters with RMSProp rule using per-parameter caches
         """
-        X = np.asarray(X, dtype=float)
-        y = np.asarray(y, dtype=float)
-        if y.ndim == 1:
-            y = y.reshape(-1, 1)
+        X, y = self._prepare_data(X, y)
 
         n_samples = X.shape[0]
 
@@ -71,38 +68,12 @@ class RMSPropTrainer(BaseTrainer):
         params = model.get_parameters()
         cache = _zeros_like_structure(params)
 
-        def _apply_rmsprop_step(grads):
-            # Consequent is a numpy array
-            g = grads["consequent"]
-            c = cache["consequent"]
-            c[:] = self.rho * c + (1.0 - self.rho) * (g * g)
-            params["consequent"] = params["consequent"] - self.learning_rate * g / (np.sqrt(c) + self.epsilon)
-
-            # Membership are scalars in nested dicts
-            for name in params["membership"].keys():
-                for i in range(len(params["membership"][name])):
-                    for key in params["membership"][name][i].keys():
-                        gk = float(grads["membership"][name][i][key])
-                        ck = cache["membership"][name][i][key]
-                        ck = self.rho * ck + (1.0 - self.rho) * (gk * gk)
-                        step = self.learning_rate * gk / (np.sqrt(ck) + self.epsilon)
-                        params["membership"][name][i][key] -= float(step)
-                        cache["membership"][name][i][key] = ck
-
-            # Push updated params back into the model
-            model.set_parameters(params)
-
         losses: list[float] = []
         for _ in range(self.epochs):
             if self.batch_size is None:
                 # Full-batch RMSProp step
-                model.reset_gradients()
-                y_pred = model.forward(X)
-                loss = float(np.mean((y_pred - y) ** 2))
-                dL_dy = 2.0 * (y_pred - y) / y.shape[0]
-                model.backward(dL_dy)
-                grads = model.get_gradients()
-                _apply_rmsprop_step(grads)
+                loss, grads = self._compute_mse_and_grads(model, X, y)
+                self._apply_rmsprop_step(model, params, cache, grads)
                 losses.append(loss)
             else:
                 indices = np.arange(n_samples)
@@ -112,14 +83,76 @@ class RMSPropTrainer(BaseTrainer):
                 for start in range(0, n_samples, self.batch_size):
                     end = start + self.batch_size
                     batch_idx = indices[start:end]
-                    model.reset_gradients()
-                    y_pred_b = model.forward(X[batch_idx])
-                    batch_loss = float(np.mean((y_pred_b - y[batch_idx]) ** 2))
-                    dL_dy_b = 2.0 * (y_pred_b - y[batch_idx]) / y[batch_idx].shape[0]
-                    model.backward(dL_dy_b)
-                    grads_b = model.get_gradients()
-                    _apply_rmsprop_step(grads_b)
+                    batch_loss, grads_b = self._compute_mse_and_grads(model, X[batch_idx], y[batch_idx])
+                    self._apply_rmsprop_step(model, params, cache, grads_b)
                     batch_losses.append(batch_loss)
                 losses.append(float(np.mean(batch_losses)))
 
         return losses
+
+    def init_state(self, model, X: np.ndarray, y: np.ndarray):
+        """Initialize RMSProp caches for consequents and membership scalars."""
+        params = model.get_parameters()
+        return {"params": params, "cache": _zeros_like_structure(params)}
+
+    def train_step(self, model, Xb: np.ndarray, yb: np.ndarray, state):
+        """One RMSProp step on a batch; returns (loss, updated_state)."""
+        loss, grads = self._compute_mse_and_grads(model, Xb, yb)
+        self._apply_rmsprop_step(model, state["params"], state["cache"], grads)
+        return loss, state
+
+    @staticmethod
+    def _prepare_data(X: np.ndarray, y: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        """Convert inputs to float numpy arrays and ensure y is 2D.
+
+        Returns X, y where y has shape (n, 1) if originally 1D.
+        """
+        X = np.asarray(X, dtype=float)
+        y = np.asarray(y, dtype=float)
+        if y.ndim == 1:
+            y = y.reshape(-1, 1)
+        return X, y
+
+    def _compute_mse_and_grads(self, model, Xb: np.ndarray, yb: np.ndarray) -> tuple[float, dict]:
+        """Forward pass, MSE loss, backward pass, and gradients for a batch.
+
+        Returns (loss, grads) where grads follows model.get_gradients() structure.
+        """
+        model.reset_gradients()
+        y_pred = model.forward(Xb)
+        loss = float(np.mean((y_pred - yb) ** 2))
+        dL_dy = 2.0 * (y_pred - yb) / yb.shape[0]
+        model.backward(dL_dy)
+        grads = model.get_gradients()
+        return loss, grads
+
+    def _apply_rmsprop_step(
+        self,
+        model,
+        params: dict,
+        cache: dict,
+        grads: dict,
+    ) -> None:
+        """Apply one RMSProp update to params using grads and caches.
+
+        Updates both consequent array parameters and membership scalar parameters.
+        """
+        # Consequent is a numpy array
+        g = grads["consequent"]
+        c = cache["consequent"]
+        c[:] = self.rho * c + (1.0 - self.rho) * (g * g)
+        params["consequent"] = params["consequent"] - self.learning_rate * g / (np.sqrt(c) + self.epsilon)
+
+        # Membership are scalars in nested dicts
+        for name in params["membership"].keys():
+            for i in range(len(params["membership"][name])):
+                for key in params["membership"][name][i].keys():
+                    gk = float(grads["membership"][name][i][key])
+                    ck = cache["membership"][name][i][key]
+                    ck = self.rho * ck + (1.0 - self.rho) * (gk * gk)
+                    step = self.learning_rate * gk / (np.sqrt(ck) + self.epsilon)
+                    params["membership"][name][i][key] -= float(step)
+                    cache["membership"][name][i][key] = ck
+
+        # Push updated params back into the model
+        model.set_parameters(params)

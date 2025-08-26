@@ -40,10 +40,7 @@ class SGDTrainer(BaseTrainer):
         Loss is MSE, computed as ``mean((y_pred - y)**2)``; 1D ``y`` is reshaped
         to ``(n,1)`` for convenience.
         """
-        X = np.asarray(X, dtype=float)
-        y = np.asarray(y, dtype=float)
-        if y.ndim == 1:
-            y = y.reshape(-1, 1)
+        X, y = self._prepare_data(X, y)
 
         n_samples = X.shape[0]
         losses: list[float] = []
@@ -51,12 +48,7 @@ class SGDTrainer(BaseTrainer):
         for _ in range(self.epochs):
             if self.batch_size is None:
                 # Full-batch gradient descent
-                model.reset_gradients()
-                y_pred = model.forward(X)
-                loss = float(np.mean((y_pred - y) ** 2))
-                dL_dy = 2 * (y_pred - y) / y.shape[0]
-                model.backward(dL_dy)
-                model.update_parameters(self.learning_rate)
+                loss = self._compute_mse_backward_and_update(model, X, y)
                 losses.append(loss)
             else:
                 # Mini-batch SGD
@@ -67,14 +59,37 @@ class SGDTrainer(BaseTrainer):
                 for start in range(0, n_samples, self.batch_size):
                     end = start + self.batch_size
                     batch_idx = indices[start:end]
-                    model.reset_gradients()
-                    y_pred_b = model.forward(X[batch_idx])
-                    batch_loss = float(np.mean((y_pred_b - y[batch_idx]) ** 2))
-                    dL_dy_b = 2 * (y_pred_b - y[batch_idx]) / y[batch_idx].shape[0]
-                    model.backward(dL_dy_b)
-                    model.update_parameters(self.learning_rate)
+                    batch_loss = self._compute_mse_backward_and_update(model, X[batch_idx], y[batch_idx])
                     batch_losses.append(batch_loss)
                 # For compatibility, record epoch loss as mean of batch losses
                 losses.append(float(np.mean(batch_losses)))
 
         return losses
+
+    def init_state(self, model, X: np.ndarray, y: np.ndarray):
+        """SGD has no persistent optimizer state; returns None."""
+        return None
+
+    def train_step(self, model, Xb: np.ndarray, yb: np.ndarray, state):
+        """Perform one SGD step on a batch and return (loss, state)."""
+        loss = self._compute_mse_backward_and_update(model, Xb, yb)
+        return loss, state
+
+    @staticmethod
+    def _prepare_data(X: np.ndarray, y: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        """Ensure X, y are float arrays and y is 2D (n, 1) if originally 1D."""
+        X = np.asarray(X, dtype=float)
+        y = np.asarray(y, dtype=float)
+        if y.ndim == 1:
+            y = y.reshape(-1, 1)
+        return X, y
+
+    def _compute_mse_backward_and_update(self, model, Xb: np.ndarray, yb: np.ndarray) -> float:
+        """Forward -> MSE -> backward -> update parameters; returns loss."""
+        model.reset_gradients()
+        y_pred = model.forward(Xb)
+        loss = float(np.mean((y_pred - yb) ** 2))
+        dL_dy = 2 * (y_pred - yb) / yb.shape[0]
+        model.backward(dL_dy)
+        model.update_parameters(self.learning_rate)
+        return loss

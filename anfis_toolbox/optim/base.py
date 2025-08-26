@@ -41,3 +41,35 @@ class BaseTrainer(ABC):
             list[float]: Sequence of loss values, one per epoch.
         """
         raise NotImplementedError
+
+    @abstractmethod
+    def init_state(self, model, X: np.ndarray, y: np.ndarray):  # pragma: no cover - abstract
+        """Initialize and return any optimizer-specific state.
+
+        Called once before training begins. Trainers that don't require state may
+        return None.
+
+        Parameters:
+            model: The model to be trained.
+            X (np.ndarray): The full training inputs.
+            y (np.ndarray): The full training targets.
+
+        Returns:
+            Any: Optimizer state (or None) to be threaded through ``train_step``.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def train_step(self, model, Xb: np.ndarray, yb: np.ndarray, state):  # pragma: no cover - abstract
+        """Perform a single training step on a batch and return (loss, new_state).
+
+        Parameters:
+            model: The model to be trained.
+            Xb (np.ndarray): A batch of inputs.
+            yb (np.ndarray): A batch of targets.
+            state: Optimizer state produced by ``init_state``.
+
+        Returns:
+            tuple[float, Any]: The batch loss and the updated optimizer state.
+        """
+        raise NotImplementedError
