@@ -1027,6 +1027,111 @@ class SShapedMF(MembershipFunction):
         self.gradients["b"] += float(np.sum(dL_dy_t * dS_db))
 
 
+class LinSShapedMF(MembershipFunction):
+    """Linear S-shaped saturation Membership Function.
+
+    Piecewise linear ramp from 0 to 1 between parameters a and b:
+      - μ(x) = 0, for x ≤ a
+      - μ(x) = (x - a) / (b - a), for a < x < b
+      - μ(x) = 1, for x ≥ b
+
+    Parameters:
+        a (float): Left foot (start of transition from 0).
+        b (float): Right shoulder (end of transition at 1). Requires a < b.
+    """
+
+    def __init__(self, a: float, b: float):
+        """Initialize the membership function with parameters 'a' and 'b'.
+
+        Args:
+            a (float): The first parameter, must be less than 'b'.
+            b (float): The second parameter, must be greater than 'a'.
+
+        Raises:
+            ValueError: If 'a' is not less than 'b'.
+
+        Attributes:
+            parameters (dict): Dictionary containing 'a' and 'b' as floats.
+            gradients (dict): Dictionary containing gradients for 'a' and 'b', initialized to 0.0.
+        """
+        super().__init__()
+        if not (a < b):
+            raise ValueError(f"Parameters must satisfy a < b, got a={a}, b={b}")
+        self.parameters = {"a": float(a), "b": float(b)}
+        self.gradients = {"a": 0.0, "b": 0.0}
+
+    def forward(self, x: np.ndarray) -> np.ndarray:
+        """Computes the output of a piecewise linear membership function for the input array `x`.
+
+        The function applies the following rules based on parameters `a` and `b`:
+        - For values of `x` greater than or equal to `b`, the output is 1.0 (right saturated region).
+        - For values of `x` between `a` and `b`, the output is linearly interpolated between 0 and 1.
+        - For values of `x` less than or equal to `a`, the output is 0.0 (left region).
+        The input and output arrays are stored in `self.last_input` and `self.last_output`, respectively.
+
+        Parameters
+        ----------
+        x : np.ndarray
+            Input array of values to evaluate the membership function.
+
+        Returns:
+        -------
+        np.ndarray
+            Output array after applying the membership function.
+        """
+        x = np.asarray(x, dtype=float)
+        self.last_input = x
+        a, b = self.parameters["a"], self.parameters["b"]
+        y = np.zeros_like(x, dtype=float)
+        # right saturated region
+        mask_right = x >= b
+        y[mask_right] = 1.0
+        # linear ramp
+        mask_mid = (x > a) & (x < b)
+        if np.any(mask_mid):
+            y[mask_mid] = (x[mask_mid] - a) / (b - a)
+        # left stays 0
+        self.last_output = y
+        return y
+
+    def backward(self, dL_dy: np.ndarray):
+        """Computes and accumulates gradients of the membership function parameters 'a' and 'b'.
+
+        The gradients are only computed for input values within the ramp region (a < x < b).
+        Updates self.gradients["a"] and self.gradients["b"] in-place.
+        Parameters
+        ----------
+        dL_dy : np.ndarray
+            Gradient of the loss with respect to the output of the membership function.
+
+        Returns:
+        -------
+        None
+            The method updates the gradients in-place and returns nothing.
+        """
+        if self.last_input is None or self.last_output is None:
+            return
+        x = self.last_input
+        dL_dy = np.asarray(dL_dy)
+        a, b = self.parameters["a"], self.parameters["b"]
+        d = b - a
+        if d == 0:
+            return
+        # Only ramp region contributes to parameter gradients
+        mask = (x > a) & (x < b)
+        if not np.any(mask):
+            return
+        xm = x[mask]
+        g = dL_dy[mask]
+        # μ = (x-a)/d with d = b-a
+        # ∂μ/∂a = -(1/d) + (x-a)/d^2
+        dmu_da = -(1.0 / d) + (xm - a) / (d * d)
+        # ∂μ/∂b = -(x-a)/d^2
+        dmu_db = -((xm - a) / (d * d))
+        self.gradients["a"] += float(np.sum(g * dmu_da))
+        self.gradients["b"] += float(np.sum(g * dmu_db))
+
+
 class ZShapedMF(MembershipFunction):
     """Z-shaped Membership Function.
 
