@@ -9,7 +9,7 @@ Design goals:
 - Allow power users to instantiate and pass custom trainers
 
 Example:
-    from anfis_toolbox.optim import SGDTrainer, HybridTrainer
+    from anfis_toolbox.optim import SGDTrainer, RMSPropTrainer, HybridTrainer
     trainer = SGDTrainer(learning_rate=0.01, epochs=200)
     losses = trainer.fit(model, X, y)
 
@@ -19,7 +19,7 @@ Task compatibility and guidance:
     for regression with the regression ANFIS (single-output). It is not compatible
     with the classification head.
 
-- SGDTrainer and AdamTrainer perform generic backprop updates minimizing mean
+- SGDTrainer, RMSPropTrainer and AdamTrainer perform generic backprop updates minimizing mean
     squared error (MSE) between the model output returned by ``model.forward`` and
     the provided target ``y``. For regression models, this is the intended usage.
 
@@ -35,6 +35,7 @@ Task compatibility and guidance:
 from .adam import AdamTrainer
 from .base import BaseTrainer
 from .hybrid import HybridTrainer
+from .rmsprop import RMSPropTrainer
 from .sgd import SGDTrainer
 
 __all__ = [
@@ -42,4 +43,5 @@ __all__ = [
     "SGDTrainer",
     "HybridTrainer",
     "AdamTrainer",
+    "RMSPropTrainer",
 ]
