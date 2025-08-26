@@ -4,7 +4,10 @@ import numpy as np
 import pytest
 
 from anfis_toolbox.metrics import (
+    accuracy,
     classification_entropy,
+    cross_entropy,
+    log_loss,
     mean_absolute_error,
     mean_absolute_percentage_error,
     mean_squared_error,
@@ -13,6 +16,7 @@ from anfis_toolbox.metrics import (
     pearson_correlation,
     r2_score,
     root_mean_squared_error,
+    softmax,
     symmetric_mean_absolute_percentage_error,
     xie_beni_index,
 )
@@ -258,3 +262,68 @@ def test_xb_denominator_epsilon_guard_and_1d_X_path():
     C1d = np.array([[0.0], [2.0]])
     xb1d = xie_beni_index(X1d, U1d, C1d)
     assert np.isfinite(xb1d) and xb1d >= 0.0
+
+
+def test_softmax_rows_sum_to_one_and_invariant_to_shift():
+    z = np.array([[1.0, 2.0, 3.0], [-1.0, 0.0, 1.0]])
+    p = softmax(z, axis=1)
+    np.testing.assert_allclose(np.sum(p, axis=1), np.ones(p.shape[0]))
+    # Shift invariance
+    shift = 5.0
+    p2 = softmax(z + shift, axis=1)
+    np.testing.assert_allclose(p, p2)
+
+
+def test_cross_entropy_with_int_labels_and_one_hot_and_empty():
+    logits = np.array([[2.0, 0.0], [0.0, 2.0]])
+    y_int = np.array([0, 1])
+    y_oh = np.array([[1.0, 0.0], [0.0, 1.0]])
+    ce_int = cross_entropy(y_int, logits)
+    ce_oh = cross_entropy(y_oh, logits)
+    np.testing.assert_allclose(ce_int, ce_oh)
+    # Empty batch
+    assert np.isclose(cross_entropy([], np.zeros((0, 2))), 0.0)
+
+
+def test_cross_entropy_mismatch_errors():
+    # Integer labels length mismatch with logits batch size
+    logits = np.array([[1.0, -1.0], [0.5, 0.1]])  # n=2
+    y_int_bad = np.array([0])  # length 1 != 2
+    with pytest.raises(ValueError, match="y_true length must match logits batch size"):
+        cross_entropy(y_int_bad, logits)
+
+    # One-hot shape mismatch with logits
+    y_oh_bad = np.array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]])  # (2,3) vs logits (2,2)
+    with pytest.raises(ValueError, match="shape must match logits"):
+        cross_entropy(y_oh_bad, logits)
+
+
+def test_log_loss_int_and_one_hot_and_mismatch_errors():
+    P = np.array([[0.8, 0.2], [0.1, 0.9]])
+    y_int = np.array([0, 1])
+    y_oh = np.array([[1.0, 0.0], [0.0, 1.0]])
+    ll_int = log_loss(y_int, P)
+    ll_oh = log_loss(y_oh, P)
+    np.testing.assert_allclose(ll_int, ll_oh)
+    # Mismatch shapes
+    with pytest.raises(ValueError):
+        log_loss(np.array([[1.0, 0.0]]), P)
+
+
+def test_accuracy_from_logits_probs_and_indices_and_length_mismatch():
+    logits = np.array([[2.0, 0.0], [0.1, 0.2], [0.0, 3.0]])
+    probs = softmax(logits, axis=1)
+    y = np.array([0, 1, 1])
+    acc1 = accuracy(y, logits)
+    acc2 = accuracy(y, probs)
+    acc3 = accuracy(y, np.array([0, 1, 1]))
+    assert acc1 == acc2 == acc3
+    with pytest.raises(ValueError):
+        accuracy(np.array([0, 1]), logits)
+
+
+def test_accuracy_with_one_hot_y_true():
+    # One-hot y_true; y_pred as class indices
+    y_oh = np.array([[1.0, 0.0], [0.0, 1.0], [0.0, 1.0]])
+    preds = np.array([0, 1, 1])
+    assert np.isclose(accuracy(y_oh, preds), 1.0)

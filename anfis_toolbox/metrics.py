@@ -148,8 +148,92 @@ def mean_squared_logarithmic_error(y_true, y_pred) -> float:
 
 
 # -----------------------------
-# Clustering metrics (FCM)
+# Classification metrics and helpers
 # -----------------------------
+
+
+def softmax(logits: np.ndarray, axis: int = -1) -> np.ndarray:
+    """Compute a numerically stable softmax along a given axis."""
+    z = np.asarray(logits, dtype=float)
+    zmax = np.max(z, axis=axis, keepdims=True)
+    ez = np.exp(z - zmax)
+    den = np.sum(ez, axis=axis, keepdims=True)
+    return ez / den
+
+
+def cross_entropy(y_true, logits: np.ndarray, epsilon: float = 1e-12) -> float:
+    """Compute mean cross-entropy from integer labels or one-hot vs logits.
+
+    Parameters:
+        y_true: Array-like of shape (n_samples,) of integer class labels, or
+                one-hot array of shape (n_samples, n_classes).
+        logits: Array-like raw scores, shape (n_samples, n_classes).
+        epsilon: Small constant for numerical stability.
+
+    Returns:
+        Mean cross-entropy (float).
+    """
+    logits = np.asarray(logits, dtype=float)
+    n = logits.shape[0]
+    if n == 0:
+        return 0.0
+    # Stable log-softmax
+    zmax = np.max(logits, axis=1, keepdims=True)
+    logsumexp = zmax + np.log(np.sum(np.exp(logits - zmax), axis=1, keepdims=True))
+    log_probs = logits - logsumexp  # (n, k)
+
+    yt = np.asarray(y_true)
+    if yt.ndim == 1:
+        # integer labels
+        yt = yt.reshape(-1)
+        if yt.shape[0] != n:
+            raise ValueError("y_true length must match logits batch size")
+        # pick log prob at true class
+        idx = (np.arange(n), yt.astype(int))
+        nll = -log_probs[idx]
+    else:
+        # one-hot
+        if yt.shape != logits.shape:
+            raise ValueError("For one-hot y_true, shape must match logits")
+        nll = -np.sum(yt * log_probs, axis=1)
+    return float(np.mean(nll))
+
+
+def log_loss(y_true, y_prob: np.ndarray, epsilon: float = 1e-12) -> float:
+    """Compute mean log loss from integer/one-hot labels and probabilities."""
+    P = np.asarray(y_prob, dtype=float)
+    P = np.clip(P, float(epsilon), 1.0)
+    yt = np.asarray(y_true)
+    n = P.shape[0]
+    if yt.ndim == 1:
+        idx = (np.arange(n), yt.astype(int))
+        nll = -np.log(P[idx])
+    else:
+        if yt.shape != P.shape:
+            raise ValueError("For one-hot y_true, shape must match probabilities")
+        nll = -np.sum(yt * np.log(P), axis=1)
+    return float(np.mean(nll))
+
+
+def accuracy(y_true, y_pred) -> float:
+    """Compute accuracy from integer/one-hot labels and logits/probabilities.
+
+    y_pred can be class indices (n,), logits (n,k), or probabilities (n,k).
+    y_true can be class indices (n,) or one-hot (n,k).
+    """
+    yt = np.asarray(y_true)
+    yp = np.asarray(y_pred)
+    if yp.ndim == 2:
+        yp_cls = np.argmax(yp, axis=1)
+    else:
+        yp_cls = yp.reshape(-1).astype(int)
+    if yt.ndim == 2:
+        yt_cls = np.argmax(yt, axis=1)
+    else:
+        yt_cls = yt.reshape(-1).astype(int)
+    if yt_cls.shape[0] != yp_cls.shape[0]:
+        raise ValueError("y_true and y_pred must have same number of samples")
+    return float(np.mean(yt_cls == yp_cls))
 
 
 def partition_coefficient(U: np.ndarray) -> float:

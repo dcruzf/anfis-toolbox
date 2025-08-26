@@ -419,6 +419,31 @@ def test_str_and_repr_cover():
     assert "ANFIS(" in r
 
 
+def test_apply_membership_gradients_private_helper():
+    # Cover ANFIS._apply_membership_gradients branch
+    model = _make_simple_model()
+    X = np.array([[0.0, 0.0], [1.0, -1.0]])
+    # Create some gradients via a minibackward step
+    _ = model.forward(X)
+    model.backward(np.ones((X.shape[0], 1)))
+    params_before = model.get_parameters()
+    model._apply_membership_gradients(learning_rate=0.01)
+    params_after = model.get_parameters()
+    # Membership parameters should have changed for at least one MF
+    changed = False
+    for name in params_before["membership"]:
+        for i, mf_before in enumerate(params_before["membership"][name]):
+            mf_after = params_after["membership"][name][i]
+            if not (
+                np.isclose(mf_before["mean"], mf_after["mean"]) and np.isclose(mf_before["sigma"], mf_after["sigma"])
+            ):
+                changed = True
+                break
+        if changed:
+            break
+    assert changed
+
+
 def test_fit_logging_branch_and_hybrid_logging(monkeypatch, caplog):
     # Small dataset
     X = np.array([[0.0, 0.0], [1.0, 2.0], [2.0, 1.0], [1.5, -0.5]])
