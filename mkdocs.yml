@@ -56,8 +56,8 @@ nav:
     - Installation: getting-started/installation.md
     - Quick Start: getting-started/quickstart.md
   - Membership Functions:
-    - Overview: membership_functions/gaussian.ipynb
-    - Introduction: membership_functions/introduction.md
+    - Gaussian: membership_functions/gaussian.ipynb
+    - Generalized Bell: membership_functions/bellmf.ipynb
   - Examples:
     - Basic Example: examples/basic_example.ipynb
     - Intermediate Example: examples/intermediate_example.ipynb
