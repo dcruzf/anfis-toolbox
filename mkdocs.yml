@@ -92,7 +92,11 @@ plugins:
   - mkdocs-jupyter:
       execute: false
       include_requirejs: true
-      no_input: true
+      no_input: false
+      remove_tag_config:
+              remove_input_tags:
+                  - hide
+
 
 markdown_extensions:
   - abbr
@@ -158,8 +162,8 @@ extra_css:
   - css/stylesheets/extra.css
 
 extra_javascript:
+  - js/fix_code_jupyter.js
   - js/render_latex.js
-  - https://polyfill.io/v3/polyfill.min.js?features=es6
   - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
 
 copyright: Copyright &copy; 2025 Daniel França
