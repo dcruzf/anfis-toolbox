@@ -18,10 +18,7 @@ Adaptive Neuro-Fuzzy Inference Systems (ANFIS) in pure Python (TSK architecture)
 ## Installation
 
 ```bash
-# From source
-git clone https://github.com/<your-user>/anfis-toolbox.git
-cd anfis-toolbox
-pip install -e .
+pip install anfis-toolbox
 ```
 
 ## Quick start
