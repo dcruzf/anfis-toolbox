@@ -17,36 +17,39 @@ logger = logging.getLogger(__name__)
 
 
 class ANFIS:
-    """Adaptive Neuro-Fuzzy Inference System (ANFIS) Model.
+    """Adaptive Neuro-Fuzzy Inference System (ANFIS) model.
 
-    This class implements the complete ANFIS architecture with 4 layers:
-    1. MembershipLayer: Fuzzification of inputs
-    2. RuleLayer: Computing rule strengths using T-norm
-    3. NormalizationLayer: Normalizing rule weights
-    4. ConsequentLayer: Computing final output using TSK model
+    Implements the classic 4-layer ANFIS architecture:
 
-    The model supports both forward and backward passes for training,
-    and provides a clean interface for prediction and parameter updates.
+    1) MembershipLayer — fuzzification of inputs
+    2) RuleLayer — rule strength computation (T-norm)
+    3) NormalizationLayer — weight normalization
+    4) ConsequentLayer — final output via a TSK model
+
+    Supports forward/backward passes for training, parameter access/update,
+    and a simple prediction API.
 
     Attributes:
-        input_mfs (dict): Dictionary mapping input names to membership functions.
-        membership_layer (MembershipLayer): Layer 1 - Fuzzification.
-        rule_layer (RuleLayer): Layer 2 - Rule strength computation.
-        normalization_layer (NormalizationLayer): Layer 3 - Weight normalization.
-        consequent_layer (ConsequentLayer): Layer 4 - Final output computation.
-        input_names (list): List of input variable names.
-        n_inputs (int): Number of input variables.
-        n_rules (int): Number of fuzzy rules.
+        input_mfs (dict[str, list[MembershipFunction]]): Mapping from input name
+            to its list of membership functions.
+        membership_layer (MembershipLayer): Layer 1 — fuzzification.
+        rule_layer (RuleLayer): Layer 2 — rule strength computation.
+        normalization_layer (NormalizationLayer): Layer 3 — weight normalization.
+        consequent_layer (ConsequentLayer): Layer 4 — final TSK output.
+        input_names (list[str]): Ordered list of input variable names.
+        n_inputs (int): Number of input variables (features).
+        n_rules (int): Number of fuzzy rules (Cartesian product of MFs per input).
     """
 
     def __init__(self, input_mfs: dict[str, list[MembershipFunction]]):
-        """Initializes the ANFIS model with input membership functions.
+        """Initialize the ANFIS model.
 
-        Parameters:
-            input_mfs (dict): Dictionary mapping input names to lists of membership functions.
-                             Format: {input_name: [MembershipFunction, ...]}
+        Args:
+            input_mfs (dict[str, list[MembershipFunction]]): Mapping from input
+                name to a list of membership functions. Example:
+                ``{"x1": [GaussianMF(0,1), ...], "x2": [...]}``.
 
-        Example:
+        Examples:
             >>> from anfis_toolbox.membership import GaussianMF
             >>> input_mfs = {
             ...     'x1': [GaussianMF(0, 1), GaussianMF(1, 1)],
@@ -72,21 +75,22 @@ class ANFIS:
 
     @property
     def membership_functions(self) -> dict[str, list[MembershipFunction]]:
-        """Alias for input_mfs to provide a standardized interface.
+        """Return the membership functions grouped by input.
 
         Returns:
-            dict: Dictionary mapping input names to lists of membership functions.
+            dict[str, list[MembershipFunction]]: Mapping from input name to
+            its list of membership functions.
         """
         return self.input_mfs
 
     def forward(self, x: np.ndarray) -> np.ndarray:
-        """Performs forward pass through the entire ANFIS model.
+        """Run a forward pass through the model.
 
-        Parameters:
-            x (np.ndarray): Input data with shape (batch_size, n_inputs).
+        Args:
+            x (np.ndarray): Input array of shape ``(batch_size, n_inputs)``.
 
         Returns:
-            np.ndarray: Model output with shape (batch_size, 1).
+            np.ndarray: Output array of shape ``(batch_size, 1)``.
         """
         # Layer 1: Fuzzification - convert crisp inputs to membership degrees
         membership_outputs = self.membership_layer.forward(x)
@@ -103,17 +107,14 @@ class ANFIS:
         return output
 
     def backward(self, dL_dy: np.ndarray):
-        """Performs backward pass through the entire ANFIS model.
+        """Run a backward pass through all layers.
 
-        This method propagates gradients from the output back through all layers,
-        updating the gradients in membership functions and consequent parameters.
+        Propagates gradients from the output back through all layers and stores
+        parameter gradients for a later update step.
 
-        Parameters:
-            dL_dy (np.ndarray): Gradient of loss with respect to model output.
-                               Shape: (batch_size, 1)
-
-        Returns:
-            None: Gradients are accumulated in the respective layers and functions.
+        Args:
+            dL_dy (np.ndarray): Gradient of the loss w.r.t. the model output,
+                shape ``(batch_size, 1)``.
         """
         # Backward pass through Layer 4: Consequent layer
         dL_dnorm_w, _ = self.consequent_layer.backward(dL_dy)
@@ -128,13 +129,21 @@ class ANFIS:
         self.membership_layer.backward(gradients)
 
     def predict(self, x: np.ndarray) -> np.ndarray:
-        """Makes predictions using the trained ANFIS model.
+        """Predict using the current model parameters.
 
-        Parameters:
-            x (np.ndarray): Input data with shape (batch_size, n_inputs).
+        Accepts Python lists, 1D or 2D arrays and coerces to the expected shape.
+
+        Args:
+            x (np.ndarray | list[float]): Input data. If 1D, must have
+                exactly ``n_inputs`` elements; if 2D, must be
+                ``(batch_size, n_inputs)``.
 
         Returns:
-            np.ndarray: Predictions with shape (batch_size, 1).
+            np.ndarray: Predictions of shape ``(batch_size, 1)``.
+
+        Raises:
+            ValueError: If input dimensionality or feature count does not match
+                the model configuration.
         """
         # Accept Python lists or 1D arrays by coercing to correct 2D shape
         x_arr = np.asarray(x, dtype=float)
@@ -153,13 +162,10 @@ class ANFIS:
         return self.forward(x_arr)
 
     def reset_gradients(self):
-        """Resets all gradients in the model to zero.
+        """Reset all accumulated gradients to zero.
 
-        This should be called before each training step to clear
-        accumulated gradients from previous iterations.
-
-        Returns:
-            None
+        Call this before each optimization step to avoid mixing gradients
+        across iterations.
         """
         # Reset membership function gradients
         self.membership_layer.reset()
@@ -168,12 +174,15 @@ class ANFIS:
         self.consequent_layer.reset()
 
     def get_parameters(self) -> dict[str, np.ndarray]:
-        """Retrieves all trainable parameters from the model.
+        """Return a snapshot of all trainable parameters.
 
         Returns:
-            dict: Dictionary containing all model parameters:
-                - 'membership': Dict with membership function parameters
-                - 'consequent': Consequent layer parameters
+                dict[str, np.ndarray | dict]:
+                        Dictionary with two entries:
+
+                        - ``"membership"``: dict mapping input name to a list of MF
+                            parameter dicts (one per membership function).
+                        - ``"consequent"``: numpy array with consequent parameters.
         """
         parameters = {"membership": {}, "consequent": self.consequent_layer.parameters.copy()}
 
@@ -187,14 +196,11 @@ class ANFIS:
         return parameters
 
     def set_parameters(self, parameters: dict[str, np.ndarray]):
-        """Sets model parameters from a dictionary.
+        """Load parameters into the model.
 
-        Parameters:
-            parameters (dict): Dictionary containing model parameters with same
-                             format as returned by get_parameters().
-
-        Returns:
-            None
+        Args:
+            parameters (dict[str, np.ndarray | dict]): Dictionary with the same
+                structure as returned by :meth:`get_parameters`.
         """
         # Set consequent layer parameters
         if "consequent" in parameters:
@@ -212,12 +218,14 @@ class ANFIS:
                     mf.parameters = mf_params.copy()
 
     def get_gradients(self) -> dict[str, np.ndarray]:
-        """Retrieves all gradients from the model.
+        """Return the latest computed gradients.
 
         Returns:
-            dict: Dictionary containing all model gradients:
-                - 'membership': Dict with membership function gradients
-                - 'consequent': Consequent layer gradients
+                dict[str, np.ndarray | dict]: Dictionary with two entries:
+
+                - ``"membership"``: dict mapping input name to a list of MF
+                    gradient dicts (one per membership function).
+                - ``"consequent"``: numpy array with consequent gradients.
         """
         gradients = {"membership": {}, "consequent": self.consequent_layer.gradients.copy()}
 
@@ -231,13 +239,10 @@ class ANFIS:
         return gradients
 
     def update_parameters(self, learning_rate: float):
-        """Updates model parameters using accumulated gradients (gradient descent).
+        """Apply a single gradient descent update step.
 
-        Parameters:
-            learning_rate (float): Learning rate for parameter updates.
-
-        Returns:
-            None
+        Args:
+            learning_rate (float): Step size used to update parameters.
         """
         # Update consequent layer parameters
         self.consequent_layer.parameters -= learning_rate * self.consequent_layer.gradients
@@ -249,7 +254,11 @@ class ANFIS:
                     mf.parameters[param_name] -= learning_rate * gradient
 
     def _apply_membership_gradients(self, learning_rate: float) -> None:
-        """Apply gradient descent update to membership function parameters only."""
+        """Apply gradient descent to membership function parameters only.
+
+        Args:
+            learning_rate (float): Step size for MF parameters.
+        """
         for name in self.input_names:
             for mf in self.input_mfs[name]:
                 for param_name, gradient in mf.gradients.items():
@@ -264,12 +273,25 @@ class ANFIS:
         verbose: bool = True,
         trainer: None | object = None,
     ) -> list[float]:
-        """Trains the ANFIS model.
+        """Train the ANFIS model.
 
-        If a trainer is provided (see `anfis_toolbox.optim`), delegates training to it,
-        preserving a scikit-learn-style `fit(X, y)` entry point. If no trainer is
-        provided, uses a default SGDTrainer from `anfis_toolbox.optim` configured with
-        the given `epochs`, `learning_rate`, and `verbose`.
+        If a trainer is provided (see ``anfis_toolbox.optim``), delegate training
+        to it while preserving a scikit-learn-style ``fit(X, y)`` entry point. If
+        no trainer is provided, a default ``HybridTrainer`` is used with the given
+        hyperparameters.
+
+        Args:
+            x (np.ndarray): Training inputs of shape ``(n_samples, n_inputs)``.
+            y (np.ndarray): Training targets of shape ``(n_samples, 1)`` for
+                regression.
+            epochs (int, optional): Number of epochs. Defaults to ``100``.
+            learning_rate (float, optional): Learning rate. Defaults to ``0.01``.
+            verbose (bool, optional): Whether to log progress. Defaults to ``True``.
+            trainer (object | None, optional): External trainer implementing
+                ``fit(model, X, y)``. Defaults to ``None``.
+
+        Returns:
+            list[float]: Per-epoch loss values.
         """
         if trainer is None:
             # Lazy import to avoid unnecessary dependency at module import time
@@ -297,35 +319,34 @@ class ANFIS:
 
 
 class ANFISClassifier:
-    """ANFIS model variant for classification with a softmax head.
+    """ANFIS variant for classification with a softmax head.
 
-    Produces per-class logits aggregated from per-rule linear consequents and
-    uses cross-entropy loss during training.
+    Aggregates per-rule linear consequents into per-class logits and trains
+    with cross-entropy loss.
     """
 
     def __init__(self, input_mfs: dict[str, list[MembershipFunction]], n_classes: int, random_state: int | None = None):
         """Initialize the ANFIS model for classification.
 
         Args:
-            input_mfs (dict[str, list[MembershipFunction]]):
-                Dictionary mapping input variable names to lists of their associated membership functions.
-            n_classes (int):
-                Number of output classes. Must be greater than or equal to 2.
-            random_state (int | None): Random seed for parameter initialization.
+            input_mfs (dict[str, list[MembershipFunction]]): Mapping from input
+                variable name to its list of membership functions.
+            n_classes (int): Number of output classes (>= 2).
+            random_state (int | None): Optional random seed for parameter init.
 
         Raises:
-            ValueError: If n_classes is less than 2.
+            ValueError: If ``n_classes < 2``.
 
         Attributes:
-            input_mfs (dict[str, list[MembershipFunction]]): Membership functions for each input.
-            input_names (list[str]): Names of input variables.
+            input_mfs (dict[str, list[MembershipFunction]]): Membership functions per input.
+            input_names (list[str]): Input variable names.
             n_inputs (int): Number of input variables.
-            n_classes (int): Number of output classes.
-            n_rules (int): Number of fuzzy rules, computed as the product of membership functions per input.
-            membership_layer (MembershipLayer): Layer for computing membership degrees.
-            rule_layer (RuleLayer): Layer for rule evaluation.
-            normalization_layer (NormalizationLayer): Layer for normalizing rule strengths.
-            consequent_layer (ClassificationConsequentLayer): Layer for computing class outputs.
+            n_classes (int): Number of classes.
+            n_rules (int): Number of fuzzy rules (product of MFs per input).
+            membership_layer (MembershipLayer): Computes membership degrees.
+            rule_layer (RuleLayer): Evaluates rule activations.
+            normalization_layer (NormalizationLayer): Normalizes rule strengths.
+            consequent_layer (ClassificationConsequentLayer): Computes class logits.
         """
         if n_classes < 2:
             raise ValueError("n_classes must be >= 2")
@@ -344,11 +365,23 @@ class ANFISClassifier:
 
     @property
     def membership_functions(self) -> dict[str, list[MembershipFunction]]:
-        """Returns the membership functions used in the model."""
+        """Return the membership functions grouped by input.
+
+        Returns:
+            dict[str, list[MembershipFunction]]: Mapping from input name to
+            its list of membership functions.
+        """
         return self.input_mfs
 
     def forward(self, x: np.ndarray) -> np.ndarray:
-        """Performs a forward pass through the network."""
+        """Run a forward pass through the classifier.
+
+        Args:
+            x (np.ndarray): Input array of shape ``(batch_size, n_inputs)``.
+
+        Returns:
+            np.ndarray: Logits of shape ``(batch_size, n_classes)``.
+        """
         membership_outputs = self.membership_layer.forward(x)
         rule_strengths = self.rule_layer.forward(membership_outputs)
         normalized_weights = self.normalization_layer.forward(rule_strengths)
@@ -356,14 +389,30 @@ class ANFISClassifier:
         return logits
 
     def backward(self, dL_dlogits: np.ndarray):
-        """Backpropagates the gradients through the network."""
+        """Backpropagate gradients through all layers.
+
+        Args:
+            dL_dlogits (np.ndarray): Gradient of the loss w.r.t. logits,
+                shape ``(batch_size, n_classes)``.
+        """
         dL_dnorm_w, _ = self.consequent_layer.backward(dL_dlogits)
         dL_dw = self.normalization_layer.backward(dL_dnorm_w)
         gradients = self.rule_layer.backward(dL_dw)
         self.membership_layer.backward(gradients)
 
     def predict_proba(self, x: np.ndarray) -> np.ndarray:
-        """Predicts the class probabilities for the given input."""
+        """Predict per-class probabilities for the given inputs.
+
+        Args:
+            x (np.ndarray | list[float]): Inputs. If 1D, must have exactly
+                ``n_inputs`` elements; if 2D, must be ``(batch_size, n_inputs)``.
+
+        Returns:
+            np.ndarray: Probabilities of shape ``(batch_size, n_classes)``.
+
+        Raises:
+            ValueError: If input dimensionality or feature count is invalid.
+        """
         x_arr = np.asarray(x, dtype=float)
         if x_arr.ndim == 1:
             if x_arr.size != self.n_inputs:
@@ -378,23 +427,32 @@ class ANFISClassifier:
         return softmax(logits, axis=1)
 
     def predict(self, x: np.ndarray) -> np.ndarray:
-        """Predicts the class labels for the given input."""
+        """Predict the most likely class label for each sample.
+
+        Args:
+            x (np.ndarray | list[float]): Inputs. If 1D, must have exactly
+                ``n_inputs`` elements; if 2D, must be ``(batch_size, n_inputs)``.
+
+        Returns:
+            np.ndarray: Predicted labels of shape ``(batch_size,)``.
+        """
         proba = self.predict_proba(x)
         return np.argmax(proba, axis=1)
 
     def reset_gradients(self):
-        """Resets the gradients of the model's layers."""
+        """Reset gradients accumulated in the model layers to zero."""
         self.membership_layer.reset()
         self.consequent_layer.reset()
 
     def get_parameters(self) -> dict[str, np.ndarray]:
-        """Retrieves the parameters of the model.
+        """Return a snapshot of all trainable parameters.
 
         Returns:
-            dict[str, np.ndarray]: A dictionary containing:
-                - "membership": A nested dictionary where each input name maps to a list of parameter arrays
-                  for its associated membership functions.
-                - "consequent": An array of parameters for the consequent layer.
+                dict[str, np.ndarray | dict]: Dictionary containing:
+
+                - ``"membership"``: nested dict mapping input name to a list of MF
+                    parameter dicts.
+                - ``"consequent"``: numpy array with consequent parameters.
         """
         params = {"membership": {}, "consequent": self.consequent_layer.parameters.copy()}
         for name in self.input_names:
@@ -404,14 +462,11 @@ class ANFISClassifier:
         return params
 
     def set_parameters(self, parameters: dict[str, np.ndarray]):
-        """Sets the parameters for the ANFIS model's layers.
+        """Load parameters into the classifier.
 
-        Parameters
-        ----------
-        parameters : dict[str, np.ndarray]
-            A dictionary containing parameter arrays for the model layers.
-            - "consequent": Parameters for the consequent layer.
-            - "membership": Dictionary mapping input names to lists of membership function parameters.
+        Args:
+            parameters (dict[str, np.ndarray | dict]): Dictionary with the same
+                structure as returned by :meth:`get_parameters`.
         """
         if "consequent" in parameters:
             self.consequent_layer.parameters = parameters["consequent"].copy()
@@ -425,11 +480,14 @@ class ANFISClassifier:
                     mf.parameters = mf_params.copy()
 
     def get_gradients(self) -> dict[str, np.ndarray]:
-        """Computes and returns the gradients of the model parameters.
+        """Return the latest computed gradients.
 
         Returns:
-            dict[str, np.ndarray]: A dictionary containing gradients for both membership functions
-            and consequent layer parameters.
+                dict[str, np.ndarray | dict]: Dictionary containing:
+
+                - ``"membership"``: nested dict mapping input name to a list of MF
+                    gradient dicts.
+                - ``"consequent"``: numpy array with consequent gradients.
         """
         grads = {"membership": {}, "consequent": self.consequent_layer.gradients.copy()}
         for name in self.input_names:
@@ -458,6 +516,11 @@ class ANFISClassifier:
                     mf.parameters[param_name] -= learning_rate * gradient
 
     def _apply_membership_gradients(self, learning_rate: float) -> None:
+        """Apply gradient descent to membership function parameters only.
+
+        Args:
+            learning_rate (float): Step size for MF parameters.
+        """
         for name in self.input_names:
             for mf in self.input_mfs[name]:
                 for param_name, gradient in mf.gradients.items():
@@ -471,9 +534,21 @@ class ANFISClassifier:
         learning_rate: float = 0.01,
         verbose: bool = True,
     ) -> list[float]:
-        """Train with cross-entropy using simple gradient descent.
+        """Train the classifier with cross-entropy using gradient descent.
 
-        y can be integer labels (n,) or one-hot (n,k).
+        Args:
+            X (np.ndarray): Input data of shape ``(n_samples, n_inputs)``.
+            y (np.ndarray): Integer labels of shape ``(n_samples,)`` or
+                one-hot array of shape ``(n_samples, n_classes)``.
+            epochs (int, optional): Number of epochs. Defaults to ``100``.
+            learning_rate (float, optional): Learning rate. Defaults to ``0.01``.
+            verbose (bool, optional): Whether to log progress. Defaults to ``True``.
+
+        Returns:
+            list[float]: Per-epoch cross-entropy loss values.
+
+        Raises:
+            ValueError: If provided one-hot labels do not match ``n_classes``.
         """
         X = np.asarray(X, dtype=float)
         yt = np.asarray(y)
@@ -512,6 +587,6 @@ class ANFISClassifier:
         """Return a string representation of the ANFISClassifier.
 
         Returns:
-            str: A formatted string describing the classifier's configuration.
+            str: A formatted string describing the classifier configuration.
         """
         return f"ANFISClassifier(n_inputs={self.n_inputs}, n_rules={self.n_rules}, n_classes={self.n_classes})"
