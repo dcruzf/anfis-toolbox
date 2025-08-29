@@ -59,6 +59,7 @@ nav:
     - Gaussian: membership_functions/gaussianmf.ipynb
     - Generalized Bell: membership_functions/bellmf.ipynb
     - Two-Sided Gaussian: membership_functions/gaussian2mf.ipynb
+    - Triangular: membership_functions/triangularmf.ipynb
   - Examples:
     - Basic Example: examples/basic_example.ipynb
     - Intermediate Example: examples/intermediate_example.ipynb
