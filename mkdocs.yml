@@ -61,6 +61,7 @@ nav:
     - Two-Sided Gaussian: membership_functions/gaussian2mf.ipynb
     - Triangular: membership_functions/triangularmf.ipynb
     - Trapezoidal: membership_functions/trapezoidalmf.ipynb
+    - Sigmoidal: membership_functions/sigmoidmf.ipynb
   - Examples:
     - Basic Example: examples/basic_example.ipynb
     - Intermediate Example: examples/intermediate_example.ipynb
