@@ -57,8 +57,9 @@ nav:
     - Quick Start: getting-started/quickstart.md
   - Membership Functions:
     - Gaussian: membership_functions/gaussianmf.ipynb
-    - Generalized Bell: membership_functions/bellmf.ipynb
     - Two-Sided Gaussian: membership_functions/gaussian2mf.ipynb
+    - Generalized Bell: membership_functions/bellmf.ipynb
+    - Pi-shaped: membership_functions/pimf.ipynb
     - Triangular: membership_functions/triangularmf.ipynb
     - Trapezoidal: membership_functions/trapezoidalmf.ipynb
     - Sigmoidal: membership_functions/sigmoidmf.ipynb
