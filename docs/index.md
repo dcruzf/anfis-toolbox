@@ -161,13 +161,6 @@ graph LR
     C --> D[Normalization Layer]
     D --> E[Consequent Layer]
     E --> F[Output]
-
-    style A fill:#e1f5fe
-    style B fill:#f3e5f5
-    style C fill:#e8f5e8
-    style D fill:#fff3e0
-    style E fill:#fce4ec
-    style F fill:#f1f8e9
 ```
 
 ### Supported Membership Functions

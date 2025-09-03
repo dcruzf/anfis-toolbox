@@ -2,6 +2,7 @@
 pre.highlight,
 .md-typeset pre > code {
     font-size: small;
+    margin: 0;
 }
 
 .jupyter-wrapper .jp-Notebook .jp-Cell:not(.jp-mod-active) .jp-InputPrompt {
