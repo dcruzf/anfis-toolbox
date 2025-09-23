@@ -56,15 +56,17 @@ nav:
     - Installation: getting-started/installation.md
     - Quick Start: getting-started/quickstart.md
   - Membership Functions:
-    - Gaussian: membership_functions/gaussianmf.ipynb
-    - Two-Sided Gaussian: membership_functions/gaussian2mf.ipynb
-    - Generalized Bell: membership_functions/bellmf.ipynb
-    - Pi-shaped: membership_functions/pimf.ipynb
-    - Triangular: membership_functions/triangularmf.ipynb
-    - Trapezoidal: membership_functions/trapezoidalmf.ipynb
-    - Sigmoidal: membership_functions/sigmoidmf.ipynb
-    - Difference of Sigmoidal: membership_functions/diffsigmoidalmf.ipynb
-    - Z-Shaped: membership_functions/zshapedmf.ipynb
+    - Gaussian: membership_functions/01_gaussianmf.ipynb
+    - Two-Sided Gaussian: membership_functions/02_gaussian2mf.ipynb
+    - Generalized Bell: membership_functions/03_bellmf.ipynb
+    - Pi-shaped: membership_functions/04_pimf.ipynb
+    - Triangular: membership_functions/05_triangularmf.ipynb
+    - Trapezoidal: membership_functions/06_trapezoidalmf.ipynb
+    - Sigmoidal: membership_functions/07_sigmoidmf.ipynb
+    - Difference of Sigmoidal: membership_functions/08_diffsigmoidalmf.ipynb
+    - Z-Shaped: membership_functions/09_zshapedmf.ipynb
+    - Linear Z-Shaped: membership_functions/10_linzshapedmf.ipynb
+    - Linear S-Shaped: membership_functions/11_linsshapedmf.ipynb
   - Examples:
     - Basic Example: examples/basic_example.ipynb
     - Intermediate Example: examples/intermediate_example.ipynb
