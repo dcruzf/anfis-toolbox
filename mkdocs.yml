@@ -64,6 +64,7 @@ nav:
     - Trapezoidal: membership_functions/trapezoidalmf.ipynb
     - Sigmoidal: membership_functions/sigmoidmf.ipynb
     - Difference of Sigmoidal: membership_functions/diffsigmoidalmf.ipynb
+    - Z-Shaped: membership_functions/zshapedmf.ipynb
   - Examples:
     - Basic Example: examples/basic_example.ipynb
     - Intermediate Example: examples/intermediate_example.ipynb
