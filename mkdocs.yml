@@ -64,9 +64,11 @@ nav:
     - Trapezoidal: membership_functions/06_trapezoidalmf.ipynb
     - Sigmoidal: membership_functions/07_sigmoidmf.ipynb
     - Difference of Sigmoidal: membership_functions/08_diffsigmoidalmf.ipynb
-    - Z-Shaped: membership_functions/09_zshapedmf.ipynb
-    - Linear Z-Shaped: membership_functions/10_linzshapedmf.ipynb
-    - Linear S-Shaped: membership_functions/11_linsshapedmf.ipynb
+    - Product of Sigmoidal: membership_functions/09_prodsigmoidalmf.ipynb
+    - Z-Shaped: membership_functions/10_zshapedmf.ipynb
+    - Linear Z-Shaped: membership_functions/11_linzshapedmf.ipynb
+    - S-Shaped: membership_functions/12_sshapedmf.ipynb
+    - Linear S-Shaped: membership_functions/13_linsshapedmf.ipynb
   - Examples:
     - Basic Example: examples/basic_example.ipynb
     - Intermediate Example: examples/intermediate_example.ipynb
