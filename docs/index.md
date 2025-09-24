@@ -23,7 +23,7 @@ ANFIS Toolbox is a comprehensive Python library for creating, training, and depl
 ## Key Features
 
 ✨ **Easy to Use** - Get started with just 3 lines of code
-🏗️ **Flexible Architecture** - 6 membership functions, hybrid learning
+🏗️ **Flexible Architecture** - 13 membership functions, hybrid learning
 📊 **Built-in Visualization** - Automatic plots for training and results
 ✅ **Robust Validation** - Cross-validation, metrics, model comparison
 📚 **Rich Documentation** - Comprehensive examples and tutorials
@@ -70,27 +70,6 @@ That's it! 🎉 You just created and trained a neuro-fuzzy system!
     pip install anfis-toolbox[all]
     ```
 
-=== "Specific Features"
-
-    Install with specific optional features:
-
-    ```bash
-    # For visualization features
-    pip install anfis-toolbox[visualization]
-
-    # Validation features are built-in (no extra needed)
-    ```
-
-=== "Development Installation"
-
-    For development and contribution:
-
-    ```bash
-    git clone https://github.com/dcruzf/anfis-toolbox.git
-    cd anfis-toolbox
-    pip install -e .[all,dev]
-    ```
-
 ## Why ANFIS Toolbox?
 
 ### 🚀 Simplicity First
@@ -108,19 +87,6 @@ model = ANFIS(input_mfs)
 
 # ANFIS Toolbox approach (1 line)
 model = QuickANFIS.for_regression(X)
-```
-
-### 📊 Visual Insights
-
-Built-in visualization helps you understand your models:
-
-```python
-from anfis_toolbox import ANFISVisualizer
-
-visualizer = ANFISVisualizer(model)
-visualizer.plot_membership_functions()  # Show MF shapes
-visualizer.plot_training_curves(losses)  # Training progress
-visualizer.plot_prediction_vs_target(X, y)  # Model performance
 ```
 
 ### ✅ Validation Made Easy (Built-in)
@@ -166,11 +132,17 @@ graph LR
 ### Supported Membership Functions
 
 - **Gaussian** (`GaussianMF`) - Smooth bell curves
+- **Gaussian2** (`Gaussian2MF`) - Two-sided Gaussian with flat region
 - **Triangular** (`TriangularMF`) - Simple triangular shapes
 - **Trapezoidal** (`TrapezoidalMF`) - Plateau regions
 - **Bell-shaped** (`BellMF`) - Generalized bell curves
 - **Sigmoidal** (`SigmoidalMF`) - S-shaped transitions
-- **S-shaped** (`SShapedMF`) and **Z-shaped** (`ZShapedMF`) - Smoothstep transitions
+- **Diff-Sigmoidal** (`DiffSigmoidalMF`) - Difference of two sigmoids
+- **Prod-Sigmoidal** (`ProdSigmoidalMF`) - Product of two sigmoids
+- **S-shaped** (`SShapedMF`) - Smooth S-curve transitions
+- **Linear S-shaped** (`LinSShapedMF`) - Piecewise linear S-curve
+- **Z-shaped** (`ZShapedMF`) - Smooth Z-curve transitions
+- **Linear Z-shaped** (`LinZShapedMF`) - Piecewise linear Z-curve
 - **Pi-shaped** (`PiMF`) - Bell with flat top
 
 ### Training Methods
@@ -179,16 +151,6 @@ graph LR
 - **Pure Backpropagation** - Full gradient-based training
 - **Analytical Gradients** - Fast and accurate derivative computation
 
-## Performance
-
-| Model Size | Training Speed | Memory Usage |
-|------------|----------------|--------------|
-| Small (2×3) | ~1s / 50 epochs | <10 MB |
-| Medium (3×4) | ~3s / 50 epochs | <50 MB |
-| Large (5×5) | ~15s / 50 epochs | <200 MB |
-
-*Benchmarks on Intel i7, 16GB RAM*
-
 ## What's Next?
 
 - 📖 **[Getting Started](getting-started/installation.md)** - Install and run your first model
@@ -196,7 +158,8 @@ graph LR
 - 📚 **[User Guide](guide/introduction.md)** - Comprehensive documentation
 - 💡 **[Examples](examples/basic.md)** - Real-world use cases
 - 🔧 **[API Reference](api/overview.md)** - Complete function documentation
-    - 📐 [Membership Functions](api/membership-functions.md) - All MF classes
+  - 🤖 [ANFIS Models](models/anfis.md) - Regression and classification models
+  - 📐 [Membership Functions](api/membership-functions.md) - All MF classes
 
 ## Community & Support
 
