@@ -52,6 +52,9 @@ theme:
 
 nav:
   - Home: index.md
+  - Models:
+    - regressor: models/anfis.md
+    - classifier: models/anfis-classifier.md
   - Membership Functions:
     - Gaussian: membership_functions/01_gaussianmf.ipynb
     - Two-Sided Gaussian: membership_functions/02_gaussian2mf.ipynb
