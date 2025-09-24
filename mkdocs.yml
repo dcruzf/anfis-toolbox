@@ -55,6 +55,7 @@ nav:
   - Models:
     - regressor: models/anfis.md
     - classifier: models/anfis-classifier.md
+    - fuzzy c-means: models/fuzzy_c-means.md
   - Membership Functions:
     - Gaussian: membership_functions/01_gaussianmf.ipynb
     - Two-Sided Gaussian: membership_functions/02_gaussian2mf.ipynb

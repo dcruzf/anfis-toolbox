@@ -160,6 +160,7 @@ graph LR
 - 🔧 **[API Reference](api/overview.md)** - Complete function documentation
   - 🤖 [ANFIS Models](models/anfis.md) - Regression and classification models
   - 📐 [Membership Functions](api/membership-functions.md) - All MF classes
+  - 🔍 [Fuzzy C-Means](models/fuzzy_c-means.md) - Clustering for MF initialization
 
 ## Community & Support
 
