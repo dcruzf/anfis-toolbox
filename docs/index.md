@@ -153,20 +153,16 @@ graph LR
 
 ## What's Next?
 
-- 📖 **[Getting Started](getting-started/installation.md)** - Install and run your first model
-- 🎯 **[Quick Start](getting-started/quickstart.md)** - 5-minute tutorial
-- 📚 **[User Guide](guide/introduction.md)** - Comprehensive documentation
 - 💡 **[Examples](examples/basic.md)** - Real-world use cases
 - 🔧 **[API Reference](api/overview.md)** - Complete function documentation
-  - 🤖 [ANFIS Models](models/anfis.md) - Regression and classification models
-  - 📐 [Membership Functions](api/membership-functions.md) - All MF classes
-  - 🔍 [Fuzzy C-Means](models/fuzzy_c-means.md) - Clustering for MF initialization
+- 🤖 **[ANFIS Models](models/anfis.md)** - Regression and classification models
+- 📐 **[Membership Functions](membership_functions/01_gaussianmf.ipynb)** - All MF classes
+- 🔍 **[Fuzzy C-Means](models/fuzzy_c-means.md)** - Clustering for MF initialization
 
 ## Community & Support
 
 - 🐛 **[Report Issues](https://github.com/dcruzf/anfis-toolbox/issues)** - Bug reports and feature requests
 - 💬 **[Discussions](https://github.com/dcruzf/anfis-toolbox/discussions)** - Questions and community chat
-- 📧 **[Contact](mailto:daniel@ci.ufpb.br)** - Direct contact with maintainers
 - ⭐ **[Star on GitHub](https://github.com/dcruzf/anfis-toolbox)** - Show your support!
 
 ---
