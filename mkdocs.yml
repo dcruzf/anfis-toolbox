@@ -75,7 +75,7 @@ nav:
     - Intermediate: examples/intermediate_example.ipynb
     - Advanced: examples/advanced_example.ipynb
   - API Reference:
-    - Overview: api/overview.md
+    - index: api/index.md
     - Membership Functions: api/membership-functions.md
     - Builders: api/builders.md
     - Models: api/models.md
