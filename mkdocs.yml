@@ -52,9 +52,6 @@ theme:
 
 nav:
   - Home: index.md
-  - Getting Started:
-    - Installation: getting-started/installation.md
-    - Quick Start: getting-started/quickstart.md
   - Membership Functions:
     - Gaussian: membership_functions/01_gaussianmf.ipynb
     - Two-Sided Gaussian: membership_functions/02_gaussian2mf.ipynb
