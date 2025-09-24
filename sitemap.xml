@@ -5,11 +5,23 @@
          <lastmod>2025-09-24</lastmod>
     </url>
     <url>
+         <loc>https://dcruzf.github.io/anfis-toolbox/api/</loc>
+         <lastmod>2025-09-24</lastmod>
+    </url>
+    <url>
          <loc>https://dcruzf.github.io/anfis-toolbox/api/builders/</loc>
          <lastmod>2025-09-24</lastmod>
     </url>
     <url>
-         <loc>https://dcruzf.github.io/anfis-toolbox/api/core/</loc>
+         <loc>https://dcruzf.github.io/anfis-toolbox/api/clustering/</loc>
+         <lastmod>2025-09-24</lastmod>
+    </url>
+    <url>
+         <loc>https://dcruzf.github.io/anfis-toolbox/api/layers/</loc>
+         <lastmod>2025-09-24</lastmod>
+    </url>
+    <url>
+         <loc>https://dcruzf.github.io/anfis-toolbox/api/losses/</loc>
          <lastmod>2025-09-24</lastmod>
     </url>
     <url>
@@ -17,7 +29,15 @@
          <lastmod>2025-09-24</lastmod>
     </url>
     <url>
-         <loc>https://dcruzf.github.io/anfis-toolbox/api/overview/</loc>
+         <loc>https://dcruzf.github.io/anfis-toolbox/api/metrics/</loc>
+         <lastmod>2025-09-24</lastmod>
+    </url>
+    <url>
+         <loc>https://dcruzf.github.io/anfis-toolbox/api/models/</loc>
+         <lastmod>2025-09-24</lastmod>
+    </url>
+    <url>
+         <loc>https://dcruzf.github.io/anfis-toolbox/api/optim/</loc>
          <lastmod>2025-09-24</lastmod>
     </url>
     <url>
@@ -86,6 +106,18 @@
     </url>
     <url>
          <loc>https://dcruzf.github.io/anfis-toolbox/membership_functions/13_linsshapedmf/</loc>
+         <lastmod>2025-09-24</lastmod>
+    </url>
+    <url>
+         <loc>https://dcruzf.github.io/anfis-toolbox/models/anfis-classifier/</loc>
+         <lastmod>2025-09-24</lastmod>
+    </url>
+    <url>
+         <loc>https://dcruzf.github.io/anfis-toolbox/models/anfis/</loc>
+         <lastmod>2025-09-24</lastmod>
+    </url>
+    <url>
+         <loc>https://dcruzf.github.io/anfis-toolbox/models/fuzzy_c-means/</loc>
          <lastmod>2025-09-24</lastmod>
     </url>
 </urlset>
