@@ -76,9 +76,13 @@ nav:
     - Advanced: examples/advanced_example.ipynb
   - API Reference:
     - Overview: api/overview.md
-    - Core: api/core.md
     - Membership Functions: api/membership-functions.md
     - Builders: api/builders.md
+    - Models: api/models.md
+    - Layers: api/layers.md
+    - Clustering: api/clustering.md
+    - Optimization: api/optim.md
+    - Metrics: api/metrics.md
 
 plugins:
   - search
