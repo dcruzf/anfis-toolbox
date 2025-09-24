@@ -70,8 +70,9 @@ nav:
     - S-Shaped: membership_functions/12_sshapedmf.ipynb
     - Linear S-Shaped: membership_functions/13_linsshapedmf.ipynb
   - Examples:
-    - Basic Example: examples/basic_example.ipynb
-    - Intermediate Example: examples/intermediate_example.ipynb
+    - Basic: examples/basic_example.ipynb
+    - Intermediate: examples/intermediate_example.ipynb
+    - Advanced: examples/advanced_example.ipynb
   - API Reference:
     - Overview: api/overview.md
     - Core: api/core.md
