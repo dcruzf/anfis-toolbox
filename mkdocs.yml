@@ -57,19 +57,19 @@ nav:
     - classifier: models/anfis-classifier.md
     - fuzzy c-means: models/fuzzy_c-means.md
   - Membership Functions:
-    - Gaussian: membership_functions/01_gaussianmf.ipynb
-    - Two-Sided Gaussian: membership_functions/02_gaussian2mf.ipynb
-    - Generalized Bell: membership_functions/03_bellmf.ipynb
-    - Pi-shaped: membership_functions/04_pimf.ipynb
-    - Triangular: membership_functions/05_triangularmf.ipynb
-    - Trapezoidal: membership_functions/06_trapezoidalmf.ipynb
-    - Sigmoidal: membership_functions/07_sigmoidmf.ipynb
-    - Difference of Sigmoidal: membership_functions/08_diffsigmoidalmf.ipynb
-    - Product of Sigmoidal: membership_functions/09_prodsigmoidalmf.ipynb
-    - Z-Shaped: membership_functions/10_zshapedmf.ipynb
-    - Linear Z-Shaped: membership_functions/11_linzshapedmf.ipynb
-    - S-Shaped: membership_functions/12_sshapedmf.ipynb
-    - Linear S-Shaped: membership_functions/13_linsshapedmf.ipynb
+    - Gaussian: membership_functions/gaussian.ipynb
+    - Two-Sided Gaussian: membership_functions/gaussian-combination.ipynb
+    - Generalized Bell: membership_functions/bell.ipynb
+    - Pi-shaped: membership_functions/pi.ipynb
+    - Triangular: membership_functions/triangular.ipynb
+    - Trapezoidal: membership_functions/trapezoidal.ipynb
+    - Sigmoidal: membership_functions/sigmoidal.ipynb
+    - Difference of Sigmoidal: membership_functions/sigmoidal-difference.ipynb
+    - Product of Sigmoidal: membership_functions/sigmoidal-product.ipynb
+    - Z-Shaped: membership_functions/zshaped.ipynb
+    - Linear Z-Shaped: membership_functions/zshaped-linear.ipynb
+    - S-Shaped: membership_functions/sshaped.ipynb
+    - Linear S-Shaped: membership_functions/sshaped-linear.ipynb
   - Examples:
     - Basic: examples/basic_example.ipynb
     - Intermediate: examples/intermediate_example.ipynb

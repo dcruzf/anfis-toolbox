@@ -1,4 +1,10 @@
-# ANFIS Toolbox
+---
+hide:
+    - navigation
+    - toc
+---
+
+<h1 style="text-align:center">ANFIS Toolbox</h1>
 
 <p align="center">
   <img src="assets/logo.svg" alt="ANFIS Toolbox Logo" width="300" />
@@ -10,24 +16,81 @@
 
 ---
 
-**Documentation**: <a href="https://dcruzf.github.io/anfis-toolbox" target="_blank">https://dcruzf.github.io/anfis-toolbox</a>
-
-**Source Code**: <a href="https://github.com/dcruzf/anfis-toolbox" target="_blank">https://github.com/dcruzf/anfis-toolbox</a>
-
-**PyPI**: <a href="https://pypi.org/project/anfis-toolbox" target="_blank">https://pypi.org/project/anfis-toolbox</a>
+ANFIS Toolbox is a comprehensive Python library for creating, training, and deploying **Adaptive Neuro-Fuzzy Inference Systems (ANFIS)**. It provides an intuitive API that makes fuzzy neural networks accessible to both beginners and experts.
 
 ---
 
-ANFIS Toolbox is a comprehensive Python library for creating, training, and deploying **Adaptive Neuro-Fuzzy Inference Systems (ANFIS)**. It provides an intuitive API that makes fuzzy neural networks accessible to both beginners and experts.
+<div style="text-align:center">
+    <a href="https://github.com/dcruzf/anfis-toolbox" target="_blank">🔗 <strong>GitHub</strong></a> | <a href="https://pypi.org/project/anfis-toolbox" target="_blank">📦 <strong>PyPI</strong></a>
+</div>
+
+---
 
 ## Key Features
 
-✨ **Easy to Use** - Get started with just 3 lines of code
-🏗️ **Flexible Architecture** - 13 membership functions, hybrid learning
-📊 **Built-in Visualization** - Automatic plots for training and results
-✅ **Robust Validation** - Cross-validation, metrics, model comparison
-📚 **Rich Documentation** - Comprehensive examples and tutorials
-🔧 **Production Ready** - Model persistence and configuration management
+<div style="display: flex; gap: 1.5rem; flex-wrap: wrap; margin-top: 1rem;">
+    <div style="flex: 1; min-width: 280px; padding: 1rem; border: 1px solid #ddd; border-radius: 8px;">
+        ✨ <strong>Easy to Use</strong><br>
+        Get started with just 3 lines of code
+    </div>
+    <div style="flex: 1; min-width: 280px; padding: 1rem; border: 1px solid #ddd; border-radius: 8px;">
+        🏗️ <strong>Flexible Architecture</strong><br>
+        13 membership functions, hybrid learning
+    </div>
+    <div style="flex: 1; min-width: 280px; padding: 1rem; border: 1px solid #ddd; border-radius: 8px;">
+        📊 <strong>Built-in Visualization</strong><br>
+        Automatic plots for training and results
+    </div>
+    <div style="flex: 1; min-width: 280px; padding: 1rem; border: 1px solid #ddd; border-radius: 8px;">
+        ✅ <strong>Robust Validation</strong><br>
+        Cross-validation, metrics, model comparison
+    </div>
+    <div style="flex: 1; min-width: 280px; padding: 1rem; border: 1px solid #ddd; border-radius: 8px;">
+        📚 <strong>Rich Documentation</strong><br>
+        Comprehensive examples and tutorials
+    </div>
+    <div style="flex: 1; min-width: 280px; padding: 1rem; border: 1px solid #ddd; border-radius: 8px;">
+        🔧 <strong>Production Ready</strong><br>
+        Model persistence and configuration management
+    </div>
+</div>
+
+## Why ANFIS Toolbox?
+
+### 🚀 Simplicity First
+
+Most fuzzy logic libraries require extensive boilerplate code. ANFIS Toolbox gets you running in seconds:
+
+```python
+# Traditional approach (10+ lines)
+input_mfs = {
+    'x1': [GaussianMF(-1, 1), GaussianMF(1, 1)],
+    'x2': [GaussianMF(-1, 1), GaussianMF(1, 1)]
+}
+model = ANFIS(input_mfs)
+# ... manual setup ...
+
+# ANFIS Toolbox approach (1 line)
+model = QuickANFIS.for_regression(X)
+```
+
+### ✅ Validation Made Easy (Built-in)
+
+Comprehensive model evaluation with minimal code:
+
+```python
+from anfis_toolbox import ANFISValidator
+
+validator = ANFISValidator(model)
+
+# Cross-validation
+cv_results = validator.cross_validate(X, y, cv=5)
+print(f"CV R²: {cv_results['r2_mean']:.4f} ± {cv_results['r2_std']:.4f}")
+
+# Learning curves
+learning_data = validator.learning_curve(X, y)
+```
+
 
 ## Quick Example
 
@@ -70,41 +133,6 @@ That's it! 🎉 You just created and trained a neuro-fuzzy system!
     pip install anfis-toolbox[all]
     ```
 
-## Why ANFIS Toolbox?
-
-### 🚀 Simplicity First
-
-Most fuzzy logic libraries require extensive boilerplate code. ANFIS Toolbox gets you running in seconds:
-
-```python
-# Traditional approach (10+ lines)
-input_mfs = {
-    'x1': [GaussianMF(-1, 1), GaussianMF(1, 1)],
-    'x2': [GaussianMF(-1, 1), GaussianMF(1, 1)]
-}
-model = ANFIS(input_mfs)
-# ... manual setup ...
-
-# ANFIS Toolbox approach (1 line)
-model = QuickANFIS.for_regression(X)
-```
-
-### ✅ Validation Made Easy (Built-in)
-
-Comprehensive model evaluation with minimal code:
-
-```python
-from anfis_toolbox import ANFISValidator
-
-validator = ANFISValidator(model)
-
-# Cross-validation
-cv_results = validator.cross_validate(X, y, cv=5)
-print(f"CV R²: {cv_results['r2_mean']:.4f} ± {cv_results['r2_std']:.4f}")
-
-# Learning curves
-learning_data = validator.learning_curve(X, y)
-```
 
 ## Use Cases
 
