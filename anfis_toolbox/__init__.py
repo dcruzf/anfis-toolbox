@@ -49,40 +49,8 @@ from .metrics import (
     xie_beni_index,
 )
 from .model import ANFIS, ANFISClassifier
-from .model_selection import KFold, train_test_split
 from .optim import AdamTrainer, HybridTrainer, PSOTrainer, RMSPropTrainer, SGDTrainer
-from .validation import ANFISMetrics, ANFISValidator, quick_evaluate
-
-# Optional imports with graceful fallback
-try:
-    from .visualization import ANFISVisualizer, quick_plot_results, quick_plot_training
-
-    _HAS_VISUALIZATION = True
-except ImportError:  # pragma: no cover
-    _HAS_VISUALIZATION = False
-
-    # Create dummy classes for documentation
-    class ANFISVisualizer:
-        """Dummy class for visualization when matplotlib is not available."""
-
-        def __init__(self, *args, **kwargs):  # pragma: no cover
-            """Initialize dummy visualizer."""
-            raise ImportError(  # pragma: no cover
-                "Visualization features require matplotlib. Install with: pip install anfis-toolbox[visualization]"
-            )
-
-    def quick_plot_training(*args, **kwargs):  # pragma: no cover
-        """Dummy function for plotting training curves when matplotlib is not available."""
-        raise ImportError(  # pragma: no cover
-            "Visualization features require matplotlib. Install with: pip install anfis-toolbox[visualization]"
-        )
-
-    def quick_plot_results(*args, **kwargs):  # pragma: no cover
-        """Dummy function for plotting results when matplotlib is not available."""
-        raise ImportError(  # pragma: no cover
-            "Visualization features require matplotlib. Install with: pip install anfis-toolbox[visualization]"
-        )
-
+from .validation import ANFISMetrics, quick_evaluate
 
 __all__ = [
     # Core components
@@ -144,16 +112,8 @@ __all__ = [
     "classification_entropy",
     "xie_beni_index",
     # Validation and metrics
-    "ANFISValidator",
     "ANFISMetrics",
     "quick_evaluate",
-    # Model selection helpers
-    "KFold",
-    "train_test_split",
-    # Visualization (may raise ImportError if matplotlib not available)
-    "ANFISVisualizer",
-    "quick_plot_training",
-    "quick_plot_results",
     # Clustering
     "FuzzyCMeans",
 ]
