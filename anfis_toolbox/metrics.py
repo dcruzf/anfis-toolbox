@@ -286,7 +286,7 @@ def xie_beni_index(
     m: float = 2.0,
     epsilon: float = 1e-12,
 ) -> float:
-    """Xie–Beni index (XB). Lower is better.
+    """Xie-Beni index (XB). Lower is better.
 
     XB = sum_i sum_k u_ik^m ||x_i - v_k||^2 / (n * min_{p!=q} ||v_p - v_q||^2)
 
