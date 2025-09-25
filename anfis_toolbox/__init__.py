@@ -32,6 +32,7 @@ from .membership import (
     ZShapedMF,
 )
 from .metrics import (
+    ANFISMetrics,
     accuracy,
     classification_entropy,
     cross_entropy,
@@ -42,6 +43,7 @@ from .metrics import (
     mean_squared_logarithmic_error,
     partition_coefficient,
     pearson_correlation,
+    quick_evaluate,
     r2_score,
     root_mean_squared_error,
     softmax,
@@ -50,7 +52,6 @@ from .metrics import (
 )
 from .model import ANFIS, ANFISClassifier
 from .optim import AdamTrainer, HybridTrainer, PSOTrainer, RMSPropTrainer, SGDTrainer
-from .validation import ANFISMetrics, quick_evaluate
 
 __all__ = [
     # Core components
