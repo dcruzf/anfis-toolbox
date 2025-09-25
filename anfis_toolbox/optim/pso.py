@@ -66,13 +66,13 @@ class PSOTrainer(BaseTrainer):
         init_sigma: Std-dev for initializing particle positions around current params.
         clamp_velocity: Optional (min, max) to clip velocities element-wise.
         clamp_position: Optional (min, max) to clip positions element-wise.
-                random_state: Seed for RNG to ensure determinism.
-                        verbose: Unused here; kept for API parity.
+        random_state: Seed for RNG to ensure determinism.
+        verbose: Unused here; kept for API parity.
 
     Notes:
-                        Optimizes the loss specified by ``loss`` (defaulting to mean squared error) by searching
-                        directly in parameter space without gradients. With ``ANFISClassifier`` you can set
-                        ``loss="cross_entropy"`` to optimize categorical cross-entropy on logits.
+        Optimizes the loss specified by ``loss`` (defaulting to mean squared error) by searching
+        directly in parameter space without gradients. With ``ANFISClassifier`` you can set
+        ``loss="cross_entropy"`` to optimize categorical cross-entropy on logits.
     """
 
     swarm_size: int = 20
