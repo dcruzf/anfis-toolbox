@@ -113,3 +113,21 @@ def test_pso_train_step_with_clamps_and_no_improvement_path():
     # No movement implies no improvement; bests stay the same, loss finite
     assert np.isfinite(loss)
     assert np.allclose(state["pbest_val"], prev_pbest)
+
+
+def test_pso_classifier_with_cross_entropy_loss():
+    rng = np.random.default_rng(7)
+    X = rng.normal(size=(18, 1))
+    y = (X[:, 0] > 0).astype(int)
+    clf = _make_classifier(n_inputs=1, n_classes=2)
+    trainer = PSOTrainer(
+        swarm_size=8,
+        epochs=2,
+        random_state=7,
+        init_sigma=0.05,
+        verbose=False,
+        loss="cross_entropy",
+    )
+    losses = trainer.fit(clf, X, y)
+    assert len(losses) == 2
+    assert all(np.isfinite(loss) for loss in losses)

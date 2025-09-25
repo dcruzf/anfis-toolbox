@@ -1,6 +1,6 @@
 import numpy as np
 
-from anfis_toolbox import ANFIS
+from anfis_toolbox import ANFIS, ANFISClassifier
 from anfis_toolbox.membership import GaussianMF
 from anfis_toolbox.optim import AdamTrainer, HybridTrainer, RMSPropTrainer, SGDTrainer
 
@@ -10,6 +10,13 @@ def _make_regression_model(n_inputs: int = 2) -> ANFIS:
     for i in range(n_inputs):
         input_mfs[f"x{i + 1}"] = [GaussianMF(mean=-1.0, sigma=1.0), GaussianMF(mean=1.0, sigma=1.0)]
     return ANFIS(input_mfs)
+
+
+def _make_classifier(n_inputs: int = 1, n_classes: int = 2) -> ANFISClassifier:
+    input_mfs = {}
+    for i in range(n_inputs):
+        input_mfs[f"x{i + 1}"] = [GaussianMF(mean=-1.0, sigma=1.0), GaussianMF(mean=1.0, sigma=1.0)]
+    return ANFISClassifier(input_mfs, n_classes=n_classes, random_state=0)
 
 
 def test_sgd_train_step_and_init_state():
@@ -139,3 +146,21 @@ def test_hybrid_prepare_data_reshapes_1d():
     Xp, yp = HybridTrainer._prepare_data(X, y)
     assert Xp.shape == X.shape
     assert yp.shape == (5, 1)
+
+
+def test_sgd_trainer_with_cross_entropy_loss_on_classifier():
+    rng = np.random.default_rng(15)
+    X = rng.normal(size=(20, 1))
+    y = (X[:, 0] > 0).astype(int)
+    clf = _make_classifier(n_inputs=1, n_classes=2)
+    trainer = SGDTrainer(
+        learning_rate=0.01,
+        epochs=2,
+        batch_size=None,
+        shuffle=False,
+        verbose=False,
+        loss="cross_entropy",
+    )
+    losses = trainer.fit(clf, X, y)
+    assert len(losses) == 2
+    assert all(np.isfinite(loss) for loss in losses)

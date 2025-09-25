@@ -7,7 +7,16 @@ from .builders import ANFISBuilder, QuickANFIS
 from .clustering import FuzzyCMeans
 from .layers import ConsequentLayer, MembershipLayer, NormalizationLayer, RuleLayer
 from .logging_config import disable_training_logs, enable_training_logs, setup_logging
-from .losses import cross_entropy_grad, cross_entropy_loss, mse_grad, mse_loss
+from .losses import (
+    CrossEntropyLoss,
+    LossFunction,
+    MSELoss,
+    cross_entropy_grad,
+    cross_entropy_loss,
+    mse_grad,
+    mse_loss,
+    resolve_loss,
+)
 from .membership import (
     BellMF,
     Gaussian2MF,
@@ -41,7 +50,7 @@ from .metrics import (
 )
 from .model import ANFIS, ANFISClassifier
 from .model_selection import KFold, train_test_split
-from .optim import HybridTrainer, SGDTrainer
+from .optim import AdamTrainer, HybridTrainer, PSOTrainer, RMSPropTrainer, SGDTrainer
 from .validation import ANFISMetrics, ANFISValidator, quick_evaluate
 
 # Optional imports with graceful fallback
@@ -98,6 +107,9 @@ __all__ = [
     # Optimizers/trainers
     "SGDTrainer",
     "HybridTrainer",
+    "AdamTrainer",
+    "RMSPropTrainer",
+    "PSOTrainer",
     # Logging
     "setup_logging",
     "enable_training_logs",
@@ -114,6 +126,10 @@ __all__ = [
     "mse_grad",
     "cross_entropy_loss",
     "cross_entropy_grad",
+    "LossFunction",
+    "MSELoss",
+    "CrossEntropyLoss",
+    "resolve_loss",
     "mean_absolute_error",
     "mean_absolute_percentage_error",
     "mean_squared_error",

@@ -64,3 +64,21 @@ def test_rmsprop_accepts_1d_target_and_reshapes():
     trainer = RMSPropTrainer(learning_rate=0.01, epochs=1, batch_size=None, shuffle=False, verbose=False)
     losses = trainer.fit(model, X, y)
     assert len(losses) == 1 and np.isfinite(losses[0])
+
+
+def test_rmsprop_classifier_with_cross_entropy_loss():
+    rng = np.random.default_rng(6)
+    X = rng.normal(size=(24, 1))
+    y = (X[:, 0] > 0).astype(int)
+    clf = _make_classifier(n_inputs=1, n_classes=2)
+    trainer = RMSPropTrainer(
+        learning_rate=0.01,
+        epochs=2,
+        batch_size=None,
+        shuffle=False,
+        verbose=False,
+        loss="cross_entropy",
+    )
+    losses = trainer.fit(clf, X, y)
+    assert len(losses) == 2
+    assert all(np.isfinite(loss) for loss in losses)
