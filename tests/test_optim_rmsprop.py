@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 
 from anfis_toolbox import ANFIS, ANFISClassifier
 from anfis_toolbox.membership import GaussianMF
@@ -82,3 +83,36 @@ def test_rmsprop_classifier_with_cross_entropy_loss():
     losses = trainer.fit(clf, X, y)
     assert len(losses) == 2
     assert all(np.isfinite(loss) for loss in losses)
+
+
+def test_rmsprop_fit_raises_when_target_rows_mismatch():
+    rng = np.random.default_rng(7)
+    X = rng.normal(size=(10, 2))
+    y = rng.normal(size=(5, 1))
+    model = _make_regression_model(n_inputs=2)
+    trainer = RMSPropTrainer(learning_rate=0.01, epochs=1, batch_size=None, shuffle=False, verbose=False)
+
+    with pytest.raises(ValueError, match="Target array must have same number of rows as X"):
+        trainer.fit(model, X, y)
+
+
+def test_rmsprop_train_step_lazy_initializes_loss():
+    rng = np.random.default_rng(8)
+    X = rng.normal(size=(12, 2))
+    y = (0.4 * X[:, 0] - 0.6 * X[:, 1]).reshape(-1, 1)
+    model = _make_regression_model(n_inputs=2)
+    trainer = RMSPropTrainer(learning_rate=0.01, epochs=1, batch_size=4, shuffle=False, verbose=False)
+
+    state = trainer.init_state(model, X, y)
+    assert not hasattr(trainer, "_loss_fn")
+
+    loss, updated_state = trainer.train_step(model, X[:4], y[:4], state)
+
+    assert updated_state is state
+    assert np.isfinite(loss)
+    assert hasattr(trainer, "_loss_fn")
+
+    # Second call should reuse cached loss without re-resolving
+    loss2, state_again = trainer.train_step(model, X[4:8], y[4:8], state)
+    assert state_again is state
+    assert np.isfinite(loss2)
