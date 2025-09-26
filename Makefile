@@ -13,11 +13,15 @@ project_dir = anfis_toolbox
 rebuild-lockfiles: .uv
 	uv lock --upgrade
 
+-PHONY: Install hatch
+install-ci: .uv
+	uv tool install hatch
+	uv tool update-shell
+
 .PHONY: install ## Install the package, dependencies, and pre-commit for local development
-install: .uv
+install: .uv install-ci
 	uv self update
 	uv sync
-	uv tool install hatch
 	uv tool update-shell
 	uvx pre-commit install
 	uvx pre-commit autoupdate
