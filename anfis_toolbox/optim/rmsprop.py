@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import numpy as np
 
-from ..losses import mse_grad, mse_loss
+from ..losses import LossFunction, resolve_loss
 from .base import BaseTrainer
 
 
@@ -37,12 +37,9 @@ class RMSPropTrainer(BaseTrainer):
         verbose: Unused here; kept for API parity.
 
     Notes:
-        - Optimizes mean squared error (MSE) between ``model.forward(X)`` and ``y``.
-          For regression ANFIS this is the intended objective.
-        - With ``ANFISClassifier``, this trainer will still execute (treating integer
-          labels reshaped to ``(n,1)`` or one-hot targets) but it will minimize MSE on
-          logits/probabilities. For classification tasks, prefer ``ANFISClassifier.fit``
-          which uses cross-entropy with softmax.
+        Supports configurable losses via the ``loss`` parameter. Defaults to mean squared error for
+        regression tasks but can be switched to other differentiable objectives such as categorical
+        cross-entropy when training ``ANFISClassifier`` models.
     """
 
     learning_rate: float = 0.001
@@ -52,6 +49,8 @@ class RMSPropTrainer(BaseTrainer):
     batch_size: None | int = None
     shuffle: bool = True
     verbose: bool = True
+    loss: LossFunction | str | None = None
+    _loss_fn: LossFunction = field(init=False, repr=False)
 
     def fit(self, model, X: np.ndarray, y: np.ndarray) -> list[float]:
         """Train the model using RMSProp optimization.
@@ -61,7 +60,11 @@ class RMSPropTrainer(BaseTrainer):
         2) backward -> obtain gradients via ``model.get_gradients()``
         3) update parameters with RMSProp rule using per-parameter caches
         """
-        X, y = self._prepare_data(X, y)
+        self._loss_fn = resolve_loss(self.loss)
+        X = np.asarray(X, dtype=float)
+        y_prepared = self._loss_fn.prepare_targets(y, model=model)
+        if y_prepared.shape[0] != X.shape[0]:
+            raise ValueError("Target array must have same number of rows as X")
 
         n_samples = X.shape[0]
 
@@ -73,7 +76,7 @@ class RMSPropTrainer(BaseTrainer):
         for _ in range(self.epochs):
             if self.batch_size is None:
                 # Full-batch RMSProp step
-                loss, grads = self._compute_mse_and_grads(model, X, y)
+                loss, grads = self._compute_loss_and_grads(model, X, y_prepared)
                 self._apply_rmsprop_step(model, params, cache, grads)
                 losses.append(loss)
             else:
@@ -84,7 +87,7 @@ class RMSPropTrainer(BaseTrainer):
                 for start in range(0, n_samples, self.batch_size):
                     end = start + self.batch_size
                     batch_idx = indices[start:end]
-                    batch_loss, grads_b = self._compute_mse_and_grads(model, X[batch_idx], y[batch_idx])
+                    batch_loss, grads_b = self._compute_loss_and_grads(model, X[batch_idx], y_prepared[batch_idx])
                     self._apply_rmsprop_step(model, params, cache, grads_b)
                     batch_losses.append(batch_loss)
                 losses.append(float(np.mean(batch_losses)))
@@ -98,31 +101,21 @@ class RMSPropTrainer(BaseTrainer):
 
     def train_step(self, model, Xb: np.ndarray, yb: np.ndarray, state):
         """One RMSProp step on a batch; returns (loss, updated_state)."""
-        loss, grads = self._compute_mse_and_grads(model, Xb, yb)
+        loss_fn = self._ensure_loss_fn()
+        yb_prepared = loss_fn.prepare_targets(yb, model=model)
+        loss, grads = self._compute_loss_and_grads(model, Xb, yb_prepared)
         self._apply_rmsprop_step(model, state["params"], state["cache"], grads)
         return loss, state
 
-    @staticmethod
-    def _prepare_data(X: np.ndarray, y: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-        """Convert inputs to float numpy arrays and ensure y is 2D.
-
-        Returns X, y where y has shape (n, 1) if originally 1D.
-        """
-        X = np.asarray(X, dtype=float)
-        y = np.asarray(y, dtype=float)
-        if y.ndim == 1:
-            y = y.reshape(-1, 1)
-        return X, y
-
-    def _compute_mse_and_grads(self, model, Xb: np.ndarray, yb: np.ndarray) -> tuple[float, dict]:
+    def _compute_loss_and_grads(self, model, Xb: np.ndarray, yb: np.ndarray) -> tuple[float, dict]:
         """Forward pass, MSE loss, backward pass, and gradients for a batch.
 
         Returns (loss, grads) where grads follows model.get_gradients() structure.
         """
         model.reset_gradients()
         y_pred = model.forward(Xb)
-        loss = mse_loss(yb, y_pred)
-        dL_dy = mse_grad(yb, y_pred)
+        loss = self._loss_fn.loss(yb, y_pred)
+        dL_dy = self._loss_fn.gradient(yb, y_pred)
         model.backward(dL_dy)
         grads = model.get_gradients()
         return loss, grads
@@ -157,3 +150,8 @@ class RMSPropTrainer(BaseTrainer):
 
         # Push updated params back into the model
         model.set_parameters(params)
+
+    def _ensure_loss_fn(self) -> LossFunction:
+        if not hasattr(self, "_loss_fn"):
+            self._loss_fn = resolve_loss(self.loss)
+        return self._loss_fn

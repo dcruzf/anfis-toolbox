@@ -6,7 +6,12 @@ for training and evaluating ANFIS models.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import numpy as np
+
+if TYPE_CHECKING:  # pragma: no cover - typing helper
+    from .model import ANFIS
 
 
 def mean_squared_error(y_true, y_pred) -> float:
@@ -59,7 +64,13 @@ def root_mean_squared_error(y_true, y_pred) -> float:
     return float(np.sqrt(mse))
 
 
-def mean_absolute_percentage_error(y_true, y_pred, epsilon: float = 1e-12) -> float:
+def mean_absolute_percentage_error(
+    y_true,
+    y_pred,
+    epsilon: float = 1e-12,
+    *,
+    ignore_zero_targets: bool = False,
+) -> float:
     """Compute the mean absolute percentage error (MAPE) in percent.
 
     MAPE = mean( abs((y_true - y_pred) / max(abs(y_true), epsilon)) ) * 100
@@ -68,12 +79,20 @@ def mean_absolute_percentage_error(y_true, y_pred, epsilon: float = 1e-12) -> fl
         y_true: Array-like of true target values.
         y_pred: Array-like of predicted values, broadcastable to y_true.
         epsilon: Small constant to avoid division by zero when y_true == 0.
+        ignore_zero_targets: When True, drop samples where |y_true| <= epsilon; if all
+            targets are (near) zero, returns ``np.inf`` to signal undefined percentage.
 
     Returns:
         MAPE value as a percentage (float).
     """
     yt = np.asarray(y_true, dtype=float)
     yp = np.asarray(y_pred, dtype=float)
+    if ignore_zero_targets:
+        mask = np.abs(yt) > float(epsilon)
+        if not np.any(mask):
+            return float(np.inf)
+        yt = yt[mask]
+        yp = yp[mask]
     denom = np.maximum(np.abs(yt), float(epsilon))
     return float(np.mean(np.abs((yt - yp) / denom)) * 100.0)
 
@@ -281,7 +300,7 @@ def xie_beni_index(
     m: float = 2.0,
     epsilon: float = 1e-12,
 ) -> float:
-    """Xie–Beni index (XB). Lower is better.
+    """Xie-Beni index (XB). Lower is better.
 
     XB = sum_i sum_k u_ik^m ||x_i - v_k||^2 / (n * min_{p!=q} ||v_p - v_q||^2)
 
@@ -327,3 +346,73 @@ def xie_beni_index(
     den = float(np.min(dist2))
     den = max(den, float(epsilon))
     return num / (float(X.shape[0]) * den)
+
+
+class ANFISMetrics:
+    """Metrics calculator utilities for ANFIS models."""
+
+    @staticmethod
+    def regression_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> dict[str, float]:
+        """Return a suite of regression metrics for predictions vs. targets."""
+        mse = mean_squared_error(y_true, y_pred)
+        residuals = np.asarray(y_true, dtype=float) - np.asarray(y_pred, dtype=float)
+        return {
+            "mse": mse,
+            "rmse": float(np.sqrt(mse)),
+            "mae": mean_absolute_error(y_true, y_pred),
+            "r2": r2_score(y_true, y_pred),
+            "mape": mean_absolute_percentage_error(
+                y_true,
+                y_pred,
+                ignore_zero_targets=True,
+            ),
+            "max_error": float(np.max(np.abs(residuals))),
+            "std_error": float(np.std(residuals)),
+        }
+
+    @staticmethod
+    def model_complexity_metrics(model: ANFIS) -> dict[str, int]:
+        """Compute structural statistics for an ANFIS model instance."""
+        n_inputs = model.n_inputs
+        n_rules = model.n_rules
+
+        n_premise_params = 0
+        for mfs in model.membership_layer.membership_functions.values():
+            for mf in mfs:
+                n_premise_params += len(mf.parameters)
+
+        n_consequent_params = model.consequent_layer.parameters.size
+
+        return {
+            "n_inputs": n_inputs,
+            "n_rules": n_rules,
+            "n_premise_parameters": n_premise_params,
+            "n_consequent_parameters": int(n_consequent_params),
+            "total_parameters": n_premise_params + int(n_consequent_params),
+        }
+
+
+def quick_evaluate(
+    model: ANFIS,
+    X_test: np.ndarray,
+    y_test: np.ndarray,
+    print_results: bool = True,
+) -> dict[str, float]:
+    """Evaluate a trained ANFIS model on test data and optionally print a summary."""
+    y_pred = model.predict(X_test)
+    metrics = ANFISMetrics.regression_metrics(y_test, y_pred)
+
+    if print_results:
+        print("=" * 50)  # noqa: T201
+        print("ANFIS Model Evaluation Results")  # noqa: T201
+        print("=" * 50)  # noqa: T201
+        print(f"Mean Squared Error (MSE):     {metrics['mse']:.6f}")  # noqa: T201
+        print(f"Root Mean Squared Error:      {metrics['rmse']:.6f}")  # noqa: T201
+        print(f"Mean Absolute Error (MAE):    {metrics['mae']:.6f}")  # noqa: T201
+        print(f"R-squared (R²):               {metrics['r2']:.4f}")  # noqa: T201
+        print(f"Mean Abs. Percentage Error:   {metrics['mape']:.2f}%")  # noqa: T201
+        print(f"Maximum Error:                {metrics['max_error']:.6f}")  # noqa: T201
+        print(f"Standard Deviation of Error:  {metrics['std_error']:.6f}")  # noqa: T201
+        print("=" * 50)  # noqa: T201
+
+    return metrics

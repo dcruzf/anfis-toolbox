@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from contextlib import contextmanager
+from dataclasses import dataclass, field
 
 import numpy as np
 
-from ..losses import mse_loss
+from ..losses import LossFunction, resolve_loss
 from .base import BaseTrainer
 
 
@@ -53,11 +54,6 @@ def _unflatten_params(theta: np.ndarray, meta: dict, template: dict) -> dict:
     return out
 
 
-def _mse_loss(model, X: np.ndarray, y: np.ndarray) -> float:
-    y_pred = model.forward(X)
-    return mse_loss(y, y_pred)
-
-
 @dataclass
 class PSOTrainer(BaseTrainer):
     """Particle Swarm Optimization (PSO) trainer for ANFIS.
@@ -75,11 +71,9 @@ class PSOTrainer(BaseTrainer):
         verbose: Unused here; kept for API parity.
 
     Notes:
-        - Optimizes mean squared error (MSE) between ``model.forward(X)`` and ``y`` by
-          searching directly in parameter space (no gradients).
-        - With ``ANFISClassifier``, this will still run but will minimize MSE on
-          logits/probabilities. Prefer ``ANFISClassifier.fit`` (cross-entropy) for
-          classification training.
+        Optimizes the loss specified by ``loss`` (defaulting to mean squared error) by searching
+        directly in parameter space without gradients. With ``ANFISClassifier`` you can set
+        ``loss="cross_entropy"`` to optimize categorical cross-entropy on logits.
     """
 
     swarm_size: int = 20
@@ -92,13 +86,17 @@ class PSOTrainer(BaseTrainer):
     clamp_position: None | tuple[float, float] = None
     random_state: None | int = None
     verbose: bool = True
+    loss: LossFunction | str | None = None
+    _loss_fn: LossFunction = field(init=False, repr=False)
 
     def fit(self, model, X: np.ndarray, y: np.ndarray) -> list[float]:
         """Run PSO for a number of iterations and return per-epoch best loss.
 
-        Loss is MSE; if ``y`` is 1D, it is reshaped to (n,1) for convenience.
+        The configured loss controls the objective; 1D targets are reshaped according to
+        the loss' ``prepare_targets`` implementation.
         """
-        X, y = self._prepare_data(X, y)
+        self._loss_fn = resolve_loss(self.loss)
+        X, y = self._prepare_batch(X, y, model)
         rng = np.random.default_rng(self.random_state)
 
         # Flatten current model parameters
@@ -115,8 +113,8 @@ class PSOTrainer(BaseTrainer):
         personal_best_val = np.empty(self.swarm_size, dtype=float)
         for i in range(self.swarm_size):
             params_i = _unflatten_params(positions[i], meta, base_params)
-            model.set_parameters(params_i)
-            personal_best_val[i] = _mse_loss(model, X, y)
+            with self._temporary_parameters(model, params_i):
+                personal_best_val[i] = self._evaluate_loss(model, X, y)
         g_idx = int(np.argmin(personal_best_val))
         global_best_pos = personal_best_pos[g_idx].copy()
         global_best_val = float(personal_best_val[g_idx])
@@ -140,8 +138,8 @@ class PSOTrainer(BaseTrainer):
             # Evaluate and update personal/global bests
             for i in range(self.swarm_size):
                 params_i = _unflatten_params(positions[i], meta, base_params)
-                model.set_parameters(params_i)
-                val = _mse_loss(model, X, y)
+                with self._temporary_parameters(model, params_i):
+                    val = self._evaluate_loss(model, X, y)
                 if val < personal_best_val[i]:
                     personal_best_val[i] = val
                     personal_best_pos[i] = positions[i].copy()
@@ -158,7 +156,9 @@ class PSOTrainer(BaseTrainer):
 
     def init_state(self, model, X: np.ndarray, y: np.ndarray):
         """Initialize PSO swarm state and return as a dict."""
-        X, y = self._prepare_data(X, y)
+        loss_fn = self._ensure_loss_fn()
+        X = np.asarray(X, dtype=float)
+        y = loss_fn.prepare_targets(y, model=model)
         rng = np.random.default_rng(self.random_state)
         base_params = model.get_parameters()
         theta0, meta = _flatten_params(base_params)
@@ -170,8 +170,8 @@ class PSOTrainer(BaseTrainer):
         personal_best_val = np.empty(self.swarm_size, dtype=float)
         for i in range(self.swarm_size):
             params_i = _unflatten_params(positions[i], meta, base_params)
-            model.set_parameters(params_i)
-            personal_best_val[i] = _mse_loss(model, X, y)
+            with self._temporary_parameters(model, params_i):
+                personal_best_val[i] = self._evaluate_loss(model, X, y)
         g_idx = int(np.argmin(personal_best_val))
         global_best_pos = personal_best_pos[g_idx].copy()
         global_best_val = float(personal_best_val[g_idx])
@@ -189,7 +189,7 @@ class PSOTrainer(BaseTrainer):
 
     def train_step(self, model, Xb: np.ndarray, yb: np.ndarray, state):
         """Perform one PSO iteration over the swarm on a batch and return (best_loss, state)."""
-        Xb, yb = self._prepare_data(Xb, yb)
+        Xb, yb = self._prepare_batch(Xb, yb, model)
         positions = state["positions"]
         velocities = state["velocities"]
         personal_best_pos = state["pbest_pos"]
@@ -217,8 +217,8 @@ class PSOTrainer(BaseTrainer):
         # Evaluate swarm and update bests
         for i in range(self.swarm_size):
             params_i = _unflatten_params(positions[i], meta, template)
-            model.set_parameters(params_i)
-            val = _mse_loss(model, Xb, yb)
+            with self._temporary_parameters(model, params_i):
+                val = self._evaluate_loss(model, Xb, yb)
             if val < personal_best_val[i]:
                 personal_best_val[i] = val
                 personal_best_pos[i] = positions[i].copy()
@@ -241,10 +241,28 @@ class PSOTrainer(BaseTrainer):
         model.set_parameters(best_params)
         return float(global_best_val), state
 
-    @staticmethod
-    def _prepare_data(X: np.ndarray, y: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-        X = np.asarray(X, dtype=float)
-        y = np.asarray(y, dtype=float)
-        if y.ndim == 1:
-            y = y.reshape(-1, 1)
-        return X, y
+    @contextmanager
+    def _temporary_parameters(self, model, params):
+        original = model.get_parameters()
+        model.set_parameters(params)
+        try:
+            yield
+        finally:
+            model.set_parameters(original)
+
+    def _prepare_batch(self, X: np.ndarray, y: np.ndarray, model) -> tuple[np.ndarray, np.ndarray]:
+        loss_fn = self._ensure_loss_fn()
+        X_arr = np.asarray(X, dtype=float)
+        y_arr = loss_fn.prepare_targets(y, model=model)
+        if y_arr.shape[0] != X_arr.shape[0]:
+            raise ValueError("Target array must have same number of rows as X")
+        return X_arr, y_arr
+
+    def _evaluate_loss(self, model, X: np.ndarray, y: np.ndarray) -> float:
+        preds = model.forward(X)
+        return float(self._loss_fn.loss(y, preds))
+
+    def _ensure_loss_fn(self) -> LossFunction:
+        if not hasattr(self, "_loss_fn"):
+            self._loss_fn = resolve_loss(self.loss)
+        return self._loss_fn

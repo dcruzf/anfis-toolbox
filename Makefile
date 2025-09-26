@@ -13,11 +13,15 @@ project_dir = anfis_toolbox
 rebuild-lockfiles: .uv
 	uv lock --upgrade
 
+-PHONY: Install hatch
+install-ci: .uv
+	uv tool install hatch
+	uv tool update-shell
+
 .PHONY: install ## Install the package, dependencies, and pre-commit for local development
-install: .uv
+install: .uv install-ci
 	uv self update
 	uv sync
-	uv tool install hatch
 	uv tool update-shell
 	uvx pre-commit install
 	uvx pre-commit autoupdate
@@ -29,8 +33,7 @@ format: .uv
 
 .PHONY: lint  ## Lint python source files
 lint: .uv
-	uvx ruff check $(sources)
-	uvx ruff format --check $(sources)
+	uvx pre-commit run --all-files
 
 .PHONY: .hatch  ## Check that hatch is installed
 .hatch:
@@ -39,10 +42,6 @@ lint: .uv
 .PHONY: test ## Run tests
 test: .hatch
 	uv tool run hatch test -c
-
-.PHONY: test-no-viz ## Run tests skipping visualization tests (faster)
-test-no-viz: .uv
-	uv tool run hatch test -c -k "not test_visualization"
 
 .PHONY: test-all ## Run tests with coverage
 test-all: .hatch
@@ -89,10 +88,6 @@ docs-gh-deploy: .uv
 		--with mkdocs-jupyter \
 		--with ruff \
 		mkdocs gh-deploy
-.PHONY: jupyter  ## Run Jupyter Lab with uvx
-jupyter: .uv
-	uv run --with .[all] --with jupyterlab --with plotly jupyter lab
-
 
 .PHONY: clean  ## Clear local caches and build artifacts
 clean:
