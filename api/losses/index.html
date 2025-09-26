@@ -1320,6 +1320,132 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#anfis_toolbox.losses.CrossEntropyLoss" class="md-nav__link">
+    <span class="md-ellipsis">
+      CrossEntropyLoss
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="CrossEntropyLoss">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#anfis_toolbox.losses.CrossEntropyLoss.gradient" class="md-nav__link">
+    <span class="md-ellipsis">
+      gradient
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#anfis_toolbox.losses.CrossEntropyLoss.loss" class="md-nav__link">
+    <span class="md-ellipsis">
+      loss
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#anfis_toolbox.losses.CrossEntropyLoss.prepare_targets" class="md-nav__link">
+    <span class="md-ellipsis">
+      prepare_targets
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#anfis_toolbox.losses.LossFunction" class="md-nav__link">
+    <span class="md-ellipsis">
+      LossFunction
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="LossFunction">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#anfis_toolbox.losses.LossFunction.gradient" class="md-nav__link">
+    <span class="md-ellipsis">
+      gradient
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#anfis_toolbox.losses.LossFunction.loss" class="md-nav__link">
+    <span class="md-ellipsis">
+      loss
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#anfis_toolbox.losses.LossFunction.prepare_targets" class="md-nav__link">
+    <span class="md-ellipsis">
+      prepare_targets
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#anfis_toolbox.losses.MSELoss" class="md-nav__link">
+    <span class="md-ellipsis">
+      MSELoss
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="MSELoss">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#anfis_toolbox.losses.MSELoss.gradient" class="md-nav__link">
+    <span class="md-ellipsis">
+      gradient
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#anfis_toolbox.losses.MSELoss.loss" class="md-nav__link">
+    <span class="md-ellipsis">
+      loss
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#anfis_toolbox.losses.MSELoss.prepare_targets" class="md-nav__link">
+    <span class="md-ellipsis">
+      prepare_targets
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#anfis_toolbox.losses.cross_entropy_grad" class="md-nav__link">
     <span class="md-ellipsis">
       cross_entropy_grad
@@ -1350,6 +1476,15 @@
   <a href="#anfis_toolbox.losses.mse_loss" class="md-nav__link">
     <span class="md-ellipsis">
       mse_loss
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#anfis_toolbox.losses.resolve_loss" class="md-nav__link">
+    <span class="md-ellipsis">
+      resolve_loss
     </span>
   </a>
   
@@ -1448,6 +1583,331 @@ the chosen loss is clear in one place.</p>
 
 
 
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="anfis_toolbox.losses.CrossEntropyLoss" class="doc doc-heading">
+            <span class="doc doc-object-name doc-class-name">CrossEntropyLoss</span>
+
+
+<a href="#anfis_toolbox.losses.CrossEntropyLoss" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+            <p class="doc doc-class-bases">
+              Bases: <code><a class="autorefs autorefs-internal" title="&lt;span class=&quot;doc doc-object-name doc-class-name&quot;&gt;LossFunction&lt;/span&gt; (&lt;code&gt;anfis_toolbox.losses.LossFunction&lt;/code&gt;)" href="#anfis_toolbox.losses.LossFunction">LossFunction</a></code></p>
+
+
+        <p>Categorical cross-entropy loss operating on logits.</p>
+
+
+
+
+
+
+
+
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="anfis_toolbox.losses.CrossEntropyLoss.gradient" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">gradient</span>
+
+
+<a href="#anfis_toolbox.losses.CrossEntropyLoss.gradient" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">gradient</span><span class="p">(</span><span class="n">y_true</span><span class="p">:</span> <span class="n">ndarray</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">:</span> <span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+</span></code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Delegate to :func:<code>cross_entropy_grad</code> for gradient computation.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="anfis_toolbox.losses.CrossEntropyLoss.loss" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">loss</span>
+
+
+<a href="#anfis_toolbox.losses.CrossEntropyLoss.loss" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">loss</span><span class="p">(</span><span class="n">y_true</span><span class="p">:</span> <span class="n">ndarray</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">:</span> <span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span>
+</span></code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Delegate to :func:<code>cross_entropy_loss</code> for value computation.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="anfis_toolbox.losses.CrossEntropyLoss.prepare_targets" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">prepare_targets</span>
+
+
+<a href="#anfis_toolbox.losses.CrossEntropyLoss.prepare_targets" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">prepare_targets</span><span class="p">(</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n">y</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">Any</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+</span></code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Convert labels or one-hot encodings into dense float matrices.</p>
+
+
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="anfis_toolbox.losses.LossFunction" class="doc doc-heading">
+            <span class="doc doc-object-name doc-class-name">LossFunction</span>
+
+
+<a href="#anfis_toolbox.losses.LossFunction" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+
+        <p>Base interface for losses used by trainers.</p>
+
+
+
+
+
+
+
+
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="anfis_toolbox.losses.LossFunction.gradient" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">gradient</span>
+
+
+<a href="#anfis_toolbox.losses.LossFunction.gradient" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">gradient</span><span class="p">(</span><span class="n">y_true</span><span class="p">:</span> <span class="n">ndarray</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">:</span> <span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+</span></code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Return the gradient of the loss with respect to the predictions.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="anfis_toolbox.losses.LossFunction.loss" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">loss</span>
+
+
+<a href="#anfis_toolbox.losses.LossFunction.loss" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">loss</span><span class="p">(</span><span class="n">y_true</span><span class="p">:</span> <span class="n">ndarray</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">:</span> <span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span>
+</span></code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Compute the scalar loss for the given targets and predictions.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="anfis_toolbox.losses.LossFunction.prepare_targets" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">prepare_targets</span>
+
+
+<a href="#anfis_toolbox.losses.LossFunction.prepare_targets" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">prepare_targets</span><span class="p">(</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n">y</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">Any</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+</span></code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Return targets in a format compatible with forward/gradient computations.</p>
+
+
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="anfis_toolbox.losses.MSELoss" class="doc doc-heading">
+            <span class="doc doc-object-name doc-class-name">MSELoss</span>
+
+
+<a href="#anfis_toolbox.losses.MSELoss" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+            <p class="doc doc-class-bases">
+              Bases: <code><a class="autorefs autorefs-internal" title="&lt;span class=&quot;doc doc-object-name doc-class-name&quot;&gt;LossFunction&lt;/span&gt; (&lt;code&gt;anfis_toolbox.losses.LossFunction&lt;/code&gt;)" href="#anfis_toolbox.losses.LossFunction">LossFunction</a></code></p>
+
+
+        <p>Mean squared error loss packaged for trainer consumption.</p>
+
+
+
+
+
+
+
+
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="anfis_toolbox.losses.MSELoss.gradient" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">gradient</span>
+
+
+<a href="#anfis_toolbox.losses.MSELoss.gradient" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">gradient</span><span class="p">(</span><span class="n">y_true</span><span class="p">:</span> <span class="n">ndarray</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">:</span> <span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+</span></code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Delegate to :func:<code>mse_grad</code> for gradient computation.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="anfis_toolbox.losses.MSELoss.loss" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">loss</span>
+
+
+<a href="#anfis_toolbox.losses.MSELoss.loss" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">loss</span><span class="p">(</span><span class="n">y_true</span><span class="p">:</span> <span class="n">ndarray</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">:</span> <span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span>
+</span></code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Delegate to :func:<code>mse_loss</code> for value computation.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="anfis_toolbox.losses.MSELoss.prepare_targets" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">prepare_targets</span>
+
+
+<a href="#anfis_toolbox.losses.MSELoss.prepare_targets" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">prepare_targets</span><span class="p">(</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n">y</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">Any</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+</span></code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Convert 1D targets into column vectors expected by MSE computations.</p>
+
+
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
 
 
 <div class="doc doc-object doc-function">
@@ -1602,6 +2062,28 @@ same shape as logits: (n,k).</p>
           </tr>
       </tbody>
     </table>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="anfis_toolbox.losses.resolve_loss" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">resolve_loss</span>
+
+
+<a href="#anfis_toolbox.losses.resolve_loss" class="headerlink" title="Permanent link">&para;</a></h3>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">resolve_loss</span><span class="p">(</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n">loss</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">LossFunction</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">LossFunction</span>
+</span></code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Resolve user-provided loss spec into a concrete <code>LossFunction</code> instance.</p>
 
 
     </div>
