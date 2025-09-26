@@ -1,6 +1,8 @@
 import numpy as np
+import pytest
 
 from anfis_toolbox import ANFIS, ANFISClassifier
+from anfis_toolbox.losses import LossFunction
 from anfis_toolbox.membership import GaussianMF
 from anfis_toolbox.optim import AdamTrainer, HybridTrainer, RMSPropTrainer, SGDTrainer
 
@@ -164,3 +166,22 @@ def test_sgd_trainer_with_cross_entropy_loss_on_classifier():
     losses = trainer.fit(clf, X, y)
     assert len(losses) == 2
     assert all(np.isfinite(loss) for loss in losses)
+
+
+def test_sgd_fit_raises_when_target_rows_mismatch():
+    X = np.zeros((5, 2))
+    y = np.zeros(4)  # fewer samples than X
+    model = _make_regression_model(n_inputs=2)
+    trainer = SGDTrainer(epochs=1)
+    with pytest.raises(ValueError, match="Target array must have same number of rows as X"):
+        trainer.fit(model, X, y)
+
+
+def test_sgd_ensure_loss_fn_lazy_initializes():
+    trainer = SGDTrainer()
+    assert not hasattr(trainer, "_loss_fn")
+    resolved = trainer._ensure_loss_fn()
+    assert isinstance(resolved, LossFunction)
+    assert hasattr(trainer, "_loss_fn")
+    # Subsequent calls should reuse the same instance
+    assert trainer._ensure_loss_fn() is resolved
