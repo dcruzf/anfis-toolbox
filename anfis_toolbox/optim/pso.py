@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -112,8 +113,8 @@ class PSOTrainer(BaseTrainer):
         personal_best_val = np.empty(self.swarm_size, dtype=float)
         for i in range(self.swarm_size):
             params_i = _unflatten_params(positions[i], meta, base_params)
-            model.set_parameters(params_i)
-            personal_best_val[i] = self._evaluate_loss(model, X, y)
+            with self._temporary_parameters(model, params_i):
+                personal_best_val[i] = self._evaluate_loss(model, X, y)
         g_idx = int(np.argmin(personal_best_val))
         global_best_pos = personal_best_pos[g_idx].copy()
         global_best_val = float(personal_best_val[g_idx])
@@ -137,8 +138,8 @@ class PSOTrainer(BaseTrainer):
             # Evaluate and update personal/global bests
             for i in range(self.swarm_size):
                 params_i = _unflatten_params(positions[i], meta, base_params)
-                model.set_parameters(params_i)
-                val = self._evaluate_loss(model, X, y)
+                with self._temporary_parameters(model, params_i):
+                    val = self._evaluate_loss(model, X, y)
                 if val < personal_best_val[i]:
                     personal_best_val[i] = val
                     personal_best_pos[i] = positions[i].copy()
@@ -169,8 +170,8 @@ class PSOTrainer(BaseTrainer):
         personal_best_val = np.empty(self.swarm_size, dtype=float)
         for i in range(self.swarm_size):
             params_i = _unflatten_params(positions[i], meta, base_params)
-            model.set_parameters(params_i)
-            personal_best_val[i] = self._evaluate_loss(model, X, y)
+            with self._temporary_parameters(model, params_i):
+                personal_best_val[i] = self._evaluate_loss(model, X, y)
         g_idx = int(np.argmin(personal_best_val))
         global_best_pos = personal_best_pos[g_idx].copy()
         global_best_val = float(personal_best_val[g_idx])
@@ -216,8 +217,8 @@ class PSOTrainer(BaseTrainer):
         # Evaluate swarm and update bests
         for i in range(self.swarm_size):
             params_i = _unflatten_params(positions[i], meta, template)
-            model.set_parameters(params_i)
-            val = self._evaluate_loss(model, Xb, yb)
+            with self._temporary_parameters(model, params_i):
+                val = self._evaluate_loss(model, Xb, yb)
             if val < personal_best_val[i]:
                 personal_best_val[i] = val
                 personal_best_pos[i] = positions[i].copy()
@@ -239,6 +240,15 @@ class PSOTrainer(BaseTrainer):
         best_params = _unflatten_params(global_best_pos, meta, template)
         model.set_parameters(best_params)
         return float(global_best_val), state
+
+    @contextmanager
+    def _temporary_parameters(self, model, params):
+        original = model.get_parameters()
+        model.set_parameters(params)
+        try:
+            yield
+        finally:
+            model.set_parameters(original)
 
     def _prepare_batch(self, X: np.ndarray, y: np.ndarray, model) -> tuple[np.ndarray, np.ndarray]:
         loss_fn = self._ensure_loss_fn()
