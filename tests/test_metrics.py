@@ -1,9 +1,12 @@
 """Tests for metrics utilities."""
 
+from types import SimpleNamespace
+
 import numpy as np
 import pytest
 
 from anfis_toolbox.metrics import (
+    ANFISMetrics,
     accuracy,
     classification_entropy,
     cross_entropy,
@@ -14,6 +17,7 @@ from anfis_toolbox.metrics import (
     mean_squared_logarithmic_error,
     partition_coefficient,
     pearson_correlation,
+    quick_evaluate,
     r2_score,
     root_mean_squared_error,
     softmax,
@@ -118,6 +122,21 @@ def test_mape_shape_mismatch_raises():
     with pytest.raises(ValueError):
         # Numpy will raise on incompatible shapes during subtraction/division
         mean_absolute_percentage_error(np.array([1, 2, 3]), np.array([1, 2]))
+
+
+def test_mape_ignore_zero_targets_skips_zero_entries():
+    y_true = np.array([0.0, 100.0])
+    y_pred = np.array([10.0, 110.0])
+    mape = mean_absolute_percentage_error(y_true, y_pred, ignore_zero_targets=True)
+    # Only the non-zero target contributes: |100-110|/100 = 0.1 -> 10%
+    assert np.isclose(mape, 10.0)
+
+
+def test_mape_ignore_zero_targets_all_zero_returns_inf():
+    y_true = np.zeros(3)
+    y_pred = np.array([1.0, -1.0, 0.5])
+    mape = mean_absolute_percentage_error(y_true, y_pred, ignore_zero_targets=True)
+    assert np.isinf(mape)
 
 
 def test_smape_basic():
@@ -262,6 +281,78 @@ def test_xb_denominator_epsilon_guard_and_1d_X_path():
     C1d = np.array([[0.0], [2.0]])
     xb1d = xie_beni_index(X1d, U1d, C1d)
     assert np.isfinite(xb1d) and xb1d >= 0.0
+
+
+def test_model_complexity_metrics_counts_parameters():
+    membership_functions = {
+        "x1": [SimpleNamespace(parameters=np.array([0.1, 0.2]))],
+        "x2": [SimpleNamespace(parameters=np.array([0.3, 0.4, 0.5]))],
+    }
+    consequent_params = np.zeros((3, 2))
+
+    model = SimpleNamespace(
+        n_inputs=2,
+        n_rules=3,
+        membership_layer=SimpleNamespace(membership_functions=membership_functions),
+        consequent_layer=SimpleNamespace(parameters=consequent_params),
+    )
+
+    stats = ANFISMetrics.model_complexity_metrics(model)
+    assert stats == {
+        "n_inputs": 2,
+        "n_rules": 3,
+        "n_premise_parameters": 5,  # 2 + 3 from membership parameters
+        "n_consequent_parameters": consequent_params.size,
+        "total_parameters": 5 + consequent_params.size,
+    }
+
+
+def test_quick_evaluate_prints_full_summary(capsys):
+    class DummyModel:
+        def __init__(self):
+            self._pred = np.array([0.0, 0.5])
+
+        def predict(self, X):
+            assert np.allclose(X, np.array([[0.0], [1.0]]))
+            return self._pred
+
+    model = DummyModel()
+    X = np.array([[0.0], [1.0]])
+    y = np.array([0.0, 1.0])
+
+    result = quick_evaluate(model, X, y, print_results=True)
+    captured = capsys.readouterr().out.strip().splitlines()
+
+    expected = ANFISMetrics.regression_metrics(y, model.predict(X))
+    assert result == expected
+    assert captured[0] == "=" * 50
+    assert captured[1] == "ANFIS Model Evaluation Results"
+    assert captured[2] == "=" * 50
+    assert captured[3].startswith("Mean Squared Error (MSE):")
+    assert captured[4].startswith("Root Mean Squared Error:")
+    assert captured[5].startswith("Mean Absolute Error (MAE):")
+    assert captured[6].startswith("R-squared (R²):")
+    assert captured[7].startswith("Mean Abs. Percentage Error:")
+    assert captured[8].startswith("Maximum Error:")
+    assert captured[9].startswith("Standard Deviation of Error:")
+    assert captured[10] == "=" * 50
+
+
+def test_quick_evaluate_without_prints_returns_metrics_silently(capsys):
+    class DummyModel:
+        def predict(self, X):
+            return np.array([1.0, 2.0, 3.0])
+
+    model = DummyModel()
+    X = np.zeros((3, 1))
+    y = np.array([1.0, 2.0, 3.0])
+
+    result = quick_evaluate(model, X, y, print_results=False)
+    output = capsys.readouterr()
+
+    expected = ANFISMetrics.regression_metrics(y, model.predict(X))
+    assert result == expected
+    assert output.out == ""
 
 
 def test_softmax_rows_sum_to_one_and_invariant_to_shift():

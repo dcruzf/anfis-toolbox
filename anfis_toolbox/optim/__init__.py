@@ -19,17 +19,12 @@ Task compatibility and guidance:
     for regression with the regression ANFIS (single-output). It is not compatible
     with the classification head.
 
-- SGDTrainer, RMSPropTrainer and AdamTrainer perform generic backprop updates minimizing mean
-    squared error (MSE) between the model output returned by ``model.forward`` and
-    the provided target ``y``. For regression models, this is the intended usage.
-
-    For classification models (ANFISClassifier), these trainers will still run, but
-    they will optimize MSE on the classifier logits/probabilities rather than a
-    proper classification loss. If ``y`` is 1D integer labels, it will be reshaped
-    to ``(n, 1)`` and broadcast against logits ``(n, K)`` during the MSE; if ``y``
-    is one‑hot ``(n, K)``, the MSE will be computed element‑wise. This can be used
-    for quick experiments, but for principled classification training prefer
-    ``ANFISClassifier.fit(...)``, which uses cross‑entropy with softmax.
+- SGDTrainer, RMSPropTrainer and AdamTrainer perform generic backprop updates and now
+    accept pluggable loss functions (see ``anfis_toolbox.losses``). They default to mean
+    squared error for regression, but can minimize other differentiable objectives such as
+    categorical cross-entropy when used with ``ANFISClassifier``. Targets are adapted via the
+    selected loss' ``prepare_targets`` helper, so integer labels or one-hot matrices are both
+    supported seamlessly.
 """
 
 from .adam import AdamTrainer

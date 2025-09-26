@@ -1,6 +1,8 @@
 import numpy as np
+import pytest
 
-from anfis_toolbox import ANFIS
+from anfis_toolbox import ANFIS, ANFISClassifier
+from anfis_toolbox.losses import LossFunction
 from anfis_toolbox.membership import GaussianMF
 from anfis_toolbox.optim import AdamTrainer, HybridTrainer, RMSPropTrainer, SGDTrainer
 
@@ -10,6 +12,13 @@ def _make_regression_model(n_inputs: int = 2) -> ANFIS:
     for i in range(n_inputs):
         input_mfs[f"x{i + 1}"] = [GaussianMF(mean=-1.0, sigma=1.0), GaussianMF(mean=1.0, sigma=1.0)]
     return ANFIS(input_mfs)
+
+
+def _make_classifier(n_inputs: int = 1, n_classes: int = 2) -> ANFISClassifier:
+    input_mfs = {}
+    for i in range(n_inputs):
+        input_mfs[f"x{i + 1}"] = [GaussianMF(mean=-1.0, sigma=1.0), GaussianMF(mean=1.0, sigma=1.0)]
+    return ANFISClassifier(input_mfs, n_classes=n_classes, random_state=0)
 
 
 def test_sgd_train_step_and_init_state():
@@ -139,3 +148,40 @@ def test_hybrid_prepare_data_reshapes_1d():
     Xp, yp = HybridTrainer._prepare_data(X, y)
     assert Xp.shape == X.shape
     assert yp.shape == (5, 1)
+
+
+def test_sgd_trainer_with_cross_entropy_loss_on_classifier():
+    rng = np.random.default_rng(15)
+    X = rng.normal(size=(20, 1))
+    y = (X[:, 0] > 0).astype(int)
+    clf = _make_classifier(n_inputs=1, n_classes=2)
+    trainer = SGDTrainer(
+        learning_rate=0.01,
+        epochs=2,
+        batch_size=None,
+        shuffle=False,
+        verbose=False,
+        loss="cross_entropy",
+    )
+    losses = trainer.fit(clf, X, y)
+    assert len(losses) == 2
+    assert all(np.isfinite(loss) for loss in losses)
+
+
+def test_sgd_fit_raises_when_target_rows_mismatch():
+    X = np.zeros((5, 2))
+    y = np.zeros(4)  # fewer samples than X
+    model = _make_regression_model(n_inputs=2)
+    trainer = SGDTrainer(epochs=1)
+    with pytest.raises(ValueError, match="Target array must have same number of rows as X"):
+        trainer.fit(model, X, y)
+
+
+def test_sgd_ensure_loss_fn_lazy_initializes():
+    trainer = SGDTrainer()
+    assert not hasattr(trainer, "_loss_fn")
+    resolved = trainer._ensure_loss_fn()
+    assert isinstance(resolved, LossFunction)
+    assert hasattr(trainer, "_loss_fn")
+    # Subsequent calls should reuse the same instance
+    assert trainer._ensure_loss_fn() is resolved

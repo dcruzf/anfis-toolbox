@@ -9,8 +9,9 @@ import logging
 import numpy as np
 
 from .layers import ClassificationConsequentLayer, ConsequentLayer, MembershipLayer, NormalizationLayer, RuleLayer
+from .losses import LossFunction, resolve_loss
 from .membership import MembershipFunction
-from .metrics import cross_entropy, softmax
+from .metrics import softmax
 
 # Setup logger for ANFIS
 logger = logging.getLogger(__name__)
@@ -470,43 +471,34 @@ class ANFISClassifier:
         epochs: int = 100,
         learning_rate: float = 0.01,
         verbose: bool = True,
+        trainer: None | object = None,
+        loss: LossFunction | str | None = None,
     ) -> list[float]:
-        """Train with cross-entropy using simple gradient descent.
+        """Train the classifier using a trainer with configurable loss.
 
-        y can be integer labels (n,) or one-hot (n,k).
+        When ``trainer`` is not provided, defaults to ``AdamTrainer`` minimizing
+        categorical cross-entropy. Targets may be provided as integer labels or
+        one-hot arrays; the configured loss takes care of the conversion.
         """
-        X = np.asarray(X, dtype=float)
-        yt = np.asarray(y)
-        if yt.ndim == 1:
-            # integer labels -> one-hot
-            n = yt.shape[0]
-            oh = np.zeros((n, self.n_classes), dtype=float)
-            oh[np.arange(n), yt.astype(int)] = 1.0
-            yt = oh
+        # Resolve loss: default to cross-entropy for classification when unspecified
+        if loss is None:
+            resolved_loss = resolve_loss("cross_entropy")
         else:
-            if yt.shape[1] != self.n_classes:
-                raise ValueError("y one-hot must have n_classes columns")
-        losses: list[float] = []
-        for _ in range(epochs):
-            self.reset_gradients()
-            # Forward all the way to logits
-            membership_outputs = self.membership_layer.forward(X)
-            rule_strengths = self.rule_layer.forward(membership_outputs)
-            norm_w = self.normalization_layer.forward(rule_strengths)
-            logits = self.consequent_layer.forward(X, norm_w)
-            # Compute CE loss and its gradient w.r.t logits
-            loss = cross_entropy(yt, logits)
-            probs = softmax(logits, axis=1)
-            dL_dlogits = (probs - yt) / yt.shape[0]
-            # Backprop
-            dL_dnorm_w, _ = self.consequent_layer.backward(dL_dlogits)
-            dL_dw = self.normalization_layer.backward(dL_dnorm_w)
-            gradients = self.rule_layer.backward(dL_dw)
-            self.membership_layer.backward(gradients)
-            # Update params
-            self.update_parameters(learning_rate)
-            losses.append(float(loss))
-        return losses
+            resolved_loss = resolve_loss(loss)
+
+        if trainer is None:
+            from .optim import AdamTrainer
+
+            trainer = AdamTrainer(
+                learning_rate=learning_rate,
+                epochs=epochs,
+                verbose=verbose,
+                loss=resolved_loss,
+            )
+        elif hasattr(trainer, "loss"):
+            trainer.loss = resolved_loss
+
+        return trainer.fit(self, X, y)
 
     def __repr__(self) -> str:
         """Return a string representation of the ANFISClassifier.

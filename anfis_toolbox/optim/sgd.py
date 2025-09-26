@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import numpy as np
 
-from ..losses import mse_grad, mse_loss
+from ..losses import LossFunction, resolve_loss
 from .base import BaseTrainer
 
 
@@ -20,11 +20,10 @@ class SGDTrainer(BaseTrainer):
         verbose: Whether to log progress (delegated to model logging settings).
 
     Notes:
-                - Optimizes mean squared error (MSE) between ``model.forward(X)`` and ``y``.
-                    For regression ANFIS this is the standard objective.
-                - With ``ANFISClassifier``, this trainer will still run but will minimize MSE
-                    on logits/probabilities rather than cross‑entropy. For classification, prefer
-                    using ``ANFISClassifier.fit(...)`` which uses softmax + cross‑entropy.
+        Uses the configurable loss provided via ``loss`` (defaults to mean squared error).
+        The selected loss is responsible for adapting target shapes via ``prepare_targets``.
+        When used with ``ANFISClassifier`` and ``loss="cross_entropy"`` it trains on logits with the
+        appropriate softmax gradient.
     """
 
     learning_rate: float = 0.01
@@ -32,6 +31,8 @@ class SGDTrainer(BaseTrainer):
     batch_size: None | int = None
     shuffle: bool = True
     verbose: bool = True
+    loss: LossFunction | str | None = None
+    _loss_fn: LossFunction = field(init=False, repr=False)
 
     def fit(self, model, X: np.ndarray, y: np.ndarray) -> list[float]:
         """Train the model using pure backpropagation.
@@ -41,7 +42,11 @@ class SGDTrainer(BaseTrainer):
         Loss is MSE, computed as ``mean((y_pred - y)**2)``; 1D ``y`` is reshaped
         to ``(n,1)`` for convenience.
         """
-        X, y = self._prepare_data(X, y)
+        self._loss_fn = resolve_loss(self.loss)
+        X = np.asarray(X, dtype=float)
+        y_prepared = self._loss_fn.prepare_targets(y, model=model)
+        if y_prepared.shape[0] != X.shape[0]:
+            raise ValueError("Target array must have same number of rows as X")
 
         n_samples = X.shape[0]
         losses: list[float] = []
@@ -49,7 +54,7 @@ class SGDTrainer(BaseTrainer):
         for _ in range(self.epochs):
             if self.batch_size is None:
                 # Full-batch gradient descent
-                loss = self._compute_mse_backward_and_update(model, X, y)
+                loss = self._compute_loss_backward_and_update(model, X, y_prepared)
                 losses.append(loss)
             else:
                 # Mini-batch SGD
@@ -60,7 +65,7 @@ class SGDTrainer(BaseTrainer):
                 for start in range(0, n_samples, self.batch_size):
                     end = start + self.batch_size
                     batch_idx = indices[start:end]
-                    batch_loss = self._compute_mse_backward_and_update(model, X[batch_idx], y[batch_idx])
+                    batch_loss = self._compute_loss_backward_and_update(model, X[batch_idx], y_prepared[batch_idx])
                     batch_losses.append(batch_loss)
                 # For compatibility, record epoch loss as mean of batch losses
                 losses.append(float(np.mean(batch_losses)))
@@ -73,24 +78,22 @@ class SGDTrainer(BaseTrainer):
 
     def train_step(self, model, Xb: np.ndarray, yb: np.ndarray, state):
         """Perform one SGD step on a batch and return (loss, state)."""
-        loss = self._compute_mse_backward_and_update(model, Xb, yb)
+        loss_fn = self._ensure_loss_fn()
+        yb_prepared = loss_fn.prepare_targets(yb, model=model)
+        loss = self._compute_loss_backward_and_update(model, Xb, yb_prepared)
         return loss, state
 
-    @staticmethod
-    def _prepare_data(X: np.ndarray, y: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-        """Ensure X, y are float arrays and y is 2D (n, 1) if originally 1D."""
-        X = np.asarray(X, dtype=float)
-        y = np.asarray(y, dtype=float)
-        if y.ndim == 1:
-            y = y.reshape(-1, 1)
-        return X, y
-
-    def _compute_mse_backward_and_update(self, model, Xb: np.ndarray, yb: np.ndarray) -> float:
+    def _compute_loss_backward_and_update(self, model, Xb: np.ndarray, yb: np.ndarray) -> float:
         """Forward -> MSE -> backward -> update parameters; returns loss."""
         model.reset_gradients()
         y_pred = model.forward(Xb)
-        loss = mse_loss(yb, y_pred)
-        dL_dy = mse_grad(yb, y_pred)
+        loss = self._loss_fn.loss(yb, y_pred)
+        dL_dy = self._loss_fn.gradient(yb, y_pred)
         model.backward(dL_dy)
         model.update_parameters(self.learning_rate)
         return loss
+
+    def _ensure_loss_fn(self) -> LossFunction:
+        if not hasattr(self, "_loss_fn"):
+            self._loss_fn = resolve_loss(self.loss)
+        return self._loss_fn
