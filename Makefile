@@ -33,8 +33,7 @@ format: .uv
 
 .PHONY: lint  ## Lint python source files
 lint: .uv
-	uvx ruff check $(sources)
-	uvx ruff format --check $(sources)
+	uvx pre-commit run --all-files
 
 .PHONY: .hatch  ## Check that hatch is installed
 .hatch:
