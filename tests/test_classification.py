@@ -2,6 +2,8 @@ import numpy as np
 import pytest
 
 from anfis_toolbox import ANFISClassifier, QuickANFIS, accuracy
+from anfis_toolbox.losses import LossFunction
+from anfis_toolbox.losses import resolve_loss as _resolve_loss
 from anfis_toolbox.membership import GaussianMF
 
 
@@ -200,3 +202,99 @@ def test_classifier_apply_membership_gradients_private_helper():
         if changed:
             break
     assert changed
+
+
+def test_classifier_fit_uses_custom_loss_and_default_trainer(monkeypatch):
+    mfs = make_simple_input_mfs(n_features=1, n_mfs=2)
+    clf = ANFISClassifier(mfs, n_classes=2)
+    X = np.array([[-0.5], [0.2], [0.8]])
+    y = np.array([0, 1, 1])
+
+    resolve_calls: list[str] = []
+
+    def fake_resolve(spec):
+        resolve_calls.append(spec)
+        return _resolve_loss(spec)
+
+    monkeypatch.setattr("anfis_toolbox.model.resolve_loss", fake_resolve)
+
+    class CaptureTrainer:
+        created: list["CaptureTrainer"] = []
+
+        def __init__(self, **kwargs):
+            self.kwargs = kwargs
+            self.loss = kwargs.get("loss")
+            CaptureTrainer.created.append(self)
+
+        def fit(self, model, X_fit, y_fit):
+            self.model = model
+            self.X_shape = X_fit.shape
+            self.y_shape = y_fit.shape
+            return [0.0]
+
+    monkeypatch.setattr("anfis_toolbox.optim.AdamTrainer", CaptureTrainer)
+
+    losses = clf.fit(X, y, epochs=1, learning_rate=0.01, verbose=False, loss="mse")
+
+    assert losses == [0.0]
+    assert resolve_calls == ["mse"]
+    assert CaptureTrainer.created, "Expected AdamTrainer to be instantiated"
+    trainer_instance = CaptureTrainer.created[-1]
+    assert isinstance(trainer_instance.loss, LossFunction)
+    assert trainer_instance.X_shape == X.shape
+    assert trainer_instance.y_shape == y.shape
+
+
+def test_classifier_fit_updates_existing_trainer_loss():
+    class DummyTrainer:
+        def __init__(self):
+            self.loss = None
+            self.fit_called = False
+
+        def fit(self, model, X, y):
+            self.fit_called = True
+            self.model = model
+            self.X_shape = X.shape
+            self.y_shape = y.shape
+            return [1.0]
+
+    dummy = DummyTrainer()
+    mfs = make_simple_input_mfs(n_features=1, n_mfs=2)
+    clf = ANFISClassifier(mfs, n_classes=2)
+    X = np.array([[0.1], [-0.3]])
+    y = np.array([0, 1])
+
+    losses = clf.fit(X, y, trainer=dummy, loss="cross_entropy")
+
+    assert losses == [1.0]
+    assert dummy.fit_called
+    assert isinstance(dummy.loss, LossFunction)
+    assert dummy.X_shape == X.shape
+    assert dummy.y_shape == y.shape
+
+
+def test_classifier_fit_with_trainer_without_loss_attribute():
+    class NoLossTrainer:
+        def __init__(self):
+            self.fit_called = False
+
+        def fit(self, model, X, y):
+            self.fit_called = True
+            self.model = model
+            self.X_shape = X.shape
+            self.y_shape = y.shape
+            return [2.0]
+
+    trainer = NoLossTrainer()
+    mfs = make_simple_input_mfs(n_features=1, n_mfs=2)
+    clf = ANFISClassifier(mfs, n_classes=2)
+    X = np.array([[-0.2], [0.4]])
+    y = np.array([0, 1])
+
+    losses = clf.fit(X, y, trainer=trainer)
+
+    assert losses == [2.0]
+    assert trainer.fit_called
+    assert not hasattr(trainer, "loss")
+    assert trainer.X_shape == X.shape
+    assert trainer.y_shape == y.shape
