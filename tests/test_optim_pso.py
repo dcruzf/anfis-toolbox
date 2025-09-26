@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 
 from anfis_toolbox import ANFIS, ANFISClassifier
 from anfis_toolbox.membership import GaussianMF
@@ -155,3 +156,14 @@ def test_pso_classifier_with_cross_entropy_loss():
     losses = trainer.fit(clf, X, y)
     assert len(losses) == 2
     assert all(np.isfinite(loss) for loss in losses)
+
+
+def test_pso_fit_raises_when_target_rows_mismatch():
+    rng = np.random.default_rng(8)
+    X = rng.normal(size=(12, 2))
+    y = rng.normal(size=(6, 1))
+    model = _make_regression_model(n_inputs=2)
+    trainer = PSOTrainer(swarm_size=5, epochs=1, random_state=8, init_sigma=0.05, verbose=False)
+
+    with pytest.raises(ValueError, match="Target array must have same number of rows as X"):
+        trainer.fit(model, X, y)
