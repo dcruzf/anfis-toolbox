@@ -20,6 +20,11 @@ def _make_classifier(n_inputs: int = 1, n_classes: int = 2) -> ANFISClassifier:
     return ANFISClassifier(input_mfs, n_classes=n_classes, random_state=0)
 
 
+def _flatten_model_params(model: ANFIS) -> np.ndarray:
+    theta, _ = _flatten_params(model.get_parameters())
+    return theta
+
+
 def test_pso_trains_and_updates_regression_params():
     rng = np.random.default_rng(0)
     X = rng.normal(size=(30, 2))
@@ -40,12 +45,31 @@ def test_pso_train_step_api_progression():
     y = (0.3 * X[:, 0] + 0.1 * X[:, 1]).reshape(-1, 1)
     model = _make_regression_model(n_inputs=2)
     trainer = PSOTrainer(swarm_size=8, epochs=1, random_state=1, init_sigma=0.05, verbose=False)
+    params_before = _flatten_model_params(model)
     state = trainer.init_state(model, X, y)
+    # init_state should not mutate the caller's model parameters
+    np.testing.assert_allclose(_flatten_model_params(model), params_before)
     best0 = state["gbest_val"]
     loss1, state = trainer.train_step(model, X[:10], y[:10], state)
     assert np.isfinite(loss1)
     # Global best should be finite and typically non-increasing after a step
     assert state["gbest_val"] <= best0 or np.isfinite(state["gbest_val"])  # not strict monotonic in stochastic PSO
+    # After train_step the model should be set to the current global best parameters
+    best_params = _unflatten_params(state["gbest_pos"], state["meta"], state["template"])
+    theta_best, _ = _flatten_params(best_params)
+    np.testing.assert_allclose(_flatten_model_params(model), theta_best)
+
+
+def test_pso_init_state_preserves_model_parameters():
+    rng = np.random.default_rng(5)
+    X = rng.normal(size=(12, 2))
+    y = (X[:, 0] + X[:, 1]).reshape(-1, 1)
+    model = _make_regression_model(n_inputs=2)
+    params_before = _flatten_model_params(model)
+    trainer = PSOTrainer(swarm_size=6, epochs=1, random_state=5, init_sigma=0.05, verbose=False)
+    trainer.init_state(model, X, y)
+    params_after = _flatten_model_params(model)
+    np.testing.assert_allclose(params_before, params_after)
 
 
 def test_pso_runs_with_classifier_logits():
