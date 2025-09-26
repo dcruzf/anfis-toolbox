@@ -64,7 +64,13 @@ def root_mean_squared_error(y_true, y_pred) -> float:
     return float(np.sqrt(mse))
 
 
-def mean_absolute_percentage_error(y_true, y_pred, epsilon: float = 1e-12) -> float:
+def mean_absolute_percentage_error(
+    y_true,
+    y_pred,
+    epsilon: float = 1e-12,
+    *,
+    ignore_zero_targets: bool = False,
+) -> float:
     """Compute the mean absolute percentage error (MAPE) in percent.
 
     MAPE = mean( abs((y_true - y_pred) / max(abs(y_true), epsilon)) ) * 100
@@ -73,12 +79,20 @@ def mean_absolute_percentage_error(y_true, y_pred, epsilon: float = 1e-12) -> fl
         y_true: Array-like of true target values.
         y_pred: Array-like of predicted values, broadcastable to y_true.
         epsilon: Small constant to avoid division by zero when y_true == 0.
+        ignore_zero_targets: When True, drop samples where |y_true| <= epsilon; if all
+            targets are (near) zero, returns ``np.inf`` to signal undefined percentage.
 
     Returns:
         MAPE value as a percentage (float).
     """
     yt = np.asarray(y_true, dtype=float)
     yp = np.asarray(y_pred, dtype=float)
+    if ignore_zero_targets:
+        mask = np.abs(yt) > float(epsilon)
+        if not np.any(mask):
+            return float(np.inf)
+        yt = yt[mask]
+        yp = yp[mask]
     denom = np.maximum(np.abs(yt), float(epsilon))
     return float(np.mean(np.abs((yt - yp) / denom)) * 100.0)
 
@@ -341,24 +355,20 @@ class ANFISMetrics:
     def regression_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> dict[str, float]:
         """Return a suite of regression metrics for predictions vs. targets."""
         mse = mean_squared_error(y_true, y_pred)
-        residuals = y_true - y_pred
+        residuals = np.asarray(y_true, dtype=float) - np.asarray(y_pred, dtype=float)
         return {
             "mse": mse,
             "rmse": float(np.sqrt(mse)),
             "mae": mean_absolute_error(y_true, y_pred),
             "r2": r2_score(y_true, y_pred),
-            "mape": ANFISMetrics._mean_absolute_percentage_error(y_true, y_pred),
+            "mape": mean_absolute_percentage_error(
+                y_true,
+                y_pred,
+                ignore_zero_targets=True,
+            ),
             "max_error": float(np.max(np.abs(residuals))),
             "std_error": float(np.std(residuals)),
         }
-
-    @staticmethod
-    def _mean_absolute_percentage_error(y_true: np.ndarray, y_pred: np.ndarray) -> float:
-        """Mean Absolute Percentage Error expressed in percent, ignoring zero targets."""
-        mask = y_true != 0
-        if not np.any(mask):
-            return float(np.inf)
-        return float(np.mean(np.abs((y_true[mask] - y_pred[mask]) / y_true[mask])) * 100)
 
     @staticmethod
     def model_complexity_metrics(model: ANFIS) -> dict[str, int]:
