@@ -447,6 +447,61 @@ class TestANFISBuilder:
         with pytest.raises(ValueError, match="Cannot initialize membership functions from empty data array"):
             builder.add_input_from_data("x", np.array([]), init="random")
 
+    def test_add_input_from_data_random_with_generator(self):
+        data = np.linspace(-3.0, 3.0, 40)
+        rng1 = np.random.default_rng(123)
+        rng2 = np.random.default_rng(123)
+
+        builder_a = ANFISBuilder()
+        builder_a.add_input_from_data("x", data, n_mfs=4, mf_type="gaussian", init="random", random_state=rng1)
+
+        builder_b = ANFISBuilder()
+        builder_b.add_input_from_data("x", data, n_mfs=4, mf_type="gaussian", init="random", random_state=rng2)
+
+        mfs_a = builder_a.input_mfs["x"]
+        mfs_b = builder_b.input_mfs["x"]
+        centers_a = np.array([mf.parameters["mean"] for mf in mfs_a])
+        centers_b = np.array([mf.parameters["mean"] for mf in mfs_b])
+        sigmas_a = np.array([mf.parameters["sigma"] for mf in mfs_a])
+        sigmas_b = np.array([mf.parameters["sigma"] for mf in mfs_b])
+
+        np.testing.assert_allclose(centers_a, centers_b)
+        np.testing.assert_allclose(sigmas_a, sigmas_b)
+
+        low, high = builder_a.input_ranges["x"]
+        assert low < high
+
+    def test_add_input_from_data_random_clamps_min_width(self):
+        """Random init clamps widths to the computed floor (line 255)."""
+        data = np.linspace(0.0, 0.01, 10)
+        builder = ANFISBuilder()
+        builder.add_input_from_data(
+            "x",
+            data,
+            n_mfs=4,
+            mf_type="gaussian",
+            init="random",
+            random_state=0,
+            overlap=1.0,
+            margin=0.0,
+        )
+
+        mfs = builder.input_mfs["x"]
+        centers = np.array([mf.parameters["mean"] for mf in mfs])
+        sigmas = np.array([mf.parameters["sigma"] for mf in mfs])
+        low, high = builder.input_ranges["x"]
+
+        base_span = (high - low) / len(mfs)
+        floor = max(base_span * max(1.0, 0.1), 1e-3)
+        widths = sigmas * 2.0
+
+        assert widths.min() >= floor
+        # At least one width hits the clamp exactly, proving np.maximum ran.
+        assert np.isclose(widths, floor).any()
+        # Original centers remain sorted and inside [low, high].
+        assert np.all(np.diff(centers) >= 0)
+        assert low <= centers[0] <= centers[-1] <= high
+
     def test_add_input_from_data_fcm_fallbacks_constant_data(self):
         """Constant data triggers fallback branches ensuring valid parameter ordering."""
         x = np.full(20, 1.234)

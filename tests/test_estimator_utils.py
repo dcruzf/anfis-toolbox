@@ -3,6 +3,7 @@ import pytest
 
 from anfis_toolbox.estimator_utils import (
     BaseEstimatorLike,
+    ClassifierMixinLike,
     FittedMixin,
     NotFittedError,
     RegressorMixinLike,
@@ -54,6 +55,16 @@ def test_get_set_params_roundtrip_and_check_is_fitted():
     check_is_fitted(est2)
 
 
+def test_check_is_fitted_missing_attributes():
+    class PartialEstimator(FittedMixin):
+        pass
+
+    est = PartialEstimator()
+    est._mark_fitted()
+    with pytest.raises(NotFittedError, match="missing fitted attribute"):
+        check_is_fitted(est, attributes=["model_"])
+
+
 def test_ensure_2d_array_and_infer_feature_names():
     X = [[1, 2, 3], [4, 5, 6]]
     array, names = _ensure_2d_array(X)
@@ -73,6 +84,7 @@ def test_ensure_2d_array_and_infer_feature_names():
     frame = DummyFrame()
     array2, names2 = _ensure_2d_array(frame)
     assert names2 == ["a", "b"]
+    assert infer_feature_names(frame) == ["a", "b"]
 
     with pytest.raises(ValueError):
         _ensure_2d_array([1, 2, 3])
@@ -87,6 +99,9 @@ def test_ensure_vector_accepts_column_vector_and_rejects_matrix():
 
     with pytest.raises(ValueError):
         _ensure_vector([[1, 2], [3, 4]])
+
+    with pytest.raises(ValueError):
+        _ensure_vector(np.zeros((2, 2, 1)))
 
 
 class DummyRegressor(BaseEstimatorLike, FittedMixin, RegressorMixinLike):
@@ -117,3 +132,37 @@ def test_regressor_mixin_score_handles_perfect_and_imperfect_fit():
 
     reg.predictions = np.array([1, 0])
     assert reg.score([[0], [1]], [1, 2]) < 1.0
+
+    with pytest.raises(ValueError, match="different shape"):
+        reg.score([[0], [1]], [1])
+
+
+def test_regressor_mixin_score_returns_zero_for_constant_target():
+    reg = DummyRegressor()
+    reg.fit([[0], [1]], [1, 1])
+    reg.predictions = np.array([1, 1])
+    assert reg.score([[0], [1]], [1, 1]) == 0.0
+
+
+class DummyClassifier(FittedMixin, ClassifierMixinLike):
+    def __init__(self, predictions):
+        self._predictions = np.asarray(predictions)
+
+    def predict(self, X):
+        n = np.asarray(X).shape[0]
+        return self._predictions[:n]
+
+
+def test_classifier_mixin_score_validation_behaviour():
+    clf = DummyClassifier([0, 1])
+    clf._mark_fitted()
+    with pytest.raises(ValueError, match="different shape"):
+        clf.score([[0], [1]], [0])
+
+    empty_clf = DummyClassifier([])
+    empty_clf._mark_fitted()
+    assert empty_clf.score(np.empty((0, 2)), np.array([])) == 0.0
+
+    matched_clf = DummyClassifier([0, 1])
+    matched_clf._mark_fitted()
+    assert matched_clf.score([[0], [1]], np.array([0, 1])) == 1.0
