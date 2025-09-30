@@ -408,6 +408,45 @@ class TestANFISBuilder:
             a, b, c, d = (mf.parameters[k] for k in ("a", "b", "c", "d"))
             assert a < b <= c < d
 
+    def test_add_input_from_data_random_reproducible(self):
+        data = np.linspace(-1.0, 1.0, 25)
+        builder_a = ANFISBuilder()
+        builder_a.add_input_from_data("x", data, n_mfs=3, mf_type="gaussian", init="random", random_state=42)
+        builder_b = ANFISBuilder()
+        builder_b.add_input_from_data("x", data, n_mfs=3, mf_type="gaussian", init="random", random_state=42)
+
+        mfs_a = builder_a.input_mfs["x"]
+        mfs_b = builder_b.input_mfs["x"]
+        assert len(mfs_a) == len(mfs_b) == 3
+        assert all(isinstance(mf, GaussianMF) for mf in mfs_a)
+
+        centers_a = np.array([mf.parameters["mean"] for mf in mfs_a])
+        centers_b = np.array([mf.parameters["mean"] for mf in mfs_b])
+        sigmas_a = np.array([mf.parameters["sigma"] for mf in mfs_a])
+        sigmas_b = np.array([mf.parameters["sigma"] for mf in mfs_b])
+
+        assert np.allclose(centers_a, centers_b)
+        assert np.allclose(sigmas_a, sigmas_b)
+
+        builder_c = ANFISBuilder()
+        builder_c.add_input_from_data("x", data, n_mfs=3, mf_type="gaussian", init="random", random_state=7)
+        centers_c = np.array([mf.parameters["mean"] for mf in builder_c.input_mfs["x"]])
+        # It's highly unlikely the layouts are identical with a different seed
+        assert not np.allclose(centers_a, centers_c)
+
+        low, high = builder_a.input_ranges["x"]
+        rmin, rmax = float(np.min(data)), float(np.max(data))
+        span = rmax - rmin
+        expected_low = pytest.approx(rmin - span * 0.10)
+        expected_high = pytest.approx(rmax + span * 0.10)
+        assert low == expected_low
+        assert high == expected_high
+
+    def test_add_input_from_data_random_empty_raises(self):
+        builder = ANFISBuilder()
+        with pytest.raises(ValueError, match="Cannot initialize membership functions from empty data array"):
+            builder.add_input_from_data("x", np.array([]), init="random")
+
     def test_add_input_from_data_fcm_fallbacks_constant_data(self):
         """Constant data triggers fallback branches ensuring valid parameter ordering."""
         x = np.full(20, 1.234)

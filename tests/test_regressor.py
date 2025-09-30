@@ -2,6 +2,7 @@ import numpy as np
 import pytest
 
 from anfis_toolbox import ANFISRegressor
+from anfis_toolbox.builders import ANFISBuilder
 from anfis_toolbox.estimator_utils import NotFittedError
 from anfis_toolbox.membership import GaussianMF
 from anfis_toolbox.optim import BaseTrainer, SGDTrainer
@@ -279,3 +280,40 @@ def test_inputs_config_integer_override():
     reg = ANFISRegressor(n_mfs=2, inputs_config=inputs_config, optimizer="hybrid", epochs=1)
     reg.fit(X, y)
     assert all(len(mfs) == 2 for mfs in reg.model_.membership_functions.values())
+
+
+def test_init_none_defaults_to_grid_behavior():
+    X, y = _generate_dataset()
+    reg = ANFISRegressor(init=None, optimizer="hybrid", epochs=1)
+    reg.fit(X, y)
+
+    assert reg.input_specs_ is not None
+    assert all(spec["init"] is None for spec in reg.input_specs_)
+
+
+def test_init_random_matches_builder_layout():
+    X, y = _generate_dataset()
+    reg = ANFISRegressor(init="random", random_state=123, epochs=1)
+    reg.fit(X, y)
+
+    assert reg.input_specs_ is not None
+    assert all(spec["init"] == "random" for spec in reg.input_specs_)
+
+    builder = ANFISBuilder()
+    builder.add_input_from_data("x1", X[:, 0], n_mfs=reg.n_mfs, mf_type=reg.mf_type, init="random", random_state=123)
+    builder.add_input_from_data("x2", X[:, 1], n_mfs=reg.n_mfs, mf_type=reg.mf_type, init="random", random_state=123)
+
+    centers_reg_x1 = np.array([mf.parameters["mean"] for mf in reg.model_.membership_functions["x1"]])
+    centers_builder_x1 = np.array([mf.parameters["mean"] for mf in builder.input_mfs["x1"]])
+    assert np.allclose(centers_reg_x1, centers_builder_x1, atol=1e-4)
+
+    centers_reg_x2 = np.array([mf.parameters["mean"] for mf in reg.model_.membership_functions["x2"]])
+    centers_builder_x2 = np.array([mf.parameters["mean"] for mf in builder.input_mfs["x2"]])
+    assert np.allclose(centers_reg_x2, centers_builder_x2, atol=1e-4)
+
+
+def test_invalid_init_strategy_raises_error():
+    X, y = _generate_dataset()
+    reg = ANFISRegressor(init="invalid", epochs=1)
+    with pytest.raises(ValueError, match="Unknown init strategy"):
+        reg.fit(X, y)

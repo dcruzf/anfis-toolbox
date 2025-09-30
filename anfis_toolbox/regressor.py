@@ -55,8 +55,9 @@ class ANFISRegressor(BaseEstimatorLike, FittedMixin, RegressorMixinLike):
         Default number of membership functions per input.
     mf_type : str, default="gaussian"
         Default membership function family (see :class:`ANFISBuilder`).
-    init : {"grid", "fcm"}, default="grid"
-        Strategy used when inferring membership functions from data.
+    init : {"grid", "fcm", "random", None}, default="grid"
+        Strategy used when inferring membership functions from data. ``None``
+        falls back to ``"grid"``.
     overlap : float, default=0.5
         Controls overlap when generating membership functions via the builder.
     margin : float, default=0.10
@@ -89,7 +90,7 @@ class ANFISRegressor(BaseEstimatorLike, FittedMixin, RegressorMixinLike):
         *,
         n_mfs: int = 3,
         mf_type: str = "gaussian",
-        init: str = "grid",
+        init: str | None = "grid",
         overlap: float = 0.5,
         margin: float = 0.10,
         inputs_config: Mapping[Any, Any] | None = None,
@@ -106,7 +107,7 @@ class ANFISRegressor(BaseEstimatorLike, FittedMixin, RegressorMixinLike):
         """Initialize the ANFIS regressor."""
         self.n_mfs = int(n_mfs)
         self.mf_type = str(mf_type)
-        self.init = str(init)
+        self.init = None if init is None else str(init)
         self.overlap = float(overlap)
         self.margin = float(margin)
         self.inputs_config = dict(inputs_config) if inputs_config is not None else None
@@ -231,7 +232,7 @@ class ANFISRegressor(BaseEstimatorLike, FittedMixin, RegressorMixinLike):
             if "mfs" in spec and "membership_functions" not in spec:
                 spec = {**spec, "membership_functions": spec["mfs"]}
             for key in ("n_mfs", "mf_type", "init", "overlap", "margin", "range", "membership_functions"):
-                if key in spec and spec[key] is not None:
+                if key in spec and (spec[key] is not None or key == "init"):
                     config[key] = spec[key]
             return config
         if isinstance(spec, str):
@@ -267,6 +268,8 @@ class ANFISRegressor(BaseEstimatorLike, FittedMixin, RegressorMixinLike):
                     overlap=float(spec["overlap"]),
                 )
             else:
+                init_strategy = spec.get("init")
+                init_arg = None if init_strategy is None else str(init_strategy)
                 builder.add_input_from_data(
                     name,
                     column,
@@ -274,7 +277,7 @@ class ANFISRegressor(BaseEstimatorLike, FittedMixin, RegressorMixinLike):
                     mf_type=str(spec["mf_type"]),
                     overlap=float(spec["overlap"]),
                     margin=float(spec["margin"]),
-                    init=str(spec["init"]),
+                    init=init_arg,
                     random_state=self.random_state,
                 )
         return builder.build()
