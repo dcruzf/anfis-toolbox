@@ -23,6 +23,26 @@ pip install anfis-toolbox
 
 ## Quick start
 
+### High-level regressor facade
+
+```python
+import numpy as np
+from anfis_toolbox import ANFISRegressor
+
+X = np.random.uniform(-2, 2, (200, 2))
+y = np.sin(X[:, 0]) + 0.5 * X[:, 1]
+
+reg = ANFISRegressor(
+    optimizer="adam",
+    epochs=40,
+    learning_rate=0.01,
+    inputs_config={"x1": {"mf_type": "triangular", "n_mfs": 4}},
+)
+reg.fit(X, y)
+preds = reg.predict([[0.2, -1.5]])
+metrics = reg.evaluate(X, y)
+```
+
 Minimal example using QuickANFIS:
 
 ```python

@@ -3,7 +3,8 @@
 __version__ = "0.1.0"
 
 # Import builders for easy model creation
-from .builders import ANFISBuilder, QuickANFIS
+from .builders import ANFISBuilder
+from .classifier import ANFISClassifier
 from .clustering import FuzzyCMeans
 from .layers import ConsequentLayer, MembershipLayer, NormalizationLayer, RuleLayer
 from .logging_config import disable_training_logs, enable_training_logs, setup_logging
@@ -50,13 +51,18 @@ from .metrics import (
     symmetric_mean_absolute_percentage_error,
     xie_beni_index,
 )
-from .model import ANFIS, ANFISClassifier
+from .model import ANFIS, TSKANFISClassifier
 from .optim import AdamTrainer, HybridTrainer, PSOTrainer, RMSPropTrainer, SGDTrainer
+from .regressor import ANFISRegressor
+
+LegacyANFISClassifier = TSKANFISClassifier
 
 __all__ = [
     # Core components
     "ANFIS",
     "ANFISClassifier",
+    "TSKANFISClassifier",
+    "LegacyANFISClassifier",
     "MembershipFunction",
     "GaussianMF",
     "Gaussian2MF",
@@ -85,7 +91,7 @@ __all__ = [
     "disable_training_logs",
     # Easy model creation
     "ANFISBuilder",
-    "QuickANFIS",
+    "ANFISRegressor",
     # Metrics
     "softmax",
     "cross_entropy",

@@ -17,8 +17,8 @@ from .metrics import softmax
 logger = logging.getLogger(__name__)
 
 
-class ANFIS:
-    """Adaptive Neuro-Fuzzy Inference System (ANFIS) model.
+class TSKANFIS:
+    """Adaptive Neuro-Fuzzy Inference System (legacy TSK ANFIS) model.
 
     Implements the classic 4-layer ANFIS architecture:
 
@@ -306,7 +306,7 @@ class ANFIS:
     def __str__(self) -> str:
         """Returns string representation of the ANFIS model."""
         return (
-            f"ANFIS Model:\n"
+            f"TSKANFIS Model:\n"
             f"  - Inputs: {self.n_inputs} ({', '.join(self.input_names)})\n"
             f"  - Rules: {self.n_rules}\n"
             f"  - Membership Functions: {[len(mfs) for mfs in self.input_mfs.values()]}\n"
@@ -316,11 +316,11 @@ class ANFIS:
 
     def __repr__(self) -> str:
         """Returns detailed representation of the ANFIS model."""
-        return f"ANFIS(n_inputs={self.n_inputs}, n_rules={self.n_rules})"
+        return f"TSKANFIS(n_inputs={self.n_inputs}, n_rules={self.n_rules})"
 
 
-class ANFISClassifier:
-    """ANFIS variant for classification with a softmax head.
+class TSKANFISClassifier:
+    """Adaptive Neuro-Fuzzy classifier with a softmax head (TSK variant).
 
     Aggregates per-rule linear consequents into per-class logits and trains
     with cross-entropy loss.
@@ -578,4 +578,9 @@ class ANFISClassifier:
         Returns:
             str: A formatted string describing the classifier configuration.
         """
-        return f"ANFISClassifier(n_inputs={self.n_inputs}, n_rules={self.n_rules}, n_classes={self.n_classes})"
+        return f"TSKANFISClassifier(n_inputs={self.n_inputs}, n_rules={self.n_rules}, n_classes={self.n_classes})"
+
+
+# Backwards compatibility alias: legacy low-level TSK ANFIS engine
+ANFIS = TSKANFIS
+ANFISClassifier = TSKANFISClassifier

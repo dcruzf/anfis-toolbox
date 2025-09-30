@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from anfis_toolbox import ANFIS, ANFISClassifier
+from anfis_toolbox import ANFIS, TSKANFISClassifier
 from anfis_toolbox.membership import GaussianMF
 from anfis_toolbox.optim import RMSPropTrainer
 
@@ -38,11 +38,11 @@ def test_rmsprop_trains_minibatch_regression_and_updates_params():
     assert not np.allclose(params_before["consequent"], params_after["consequent"])
 
 
-def _make_classifier(n_inputs: int = 1, n_classes: int = 2) -> ANFISClassifier:
+def _make_classifier(n_inputs: int = 1, n_classes: int = 2) -> TSKANFISClassifier:
     input_mfs = {}
     for i in range(n_inputs):
         input_mfs[f"x{i + 1}"] = [GaussianMF(mean=-1.0, sigma=1.0), GaussianMF(mean=1.0, sigma=1.0)]
-    return ANFISClassifier(input_mfs, n_classes=n_classes, random_state=0)
+    return TSKANFISClassifier(input_mfs, n_classes=n_classes, random_state=0)
 
 
 def test_rmsprop_with_classifier_does_not_error_on_forward_backward():
