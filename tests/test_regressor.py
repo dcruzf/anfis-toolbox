@@ -1,3 +1,5 @@
+import inspect
+
 import numpy as np
 import pytest
 
@@ -242,6 +244,73 @@ def test_custom_trainer_class_triggers_self_parameter_handling():
     reg.fit(X, y)
     assert isinstance(reg.optimizer_, MinimalTrainer)
     assert reg.optimizer_.scale == 2.0
+
+
+def test_regressor_collect_trainer_params_skips_self(monkeypatch):
+    class DummyTrainer(BaseTrainer):
+        def __init__(self, alpha=1, beta=2):
+            self.alpha = alpha
+            self.beta = beta
+
+        def fit(self, model, X_fit, y_fit):
+            return [0.0]
+
+        def init_state(self, model, X_fit, y_fit):
+            return None
+
+        def train_step(self, model, Xb, yb, state):
+            return 0.0, state
+
+    real_signature = inspect.signature
+
+    def fake_signature(obj):
+        if obj is DummyTrainer:
+            return inspect.Signature(
+                parameters=[
+                    inspect.Parameter("self", inspect.Parameter.POSITIONAL_OR_KEYWORD),
+                    inspect.Parameter("alpha", inspect.Parameter.POSITIONAL_OR_KEYWORD, default=1),
+                    inspect.Parameter("beta", inspect.Parameter.POSITIONAL_OR_KEYWORD, default=2),
+                ]
+            )
+        return real_signature(obj)
+
+    monkeypatch.setattr("anfis_toolbox.regressor.inspect.signature", fake_signature)
+
+    X, y = _generate_dataset(seed=21)
+    reg = ANFISRegressor(
+        optimizer=DummyTrainer,
+        optimizer_params={"alpha": 5},
+        epochs=1,
+    )
+    reg.fit(X, y)
+
+    assert isinstance(reg.optimizer_, DummyTrainer)
+    assert reg.optimizer_.alpha == 5
+    assert reg.optimizer_.beta == 2
+
+
+def test_regressor_apply_runtime_overrides_skips_verbose_when_none():
+    class VerboseTrainer(BaseTrainer):
+        def __init__(self):
+            self.verbose = True
+
+        def fit(self, model, X_fit, y_fit):
+            return [0.0]
+
+        def init_state(self, model, X_fit, y_fit):
+            return None
+
+        def train_step(self, model, Xb, yb, state):
+            return 0.0, state
+
+    trainer = VerboseTrainer()
+    X, y = _generate_dataset(seed=22)
+    reg = ANFISRegressor(optimizer=trainer, verbose=None, epochs=1)
+    reg.fit(X, y)
+
+    assert isinstance(reg.optimizer_, VerboseTrainer)
+    assert reg.optimizer_ is not trainer
+    assert reg.optimizer_.verbose is True
 
 
 def test_invalid_input_spec_type_triggers_type_error():

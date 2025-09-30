@@ -502,6 +502,30 @@ class TestANFISBuilder:
         assert np.all(np.diff(centers) >= 0)
         assert low <= centers[0] <= centers[-1] <= high
 
+    def test_add_input_from_data_random_single_mf_widths(self):
+        """Random init with one MF hits single-width branch (line 225)."""
+        data = np.array([-0.5, 0.5])
+        builder = ANFISBuilder()
+        builder.add_input_from_data(
+            "x",
+            data,
+            n_mfs=1,
+            mf_type="gaussian",
+            init="random",
+            margin=0.2,
+            overlap=0.3,
+            random_state=0,
+        )
+
+        mfs = builder.input_mfs["x"]
+        assert len(mfs) == 1
+        low, high = builder.input_ranges["x"]
+        span = high - low
+        sigma = mfs[0].parameters["sigma"]
+        # When n_mfs==1 widths start as high-low before floor clamp
+        assert np.isclose(span, 1.4)
+        assert np.isclose(sigma * 2.0, span)
+
     def test_add_input_from_data_fcm_fallbacks_constant_data(self):
         """Constant data triggers fallback branches ensuring valid parameter ordering."""
         x = np.full(20, 1.234)
