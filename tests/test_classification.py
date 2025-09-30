@@ -1,7 +1,8 @@
 import numpy as np
 import pytest
 
-from anfis_toolbox import ANFISClassifier, QuickANFIS, TSKANFISClassifier, accuracy
+from anfis_toolbox import ANFISClassifier, TSKANFISClassifier, accuracy
+from anfis_toolbox.builders import ANFISBuilder
 from anfis_toolbox.estimator_utils import NotFittedError
 from anfis_toolbox.losses import LossFunction
 from anfis_toolbox.losses import resolve_loss as _resolve_loss
@@ -23,6 +24,55 @@ def _generate_classification_data(seed: int = 0):
     X = rng.uniform(-1.0, 1.0, size=(80, 2))
     y = (1.2 * X[:, 0] - 0.8 * X[:, 1] > 0.0).astype(int)
     return X, y
+
+
+def _build_classifier_from_data(
+    X: np.ndarray,
+    *,
+    n_classes: int,
+    n_mfs: int = 3,
+    mf_type: str = "gaussian",
+    init: str = "grid",
+    random_state: int | None = None,
+) -> LowLevelClassifier:
+    if X.ndim != 2:
+        raise ValueError("Input data must be 2D (n_samples, n_features)")
+
+    builder = ANFISBuilder()
+    init_key = None if init is None else str(init).strip().lower()
+    for i in range(X.shape[1]):
+        col_data = X[:, i]
+        if init_key == "fcm":
+            builder.add_input_from_data(
+                f"x{i + 1}",
+                col_data,
+                n_mfs=n_mfs,
+                mf_type=mf_type,
+                init="fcm",
+                random_state=random_state,
+            )
+        elif init_key == "random":
+            builder.add_input_from_data(
+                f"x{i + 1}",
+                col_data,
+                n_mfs=n_mfs,
+                mf_type=mf_type,
+                init="random",
+                random_state=random_state,
+            )
+        else:
+            range_min = float(np.min(col_data))
+            range_max = float(np.max(col_data))
+            margin = (range_max - range_min) * 0.1
+            builder.add_input(
+                f"x{i + 1}",
+                range_min - margin,
+                range_max + margin,
+                n_mfs,
+                mf_type,
+            )
+
+    return LowLevelClassifier(builder.input_mfs, n_classes=n_classes, random_state=random_state)
 
 
 def test_classifier_forward_and_predict_shapes():
@@ -58,7 +108,7 @@ def test_classifier_fit_binary_toy():
     X = np.vstack([X_left, X_right])
     y = np.array([0] * len(X_left) + [1] * len(X_right))
 
-    model = QuickANFIS.for_classification(X, n_classes=2, n_mfs=2, mf_type="gaussian", init="fcm", random_state=0)
+    model = _build_classifier_from_data(X, n_classes=2, n_mfs=2, mf_type="gaussian", init="fcm", random_state=0)
     losses = model.fit(X, y, epochs=10, learning_rate=0.1, verbose=False)
     assert len(losses) == 10
     proba = model.predict_proba(X)
@@ -72,7 +122,7 @@ def test_classifier_fit_with_one_hot_and_invalid_shapes():
     y_int = (X[:, 0] > 0).astype(int)
     y_oh = np.zeros((X.shape[0], 2), dtype=float)
     y_oh[np.arange(X.shape[0]), y_int] = 1.0
-    model = QuickANFIS.for_classification(X, n_classes=2, n_mfs=2)
+    model = _build_classifier_from_data(X, n_classes=2, n_mfs=2)
     losses = model.fit(X, y_oh, epochs=2, learning_rate=0.05, verbose=False)
     assert len(losses) == 2
     # invalid one-hot columns
@@ -94,7 +144,7 @@ def test_classifier_input_validation():
         LowLevelClassifier(make_simple_input_mfs(), n_classes=1)
 
 
-def test_quickanfis_for_classification_fcm_and_invalid_ndim():
+def test_classifier_builder_helper_fcm_and_invalid_ndim():
     rng = np.random.default_rng(42)
     X = np.vstack(
         [
@@ -102,13 +152,13 @@ def test_quickanfis_for_classification_fcm_and_invalid_ndim():
             rng.normal(loc=1.0, scale=0.3, size=(20, 1)),
         ]
     )
-    model = QuickANFIS.for_classification(X, n_classes=2, n_mfs=2, mf_type="gaussian", init="fcm", random_state=0)
+    model = _build_classifier_from_data(X, n_classes=2, n_mfs=2, mf_type="gaussian", init="fcm", random_state=0)
     assert isinstance(model, LowLevelClassifier)
     preds = model.predict(X)
     assert preds.shape == (X.shape[0],)
     # invalid ndim
     with pytest.raises(ValueError):
-        QuickANFIS.for_classification(X.reshape(-1), n_classes=2)
+        _build_classifier_from_data(X.reshape(-1), n_classes=2)
 
 
 def test_classifier_parameters_and_gradients_management():
@@ -120,7 +170,7 @@ def test_classifier_parameters_and_gradients_management():
         ]
     )
     y = np.array([0] * 10 + [1] * 10)
-    model = QuickANFIS.for_classification(X, n_classes=2, n_mfs=2)
+    model = _build_classifier_from_data(X, n_classes=2, n_mfs=2)
     # One epoch to populate gradients
     losses = model.fit(X, y, epochs=1, learning_rate=0.01, verbose=False)
     assert len(losses) == 1
@@ -138,7 +188,7 @@ def test_classifier_parameters_and_gradients_management():
 def test_classifier_set_parameters_without_consequent_updates_only_membership():
     rng = np.random.default_rng(3)
     X = rng.normal(size=(10, 2))
-    model = QuickANFIS.for_classification(X, n_classes=2, n_mfs=2)
+    model = _build_classifier_from_data(X, n_classes=2, n_mfs=2)
     params_before = model.get_parameters()
     # Build membership-only params dict
     memb_only = {"membership": params_before["membership"]}
@@ -156,7 +206,7 @@ def test_classifier_set_parameters_without_consequent_updates_only_membership():
 def test_classifier_set_parameters_without_membership_updates_only_consequent():
     rng = np.random.default_rng(4)
     X = rng.normal(size=(8, 1))
-    model = QuickANFIS.for_classification(X, n_classes=3, n_mfs=2)
+    model = _build_classifier_from_data(X, n_classes=3, n_mfs=2)
     params_before = model.get_parameters()
     new_consequent = np.ones_like(params_before["consequent"]) * 2.5
     model.set_parameters({"consequent": new_consequent})
@@ -168,7 +218,7 @@ def test_classifier_set_parameters_without_membership_updates_only_consequent():
 def test_classifier_set_parameters_membership_missing_name_skips_safely():
     rng = np.random.default_rng(5)
     X = rng.normal(size=(12, 2))
-    model = QuickANFIS.for_classification(X, n_classes=2, n_mfs=2)
+    model = _build_classifier_from_data(X, n_classes=2, n_mfs=2)
     params_before = model.get_parameters()
     # Keep only one input's membership params to trigger the continue path
     one_name = list(params_before["membership"].keys())[0]

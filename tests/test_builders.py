@@ -1,7 +1,7 @@
 """
 Tests for ANFIS builders module.
 
-This module tests the ANFISBuilder and QuickANFIS classes,
+This module tests the ANFISBuilder class,
 focusing on proper model construction, parameter validation,
 and integration with membership functions.
 """
@@ -9,7 +9,7 @@ and integration with membership functions.
 import numpy as np
 import pytest
 
-from anfis_toolbox.builders import ANFISBuilder, QuickANFIS
+from anfis_toolbox.builders import ANFISBuilder
 from anfis_toolbox.membership import (
     BellMF,
     DiffSigmoidalMF,
@@ -487,8 +487,8 @@ class TestANFISBuilder:
         with pytest.raises(ValueError):
             builder.add_input_from_data("x", np.array([0.0]), n_mfs=2, mf_type="gaussian", init="fcm")
 
-    def test_quick_for_regression_with_fcm(self):
-        """QuickANFIS.for_regression supports init='fcm'."""
+    def test_builder_for_regression_with_fcm(self):
+        """Builder supports inferring inputs via FCM across multiple features."""
         rng = np.random.RandomState(2)
         X = np.column_stack(
             [
@@ -496,130 +496,20 @@ class TestANFISBuilder:
                 np.concatenate([rng.normal(0.0, 0.5, 40), rng.normal(3.0, 0.5, 40)]),
             ]
         )
-        model = QuickANFIS.for_regression(X, n_mfs=2, mf_type="gaussian", init="fcm", random_state=11)
+        builder = ANFISBuilder()
+        for i in range(X.shape[1]):
+            builder.add_input_from_data(
+                f"x{i + 1}",
+                X[:, i],
+                n_mfs=2,
+                mf_type="gaussian",
+                init="fcm",
+                random_state=11,
+            )
+        model = builder.build()
         # 2 inputs, 2 MFs each -> 4 rules
         assert model.n_inputs == 2
         assert model.n_rules == 4
-
-
-class TestQuickANFIS:
-    """Test cases for QuickANFIS class."""
-
-    def test_for_regression_basic(self):
-        """Test basic regression model creation."""
-        X = np.random.uniform(-1, 1, (10, 2))
-
-        model = QuickANFIS.for_regression(X)
-
-        assert isinstance(model, ANFIS)
-        assert model.n_inputs == 2
-        assert model.n_rules == 3 * 3  # Default 3 MFs per input
-
-    def test_for_regression_custom_mfs(self):
-        """Test regression with custom number of MFs."""
-        X = np.random.uniform(-2, 2, (15, 3))
-
-        model = QuickANFIS.for_regression(X, n_mfs=2)
-
-        assert isinstance(model, ANFIS)
-        assert model.n_inputs == 3
-        assert model.n_rules == 2 * 2 * 2  # 2 MFs per input
-
-    def test_for_regression_invalid_input(self):
-        """Test regression with invalid input raises error."""
-        X = np.random.uniform(-1, 1, (10,))  # 1D instead of 2D
-
-        with pytest.raises(ValueError, match="Input data must be 2D"):
-            QuickANFIS.for_regression(X)
-
-    def test_for_function_approximation_1d(self):
-        """Test function approximation for 1D input."""
-        input_ranges = [(-2.0, 2.0)]
-
-        model = QuickANFIS.for_function_approximation(input_ranges)
-
-        assert isinstance(model, ANFIS)
-        assert model.n_inputs == 1
-        assert model.n_rules == 5  # Default 5 MFs
-
-    def test_for_function_approximation_multi_input(self):
-        """Test function approximation for multiple inputs."""
-        input_ranges = [(-1.0, 1.0), (0.0, 10.0), (-5.0, 5.0)]
-
-        model = QuickANFIS.for_function_approximation(input_ranges, n_mfs=2)
-
-        assert isinstance(model, ANFIS)
-        assert model.n_inputs == 3
-        assert model.n_rules == 2 * 2 * 2  # 2 MFs per input
-
-    def test_automatic_range_detection(self):
-        """Test automatic range detection with margin."""
-        X = np.array([[0.0, 5.0], [1.0, 6.0], [2.0, 7.0]])
-
-        # Inspect the created model to verify range detection
-        builder = ANFISBuilder()
-
-        # Simulate the range detection logic
-        for i in range(X.shape[1]):
-            col_data = X[:, i]
-            range_min = float(np.min(col_data))
-            range_max = float(np.max(col_data))
-
-            # Add some margin (10%)
-            margin = (range_max - range_min) * 0.1
-            range_min -= margin
-            range_max += margin
-
-            builder.add_input(f"x{i + 1}", range_min, range_max, 3, "gaussian")
-
-        model = builder.build()
-
-        assert isinstance(model, ANFIS)
-        assert model.n_inputs == 2
-
-    def test_input_range_expansion(self):
-        """Test that input ranges are properly expanded with margins."""
-        # Data with tight range
-        X = np.array([[1.0, 2.0], [1.1, 2.1], [1.2, 2.2]])
-
-        model = QuickANFIS.for_regression(X, n_mfs=2)
-
-        assert isinstance(model, ANFIS)
-        assert model.n_inputs == 2
-
-    def test_model_prediction(self):
-        """Test that created models can make predictions."""
-        X = np.random.uniform(-1, 1, (20, 2))
-        model = QuickANFIS.for_regression(X, n_mfs=2)
-
-        # Test prediction on single sample
-        pred_single = model.predict(np.array([[0.0, 0.0]]))
-        assert isinstance(pred_single, np.ndarray)
-        assert pred_single.shape == (1, 1)
-
-        # Test prediction on multiple samples
-        pred_multi = model.predict(X[:5])
-        assert isinstance(pred_multi, np.ndarray)
-        assert pred_multi.shape == (5, 1)
-
-    def test_different_mf_types(self):
-        """Test creating models with different MF types."""
-        X = np.random.uniform(-1, 1, (10, 2))
-
-        # Test with different MF types
-        for mf_type in [
-            "gaussian",
-            "triangular",
-            "trapezoidal",
-            "bell",
-            "sigmoidal",
-            "sshape",
-            "zshape",
-            "pi",
-        ]:
-            model = QuickANFIS.for_regression(X, n_mfs=2, mf_type=mf_type)
-            assert isinstance(model, ANFIS)
-            assert model.n_inputs == 2
 
 
 def _get_single_input_mfs(model, name="x"):
@@ -847,18 +737,21 @@ def test_builder_gaussian2_grid():
     assert len(model.membership_functions["x1"]) == 3
 
 
-def test_quick_gaussian2_grid():
+def test_builder_gaussian2_grid_prediction():
     X = np.linspace(-2, 2, 50).reshape(-1, 1)
-    model = QuickANFIS.for_regression(X, n_mfs=4, mf_type="gaussian2", init="grid")
-    # Should forward without error
+    builder = ANFISBuilder()
+    builder.add_input_from_data("x1", X[:, 0], n_mfs=4, mf_type="gaussian2", init="grid")
+    model = builder.build()
     y = model.predict(X)
     assert y.shape == (50, 1)
 
 
-def test_quick_gaussian2_fcm():
+def test_builder_gaussian2_fcm_prediction():
     rng = np.random.RandomState(0)
     X = rng.uniform(-3, 3, size=(80, 1))
-    model = QuickANFIS.for_regression(X, n_mfs=3, mf_type="gaussian2", init="fcm", random_state=42)
+    builder = ANFISBuilder()
+    builder.add_input_from_data("x1", X[:, 0], n_mfs=3, mf_type="gaussian2", init="fcm", random_state=42)
+    model = builder.build()
     y = model.predict(X)
     assert y.shape == (80, 1)
 

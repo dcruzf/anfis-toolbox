@@ -3,7 +3,7 @@
 __version__ = "0.1.0"
 
 # Import builders for easy model creation
-from .builders import ANFISBuilder, QuickANFIS
+from .builders import ANFISBuilder
 from .classifier import ANFISClassifier
 from .clustering import FuzzyCMeans
 from .layers import ConsequentLayer, MembershipLayer, NormalizationLayer, RuleLayer
@@ -91,7 +91,6 @@ __all__ = [
     "disable_training_logs",
     # Easy model creation
     "ANFISBuilder",
-    "QuickANFIS",
     "ANFISRegressor",
     # Metrics
     "softmax",

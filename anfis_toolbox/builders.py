@@ -18,7 +18,7 @@ from .membership import (
     TriangularMF,
     ZShapedMF,
 )
-from .model import ANFIS, TSKANFISClassifier
+from .model import ANFIS
 
 
 class ANFISBuilder:
@@ -669,105 +669,3 @@ class ANFISBuilder:
             raise ValueError("No input variables defined. Use add_input() to define inputs.")
 
         return ANFIS(self.input_mfs)
-
-
-class QuickANFIS:
-    """Quick setup class for common ANFIS use cases."""
-
-    @staticmethod
-    def for_regression(
-        X: np.ndarray,
-        n_mfs: int = 3,
-        mf_type: str = "gaussian",
-        init: str = "grid",
-        random_state: int | None = None,
-    ) -> ANFIS:
-        """Create ANFIS model automatically configured for regression data.
-
-        Parameters:
-            X: Input training data (n_samples, n_features)
-            n_mfs: Number of membership functions per input
-            mf_type: Type of membership functions
-            init: Initialization strategy per input: 'grid' (default) or 'fcm'.
-            random_state: Optional seed for deterministic FCM.
-
-        Returns:
-            Configured ANFIS model
-        """
-        if X.ndim != 2:
-            raise ValueError("Input data must be 2D (n_samples, n_features)")
-
-        builder = ANFISBuilder()
-
-        for i in range(X.shape[1]):
-            col_data = X[:, i]
-            if init.strip().lower() == "fcm":
-                builder.add_input_from_data(
-                    f"x{i + 1}",
-                    col_data,
-                    n_mfs=n_mfs,
-                    mf_type=mf_type,
-                    init="fcm",
-                    random_state=random_state,
-                )
-            else:
-                range_min = float(np.min(col_data))
-                range_max = float(np.max(col_data))
-                # Add some margin
-                margin = (range_max - range_min) * 0.1
-                range_min -= margin
-                range_max += margin
-                builder.add_input(f"x{i + 1}", range_min, range_max, n_mfs, mf_type)
-
-        return builder.build()
-
-    @staticmethod
-    def for_function_approximation(input_ranges: list[tuple[float, float]], n_mfs: int = 5) -> ANFIS:
-        """Create ANFIS model for function approximation.
-
-        Parameters:
-            input_ranges: List of (min, max) tuples for each input dimension
-            n_mfs: Number of membership functions per input
-
-        Returns:
-            Configured ANFIS model
-        """
-        builder = ANFISBuilder()
-
-        for i, (range_min, range_max) in enumerate(input_ranges):
-            builder.add_input(f"x{i + 1}", range_min, range_max, n_mfs, "gaussian")
-
-        return builder.build()
-
-    @staticmethod
-    def for_classification(
-        X: np.ndarray,
-        n_classes: int,
-        n_mfs: int = 3,
-        mf_type: str = "gaussian",
-        init: str = "grid",
-        random_state: int | None = None,
-    ) -> TSKANFISClassifier:
-        """Create ANFISClassifier configured from data.
-
-        Mirrors for_regression but returns a classifier with n_classes.
-        """
-        if X.ndim != 2:
-            raise ValueError("Input data must be 2D (n_samples, n_features)")
-
-        builder = ANFISBuilder()
-        for i in range(X.shape[1]):
-            col_data = X[:, i]
-            if init.strip().lower() == "fcm":
-                builder.add_input_from_data(
-                    f"x{i + 1}", col_data, n_mfs=n_mfs, mf_type=mf_type, init="fcm", random_state=random_state
-                )
-            else:
-                range_min = float(np.min(col_data))
-                range_max = float(np.max(col_data))
-                margin = (range_max - range_min) * 0.1
-                builder.add_input(f"x{i + 1}", range_min - margin, range_max + margin, n_mfs, mf_type)
-
-        # Build as usual and wrap into classifier
-        input_mfs = builder.input_mfs
-        return TSKANFISClassifier(input_mfs, n_classes=n_classes, random_state=random_state)
