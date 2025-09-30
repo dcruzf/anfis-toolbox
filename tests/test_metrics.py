@@ -283,6 +283,30 @@ def test_xb_denominator_epsilon_guard_and_1d_X_path():
     assert np.isfinite(xb1d) and xb1d >= 0.0
 
 
+def test_classification_metrics_returns_scores():
+    y_true = np.array([0, 1, 1])
+    y_proba = np.array(
+        [
+            [0.9, 0.1],
+            [0.2, 0.8],
+            [0.3, 0.7],
+        ]
+    )
+
+    metrics = ANFISMetrics.classification_metrics(y_true, y_proba)
+
+    assert np.isclose(metrics["accuracy"], accuracy(y_true, y_proba))
+    assert np.isclose(metrics["log_loss"], log_loss(y_true, y_proba))
+
+
+def test_classification_metrics_validates_inputs():
+    with pytest.raises(ValueError, match="y_proba must be a 2D array"):
+        ANFISMetrics.classification_metrics(np.array([0, 1]), np.array([0.8, 0.2]))
+
+    with pytest.raises(ValueError, match="same number of samples"):
+        ANFISMetrics.classification_metrics(np.array([0, 1, 1]), np.full((2, 2), 0.5))
+
+
 def test_model_complexity_metrics_counts_parameters():
     membership_functions = {
         "x1": [SimpleNamespace(parameters=np.array([0.1, 0.2]))],
