@@ -52,6 +52,7 @@ from .metrics import (
 )
 from .model import ANFIS, ANFISClassifier
 from .optim import AdamTrainer, HybridTrainer, PSOTrainer, RMSPropTrainer, SGDTrainer
+from .regressor import ANFISRegressor
 
 __all__ = [
     # Core components
@@ -86,6 +87,7 @@ __all__ = [
     # Easy model creation
     "ANFISBuilder",
     "QuickANFIS",
+    "ANFISRegressor",
     # Metrics
     "softmax",
     "cross_entropy",
