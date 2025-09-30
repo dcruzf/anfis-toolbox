@@ -1,4 +1,9 @@
-# ANFIS Toolbox
+<div align="center">
+  <a href="https://dcruzf.github.io/anfis-toolbox">
+  <h1>ANFIS Toolbox</h1>
+  <img src="docs/assets/logo.svg" alt="ANFIS Toolbox">
+  </a>
+</div>
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 
@@ -95,7 +100,7 @@ Builders support grid, fuzzy C-means (FCM), and random initialization strategies
 from anfis_toolbox import ANFISRegressor
 from anfis_toolbox.optim import SGDTrainer
 
-reg = ANFISRegressor(optimizer=SGDTrainer, epochs=20, learning_rate=0.02)
+reg = ANFISRegressor(optimizer=SGDTrainer, epochs=200, learning_rate=0.02)
 ```
 
 - **Hybrid**: Jang-style least-squares + gradient descent (default for regression).
@@ -117,8 +122,9 @@ make test
 
 Additional targets:
 
-- `make lint` – Ruff linting.
-- `make docs` – Build the MkDocs site locally.
+- `make lint` — Run Ruff linting
+- `make docs` — Build the MkDocs site locally
+- `make help` — Show all available targets with their help messages
 
 ## 🤝 Contributing
 
@@ -130,4 +136,4 @@ Distributed under the MIT License. See [LICENSE](LICENSE) for details.
 
 ## 📚 References
 
-1. Jang, J.-S. R. (1993). *ANFIS: Adaptive-network-based fuzzy inference system*. IEEE Trans. Systems, Man, and Cybernetics, 23(3), 665–685.
+1. Jang, J. S. (1993). ANFIS: adaptive-network-based fuzzy inference system. IEEE transactions on systems, man, and cybernetics, 23(3), 665-685. https://doi.org/10.1109/21.256541
