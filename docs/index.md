@@ -149,12 +149,64 @@ That's it! 🎉 You just created and trained a neuro-fuzzy system!
 ANFIS Toolbox implements the complete 4-layer ANFIS architecture:
 
 ```mermaid
-graph LR
-    A[Input Layer] --> B[Membership Layer]
-    B --> C[Rule Layer]
-    C --> D[Normalization Layer]
-    D --> E[Consequent Layer]
-    E --> F[Output]
+flowchart LR
+
+    %% Layer 1
+    subgraph L1 [layer 1]
+      direction TB
+      A1["A1"]
+      A2["A2"]
+      B1["B1"]
+      B2["B2"]
+    end
+
+    %% Inputs
+    x_input[x] --> A1
+    x_input --> A2
+    y_input[y] --> B1
+    y_input --> B2
+
+    %% Layer 2
+    subgraph L2 [layer 2]
+      direction TB
+      P1((Π))
+      P2((Π))
+    end
+    A1 --> P1
+    B1 --> P1
+    A2 --> P2
+    B2 --> P2
+
+    %% Layer 3
+    subgraph L3 [layer 3]
+      direction TB
+      N1((N))
+      N2((N))
+    end
+    P1 -- w₁ --> N1
+    P1 ----> N2
+    P2 ----> N1
+    P2 -- w₂ --> N2
+
+    %% Layer 4
+    subgraph L4 [layer 4]
+      direction TB
+      L4_1[x y]
+      L4_2[x y]
+    end
+    N1 -- w̅₁ --> L4_1
+    N2 -- w̅₂ --> L4_2
+
+    %% Layer 5
+    subgraph L5 [layer 5]
+      direction TB
+      Sum((Σ))
+    end
+    L4_1 -- "w₁ f₁" --> Sum
+    L4_2 -- "w₂ f₂" --> Sum
+
+    %% Output
+    Sum -- f --> f_out[f]
 ```
 
 ### Supported Membership Functions
