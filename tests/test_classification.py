@@ -1,10 +1,17 @@
+import inspect
+
 import numpy as np
 import pytest
 
-from anfis_toolbox import ANFISClassifier, QuickANFIS, accuracy
+from anfis_toolbox import ANFISClassifier, TSKANFISClassifier, accuracy
+from anfis_toolbox.builders import ANFISBuilder
+from anfis_toolbox.estimator_utils import NotFittedError
 from anfis_toolbox.losses import LossFunction
 from anfis_toolbox.losses import resolve_loss as _resolve_loss
-from anfis_toolbox.membership import GaussianMF
+from anfis_toolbox.membership import GaussianMF, MembershipFunction
+from anfis_toolbox.optim import BaseTrainer, SGDTrainer
+
+LowLevelClassifier = TSKANFISClassifier
 
 
 def make_simple_input_mfs(n_features=1, n_mfs=2):
@@ -14,9 +21,65 @@ def make_simple_input_mfs(n_features=1, n_mfs=2):
     return input_mfs
 
 
+def _generate_classification_data(seed: int = 0):
+    rng = np.random.default_rng(seed)
+    X = rng.uniform(-1.0, 1.0, size=(80, 2))
+    y = (1.2 * X[:, 0] - 0.8 * X[:, 1] > 0.0).astype(int)
+    return X, y
+
+
+def _build_classifier_from_data(
+    X: np.ndarray,
+    *,
+    n_classes: int,
+    n_mfs: int = 3,
+    mf_type: str = "gaussian",
+    init: str = "grid",
+    random_state: int | None = None,
+) -> LowLevelClassifier:
+    if X.ndim != 2:
+        raise ValueError("Input data must be 2D (n_samples, n_features)")
+
+    builder = ANFISBuilder()
+    init_key = None if init is None else str(init).strip().lower()
+    for i in range(X.shape[1]):
+        col_data = X[:, i]
+        if init_key == "fcm":
+            builder.add_input_from_data(
+                f"x{i + 1}",
+                col_data,
+                n_mfs=n_mfs,
+                mf_type=mf_type,
+                init="fcm",
+                random_state=random_state,
+            )
+        elif init_key == "random":
+            builder.add_input_from_data(
+                f"x{i + 1}",
+                col_data,
+                n_mfs=n_mfs,
+                mf_type=mf_type,
+                init="random",
+                random_state=random_state,
+            )
+        else:
+            range_min = float(np.min(col_data))
+            range_max = float(np.max(col_data))
+            margin = (range_max - range_min) * 0.1
+            builder.add_input(
+                f"x{i + 1}",
+                range_min - margin,
+                range_max + margin,
+                n_mfs,
+                mf_type,
+            )
+
+    return LowLevelClassifier(builder.input_mfs, n_classes=n_classes, random_state=random_state)
+
+
 def test_classifier_forward_and_predict_shapes():
     mfs = make_simple_input_mfs(n_features=2, n_mfs=2)
-    clf = ANFISClassifier(mfs, n_classes=3)
+    clf = LowLevelClassifier(mfs, n_classes=3)
     X = np.array([[0.0, 0.5], [1.0, -1.0]])
     logits = clf.forward(X)
     assert logits.shape == (2, 3)
@@ -28,12 +91,12 @@ def test_classifier_forward_and_predict_shapes():
 
 def test_classifier_predict_proba_accepts_1d_input_and_repr_and_property():
     mfs = make_simple_input_mfs(n_features=1, n_mfs=2)
-    clf = ANFISClassifier(mfs, n_classes=2)
+    clf = LowLevelClassifier(mfs, n_classes=2)
     x1 = np.array([0.0])
     proba = clf.predict_proba(x1)
     assert proba.shape == (1, 2)
     r = repr(clf)
-    assert "ANFISClassifier(" in r and "n_classes=2" in r
+    assert "TSKANFISClassifier(" in r and "n_classes=2" in r
     # property
     mf_prop = clf.membership_functions
     assert isinstance(mf_prop, dict) and "x1" in mf_prop
@@ -47,7 +110,7 @@ def test_classifier_fit_binary_toy():
     X = np.vstack([X_left, X_right])
     y = np.array([0] * len(X_left) + [1] * len(X_right))
 
-    model = QuickANFIS.for_classification(X, n_classes=2, n_mfs=2, mf_type="gaussian", init="fcm", random_state=0)
+    model = _build_classifier_from_data(X, n_classes=2, n_mfs=2, mf_type="gaussian", init="fcm", random_state=0)
     losses = model.fit(X, y, epochs=10, learning_rate=0.1, verbose=False)
     assert len(losses) == 10
     proba = model.predict_proba(X)
@@ -61,7 +124,7 @@ def test_classifier_fit_with_one_hot_and_invalid_shapes():
     y_int = (X[:, 0] > 0).astype(int)
     y_oh = np.zeros((X.shape[0], 2), dtype=float)
     y_oh[np.arange(X.shape[0]), y_int] = 1.0
-    model = QuickANFIS.for_classification(X, n_classes=2, n_mfs=2)
+    model = _build_classifier_from_data(X, n_classes=2, n_mfs=2)
     losses = model.fit(X, y_oh, epochs=2, learning_rate=0.05, verbose=False)
     assert len(losses) == 2
     # invalid one-hot columns
@@ -71,7 +134,7 @@ def test_classifier_fit_with_one_hot_and_invalid_shapes():
 
 def test_classifier_input_validation():
     mfs = make_simple_input_mfs(n_features=2, n_mfs=2)
-    clf = ANFISClassifier(mfs, n_classes=2)
+    clf = LowLevelClassifier(mfs, n_classes=2)
     with pytest.raises(ValueError):
         clf.predict_proba(np.array([1.0, 2.0, 3.0]))
     with pytest.raises(ValueError):
@@ -80,10 +143,10 @@ def test_classifier_input_validation():
         clf.predict_proba(np.zeros((2, 2, 2)))
     # invalid n_classes
     with pytest.raises(ValueError):
-        ANFISClassifier(make_simple_input_mfs(), n_classes=1)
+        LowLevelClassifier(make_simple_input_mfs(), n_classes=1)
 
 
-def test_quickanfis_for_classification_fcm_and_invalid_ndim():
+def test_classifier_builder_helper_fcm_and_invalid_ndim():
     rng = np.random.default_rng(42)
     X = np.vstack(
         [
@@ -91,13 +154,13 @@ def test_quickanfis_for_classification_fcm_and_invalid_ndim():
             rng.normal(loc=1.0, scale=0.3, size=(20, 1)),
         ]
     )
-    model = QuickANFIS.for_classification(X, n_classes=2, n_mfs=2, mf_type="gaussian", init="fcm", random_state=0)
-    assert isinstance(model, ANFISClassifier)
+    model = _build_classifier_from_data(X, n_classes=2, n_mfs=2, mf_type="gaussian", init="fcm", random_state=0)
+    assert isinstance(model, LowLevelClassifier)
     preds = model.predict(X)
     assert preds.shape == (X.shape[0],)
     # invalid ndim
     with pytest.raises(ValueError):
-        QuickANFIS.for_classification(X.reshape(-1), n_classes=2)
+        _build_classifier_from_data(X.reshape(-1), n_classes=2)
 
 
 def test_classifier_parameters_and_gradients_management():
@@ -109,7 +172,7 @@ def test_classifier_parameters_and_gradients_management():
         ]
     )
     y = np.array([0] * 10 + [1] * 10)
-    model = QuickANFIS.for_classification(X, n_classes=2, n_mfs=2)
+    model = _build_classifier_from_data(X, n_classes=2, n_mfs=2)
     # One epoch to populate gradients
     losses = model.fit(X, y, epochs=1, learning_rate=0.01, verbose=False)
     assert len(losses) == 1
@@ -127,7 +190,7 @@ def test_classifier_parameters_and_gradients_management():
 def test_classifier_set_parameters_without_consequent_updates_only_membership():
     rng = np.random.default_rng(3)
     X = rng.normal(size=(10, 2))
-    model = QuickANFIS.for_classification(X, n_classes=2, n_mfs=2)
+    model = _build_classifier_from_data(X, n_classes=2, n_mfs=2)
     params_before = model.get_parameters()
     # Build membership-only params dict
     memb_only = {"membership": params_before["membership"]}
@@ -145,7 +208,7 @@ def test_classifier_set_parameters_without_consequent_updates_only_membership():
 def test_classifier_set_parameters_without_membership_updates_only_consequent():
     rng = np.random.default_rng(4)
     X = rng.normal(size=(8, 1))
-    model = QuickANFIS.for_classification(X, n_classes=3, n_mfs=2)
+    model = _build_classifier_from_data(X, n_classes=3, n_mfs=2)
     params_before = model.get_parameters()
     new_consequent = np.ones_like(params_before["consequent"]) * 2.5
     model.set_parameters({"consequent": new_consequent})
@@ -157,7 +220,7 @@ def test_classifier_set_parameters_without_membership_updates_only_consequent():
 def test_classifier_set_parameters_membership_missing_name_skips_safely():
     rng = np.random.default_rng(5)
     X = rng.normal(size=(12, 2))
-    model = QuickANFIS.for_classification(X, n_classes=2, n_mfs=2)
+    model = _build_classifier_from_data(X, n_classes=2, n_mfs=2)
     params_before = model.get_parameters()
     # Keep only one input's membership params to trigger the continue path
     one_name = list(params_before["membership"].keys())[0]
@@ -172,11 +235,11 @@ def test_classifier_set_parameters_membership_missing_name_skips_safely():
         assert params_after["membership"][n] == params_before["membership"][n]
 
 
-def _make_simple_clf(n_inputs: int = 1, n_mfs: int = 2, n_classes: int = 2) -> ANFISClassifier:
+def _make_simple_clf(n_inputs: int = 1, n_mfs: int = 2, n_classes: int = 2) -> LowLevelClassifier:
     input_mfs = {}
     for i in range(n_inputs):
         input_mfs[f"x{i + 1}"] = [GaussianMF(mean=-1.0, sigma=1.0), GaussianMF(mean=1.0, sigma=1.0)][:n_mfs]
-    return ANFISClassifier(input_mfs, n_classes=n_classes, random_state=0)
+    return LowLevelClassifier(input_mfs, n_classes=n_classes, random_state=0)
 
 
 def test_classifier_apply_membership_gradients_private_helper():
@@ -206,7 +269,7 @@ def test_classifier_apply_membership_gradients_private_helper():
 
 def test_classifier_fit_uses_custom_loss_and_default_trainer(monkeypatch):
     mfs = make_simple_input_mfs(n_features=1, n_mfs=2)
-    clf = ANFISClassifier(mfs, n_classes=2)
+    clf = LowLevelClassifier(mfs, n_classes=2)
     X = np.array([[-0.5], [0.2], [0.8]])
     y = np.array([0, 1, 1])
 
@@ -260,7 +323,7 @@ def test_classifier_fit_updates_existing_trainer_loss():
 
     dummy = DummyTrainer()
     mfs = make_simple_input_mfs(n_features=1, n_mfs=2)
-    clf = ANFISClassifier(mfs, n_classes=2)
+    clf = LowLevelClassifier(mfs, n_classes=2)
     X = np.array([[0.1], [-0.3]])
     y = np.array([0, 1])
 
@@ -287,7 +350,7 @@ def test_classifier_fit_with_trainer_without_loss_attribute():
 
     trainer = NoLossTrainer()
     mfs = make_simple_input_mfs(n_features=1, n_mfs=2)
-    clf = ANFISClassifier(mfs, n_classes=2)
+    clf = LowLevelClassifier(mfs, n_classes=2)
     X = np.array([[-0.2], [0.4]])
     y = np.array([0, 1])
 
@@ -298,3 +361,395 @@ def test_classifier_fit_with_trainer_without_loss_attribute():
     assert not hasattr(trainer, "loss")
     assert trainer.X_shape == X.shape
     assert trainer.y_shape == y.shape
+
+
+def test_anfis_classifier_fit_predict_flow():
+    X, y = _generate_classification_data(seed=1)
+    clf = ANFISClassifier(
+        n_classes=2,
+        n_mfs=2,
+        optimizer="sgd",
+        epochs=3,
+        learning_rate=0.05,
+        verbose=False,
+        random_state=0,
+    )
+
+    result = clf.fit(X, y)
+    assert result is clf
+    assert clf.model_ is not None
+    assert isinstance(clf.model_, LowLevelClassifier)
+    assert clf.optimizer_ is not None
+    assert isinstance(clf.optimizer_, SGDTrainer)
+    assert clf.training_history_ is not None
+    assert len(clf.training_history_) == clf.optimizer_.epochs
+    assert clf.feature_names_in_ == ["x1", "x2"]
+    assert clf.n_features_in_ == 2
+    assert clf.classes_.shape == (2,)
+
+    proba = clf.predict_proba(X[:5])
+    assert proba.shape == (5, 2)
+    np.testing.assert_allclose(proba.sum(axis=1), 1.0, atol=1e-6)
+    preds = clf.predict(X[:5])
+    assert preds.shape == (5,)
+    assert set(np.unique(preds)).issubset(set(clf.classes_))
+
+    metrics = clf.evaluate(X[:5], y[:5])
+    assert set(metrics.keys()) == {"accuracy", "log_loss"}
+    assert 0.0 <= metrics["accuracy"] <= 1.0
+
+
+def test_anfis_classifier_inputs_config_membership_overrides():
+    X, y = _generate_classification_data(seed=2)
+    custom_mfs = [GaussianMF(mean=-0.5, sigma=0.4), GaussianMF(mean=0.5, sigma=0.4)]
+    inputs_config = {
+        "x1": {"mfs": custom_mfs},
+        1: {"mf_type": "bell", "n_mfs": 2},
+    }
+
+    clf = ANFISClassifier(
+        n_classes=2,
+        n_mfs=2,
+        inputs_config=inputs_config,
+        optimizer="sgd",
+        epochs=2,
+        verbose=False,
+        random_state=1,
+    )
+
+    clf.fit(X, y)
+    assert clf.input_specs_ is not None
+    spec = clf.input_specs_[0]
+    assert spec["membership_functions"][0] is custom_mfs[0]
+    assert clf.model_ is not None
+    assert clf.model_.membership_functions["x1"][0] is custom_mfs[0]
+    assert type(clf.model_.membership_functions["x2"][0]).__name__ == "BellMF"
+
+
+def test_anfis_classifier_custom_trainer_instance_overrides():
+    X, y = _generate_classification_data(seed=3)
+    base_trainer = SGDTrainer(epochs=1, learning_rate=0.01, verbose=True)
+    clf = ANFISClassifier(
+        n_classes=2,
+        n_mfs=2,
+        optimizer=base_trainer,
+        epochs=4,
+        learning_rate=0.2,
+        verbose=False,
+    )
+
+    clf.fit(X, y)
+    assert clf.optimizer_ is not base_trainer
+    assert isinstance(clf.optimizer_, SGDTrainer)
+    assert clf.optimizer_.epochs == 4
+    assert pytest.approx(clf.optimizer_.learning_rate, rel=1e-6) == 0.2
+    assert clf.optimizer_.verbose is False
+    assert clf.training_history_ is not None
+    assert len(clf.training_history_) == clf.optimizer_.epochs
+
+
+def test_anfis_classifier_invalid_optimizer_string():
+    X, y = _generate_classification_data(seed=4)
+    clf = ANFISClassifier(n_classes=2, optimizer="invalid", epochs=1)
+    with pytest.raises(ValueError, match="Unknown optimizer"):
+        clf.fit(X, y)
+
+
+def test_anfis_classifier_predict_requires_fit():
+    clf = ANFISClassifier(n_classes=2)
+    with pytest.raises(NotFittedError):
+        clf.predict(np.zeros((1, 2)))
+
+
+def test_anfis_classifier_requires_minimum_classes():
+    with pytest.raises(ValueError, match="n_classes must be >= 2"):
+        ANFISClassifier(n_classes=1)
+
+
+def test_anfis_classifier_resolve_input_specs_variants():
+    clf = ANFISClassifier(
+        n_classes=3,
+        inputs_config={
+            "x2": "bell",
+            "x3": 4,
+        },
+    )
+
+    specs = clf._resolve_input_specs(["feature0", "feature1", "feature2"])
+    assert specs[0]["mf_type"] == clf.mf_type
+    assert specs[1]["mf_type"] == "bell"
+    assert specs[2]["n_mfs"] == 4
+
+    mf = GaussianMF(mean=0.0, sigma=0.5)
+    list_spec = clf._normalize_input_spec([mf])
+    assert list_spec["membership_functions"][0] is mf
+    single_spec = clf._normalize_input_spec(mf)
+    assert single_spec["membership_functions"][0] is mf
+
+    with pytest.raises(TypeError, match="Unsupported input configuration type"):
+        clf._normalize_input_spec(3.14)
+
+
+def test_anfis_classifier_encode_targets_validation():
+    clf = ANFISClassifier(n_classes=3)
+    y = np.array([0, 1, 0, 1])
+
+    with pytest.raises(ValueError, match="configured for 3"):
+        clf._encode_targets(y, n_samples=4)
+
+    encoded, classes = clf._encode_targets(y, n_samples=4, allow_partial_classes=True)
+    np.testing.assert_array_equal(encoded, y)
+    np.testing.assert_array_equal(classes, np.array([0, 1], dtype=object))
+
+    clf_small = ANFISClassifier(n_classes=2)
+    y_excess = np.array([0, 1, 2, 1])
+    with pytest.raises(ValueError, match="configured for 2"):
+        clf_small._encode_targets(y_excess, n_samples=4)
+
+    y_oh = np.eye(4, 3)
+    with pytest.raises(ValueError, match="One-hot targets must have shape"):
+        clf_small._encode_targets(y_oh, n_samples=4)
+
+    y_oh_mismatch = np.eye(3, 2)
+    with pytest.raises(ValueError, match="same number of samples as X"):
+        clf_small._encode_targets(y_oh_mismatch, n_samples=2)
+
+    with pytest.raises(ValueError, match="same number of samples as X"):
+        clf_small._encode_targets(np.array([0, 1, 1]), n_samples=4)
+
+    with pytest.raises(ValueError, match="exceeds configured n_classes"):
+        clf_small._encode_targets(y_excess, n_samples=4, allow_partial_classes=True)
+
+    with pytest.raises(ValueError, match="must be 1-dimensional or a one-hot encoded 2D"):
+        clf._encode_targets(np.zeros((2, 2, 1)), n_samples=2)
+
+
+def test_anfis_classifier_encode_targets_one_hot_success():
+    clf = ANFISClassifier(n_classes=3)
+    y_oh = np.eye(3)
+    encoded, classes = clf._encode_targets(y_oh, n_samples=3)
+    np.testing.assert_array_equal(encoded, np.array([0, 1, 2]))
+    np.testing.assert_array_equal(classes, np.arange(3))
+
+
+def test_anfis_classifier_predict_feature_mismatch_after_fit():
+    X, y = _generate_classification_data(seed=10)
+    clf = ANFISClassifier(
+        n_classes=2,
+        n_mfs=2,
+        optimizer="sgd",
+        epochs=2,
+        learning_rate=0.05,
+        verbose=False,
+        random_state=0,
+    )
+
+    clf.fit(X, y)
+
+    with pytest.raises(ValueError, match="Feature mismatch"):
+        clf.predict_proba(np.zeros((3, 3)))
+
+    with pytest.raises(ValueError, match="Feature mismatch"):
+        clf.predict(np.zeros(3))
+
+
+def test_anfis_classifier_optimizer_invalid_type():
+    X, y = _generate_classification_data(seed=11)
+    clf = ANFISClassifier(n_classes=2, optimizer=123, verbose=False)
+    with pytest.raises(TypeError, match="optimizer must be a string identifier"):
+        clf.fit(X, y)
+
+
+def test_anfis_classifier_predict_proba_accepts_1d_input():
+    X, y = _generate_classification_data(seed=15)
+    clf = ANFISClassifier(
+        n_classes=2,
+        n_mfs=2,
+        optimizer="sgd",
+        epochs=2,
+        learning_rate=0.05,
+        verbose=False,
+        random_state=0,
+    )
+    clf.fit(X, y)
+
+    single = X[0]
+    proba = clf.predict_proba(single)
+    assert proba.shape == (1, 2)
+
+
+def test_anfis_classifier_predict_runtime_checks():
+    X, y = _generate_classification_data(seed=12)
+    clf = ANFISClassifier(n_classes=2, n_mfs=2, optimizer="sgd", epochs=2, verbose=False, random_state=0)
+    clf.fit(X, y)
+
+    clf.n_features_in_ = None
+    with pytest.raises(RuntimeError, match="predict"):
+        clf.predict(X[:1])
+
+    clf.n_features_in_ = None
+    with pytest.raises(RuntimeError, match="predict_proba"):
+        clf.predict_proba(X[:1])
+
+
+def test_anfis_classifier_evaluate_prints_results(capsys):
+    X, y = _generate_classification_data(seed=13)
+    clf = ANFISClassifier(n_classes=2, n_mfs=2, optimizer="sgd", epochs=2, verbose=False, random_state=0)
+    clf.fit(X, y)
+
+    metrics = clf.evaluate(X[:4], y[:4], print_results=True)
+    captured = capsys.readouterr().out
+    assert "ANFISClassifier evaluation:" in captured
+    assert "Accuracy" in captured and "LogLoss" in captured
+    assert set(metrics.keys()) == {"accuracy", "log_loss"}
+
+
+def test_anfis_classifier_build_model_respects_range_overrides(monkeypatch):
+    X = np.array([[0.1, -0.2], [0.3, 0.4], [-0.5, 0.6]], dtype=float)
+    custom_mfs = [GaussianMF(mean=-0.5, sigma=0.3), GaussianMF(mean=0.5, sigma=0.3)]
+    inputs_config = {
+        "x1": {"membership_functions": custom_mfs, "range": (-2.0, 2.0)},
+        "x2": {"range": (-1.0, 1.0), "n_mfs": 2, "mf_type": "gaussian"},
+    }
+    created_builders: list[object] = []
+
+    class StubBuilder:
+        def __init__(self):
+            self.input_mfs: dict[str, list[MembershipFunction]] = {}
+            self.input_ranges: dict[str, tuple[float, float]] = {}
+            self.add_input_calls: list[tuple] = []
+            self.add_input_from_data_calls: list[tuple] = []
+            created_builders.append(self)
+
+        def add_input(self, name, rmin, rmax, n_mfs, mf_type, *, overlap=None):
+            self.add_input_calls.append((name, rmin, rmax, n_mfs, mf_type, overlap))
+
+        def add_input_from_data(self, *args, **kwargs):
+            self.add_input_from_data_calls.append((args, kwargs))
+
+    class StubClassifier:
+        def __init__(self, input_mfs, n_classes, random_state=None):
+            self.membership_functions = input_mfs
+            self.n_classes = n_classes
+            self.random_state = random_state
+
+    monkeypatch.setattr("anfis_toolbox.classifier.ANFISBuilder", StubBuilder)
+    monkeypatch.setattr("anfis_toolbox.classifier.LowLevelANFISClassifier", StubClassifier)
+
+    clf = ANFISClassifier(n_classes=2, n_mfs=2, inputs_config=inputs_config)
+    feature_names = ["x1", "x2"]
+    clf.input_specs_ = clf._resolve_input_specs(feature_names)
+
+    model = clf._build_model(X, feature_names)
+    builder = created_builders[-1]
+
+    assert model.membership_functions["x1"][0] is custom_mfs[0]
+    assert builder.input_ranges["x1"] == (-2.0, 2.0)
+    assert builder.add_input_calls[0][0] == "x2"
+    assert builder.add_input_calls[0][1:3] == (-1.0, 1.0)
+
+
+def test_anfis_classifier_optimizer_class_params():
+    X, y = _generate_classification_data(seed=14)
+    clf = ANFISClassifier(
+        n_classes=2,
+        n_mfs=2,
+        optimizer=SGDTrainer,
+        optimizer_params={"epochs": 3, "bogus": 99},
+        learning_rate=0.05,
+        shuffle=False,
+        verbose=False,
+        random_state=0,
+    )
+
+    clf.fit(X, y)
+
+    assert isinstance(clf.optimizer_, SGDTrainer)
+    assert clf.optimizer_.epochs == 3
+    assert clf.optimizer_.shuffle is False
+    assert pytest.approx(clf.optimizer_.learning_rate, rel=1e-6) == 0.05
+
+
+def test_anfis_classifier_resolved_loss_spec_defaults():
+    clf = ANFISClassifier(n_classes=2)
+    assert clf._resolved_loss_spec() == "cross_entropy"
+    clf.loss = "mse"
+    assert clf._resolved_loss_spec() == "mse"
+
+
+def test_anfis_classifier_collect_trainer_params_skips_self(monkeypatch):
+    X, y = _generate_classification_data(seed=16)
+
+    class DummyTrainer(BaseTrainer):
+        def __init__(self, alpha=1, beta=2):
+            self.alpha = alpha
+            self.beta = beta
+
+        def fit(self, model, X_fit, y_fit):
+            return [0.0]
+
+        def init_state(self, model, X_fit, y_fit):
+            return None
+
+        def train_step(self, model, Xb, yb, state):
+            return 0.0, state
+
+    real_signature = inspect.signature
+
+    def fake_signature(obj):
+        if obj is DummyTrainer:
+            return inspect.Signature(
+                parameters=[
+                    inspect.Parameter("self", inspect.Parameter.POSITIONAL_OR_KEYWORD),
+                    inspect.Parameter("alpha", inspect.Parameter.POSITIONAL_OR_KEYWORD, default=1),
+                    inspect.Parameter("beta", inspect.Parameter.POSITIONAL_OR_KEYWORD, default=2),
+                ]
+            )
+        return real_signature(obj)
+
+    monkeypatch.setattr("anfis_toolbox.classifier.inspect.signature", fake_signature)
+
+    clf = ANFISClassifier(
+        n_classes=2,
+        optimizer=DummyTrainer,
+        optimizer_params={"alpha": 5},
+        verbose=False,
+    )
+    clf.fit(X, y)
+
+    assert isinstance(clf.optimizer_, DummyTrainer)
+    assert clf.optimizer_.alpha == 5
+
+
+def test_anfis_classifier_custom_trainer_without_loss():
+    X, y = _generate_classification_data(seed=17)
+
+    class NoLossTrainer(BaseTrainer):
+        def __init__(self):
+            self.epochs = 1
+            self.learning_rate = 0.01
+
+        def fit(self, model, X_fit, y_fit):
+            return [0.0]
+
+        def init_state(self, model, X_fit, y_fit):
+            return None
+
+        def train_step(self, model, Xb, yb, state):
+            return 0.0, state
+
+    trainer = NoLossTrainer()
+    clf = ANFISClassifier(
+        n_classes=2,
+        optimizer=trainer,
+        epochs=3,
+        learning_rate=0.2,
+        verbose=False,
+        loss="mse",
+    )
+
+    clf.fit(X, y)
+
+    assert isinstance(clf.optimizer_, NoLossTrainer)
+    assert clf.optimizer_.epochs == 3
+    assert not hasattr(clf.optimizer_, "loss")

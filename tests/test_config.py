@@ -284,10 +284,17 @@ class TestANFISModelManager:
         """Create a simple ANFIS model for testing."""
         import numpy as np
 
-        from anfis_toolbox.builders import QuickANFIS
+        from anfis_toolbox.builders import ANFISBuilder
 
         X = np.random.uniform(-1, 1, (10, 2))
-        return QuickANFIS.for_regression(X, n_mfs=2)
+        builder = ANFISBuilder()
+        for i in range(X.shape[1]):
+            col = X[:, i]
+            rmin = float(np.min(col))
+            rmax = float(np.max(col))
+            margin = (rmax - rmin) * 0.1
+            builder.add_input(f"x{i + 1}", rmin - margin, rmax + margin, n_mfs=2, mf_type="gaussian")
+        return builder.build()
 
     def test_save_model_basic(self):
         """Test basic model saving functionality."""

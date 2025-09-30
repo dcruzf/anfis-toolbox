@@ -13,7 +13,7 @@ Welcome to the comprehensive ANFIS Toolbox User Guide! This section provides in-
 ### 🛠️ Practical Usage
 - Basic Usage - Essential patterns and workflows
 - Advanced Usage - Custom configurations and fine-tuning
-- Builder Patterns - Using QuickANFIS and ANFISBuilder
+- Builder Patterns - Using ANFISRegressor and ANFISBuilder
 - Model Persistence - Saving, loading, and deployment
 
 ### 📊 Analysis & Visualization
@@ -54,7 +54,7 @@ Welcome to the comprehensive ANFIS Toolbox User Guide! This section provides in-
 
 1. **[Introduction](introduction.md)** - Learn what ANFIS is and how it works
 2. **[Basic Usage](basic-usage.md)** - Build and train your first models
-3. **[Builder Patterns](builder-patterns.md)** - Use QuickANFIS for rapid prototyping
+3. **[Builder Patterns](builder-patterns.md)** - Use ANFISRegressor for rapid prototyping
 4. **[Visualization](visualization.md)** - Understand your models visually
 
 **Time Investment**: ~2 hours
@@ -86,12 +86,12 @@ Welcome to the comprehensive ANFIS Toolbox User Guide! This section provides in-
 
 ### Quick Prototyping
 ```python
-from anfis_toolbox import QuickANFIS, quick_evaluate
+from anfis_toolbox import ANFISRegressor
 
-# 1-line model creation and training
-model = QuickANFIS.for_regression(X)
-losses = model.fit_hybrid(X, y, epochs=50)
-metrics = quick_evaluate(model, X, y)
+# Scikit-style estimator for rapid experiments
+model = ANFISRegressor(n_mfs=3, random_state=42)
+model.fit(X, y)
+metrics = model.evaluate(X, y)
 ```
 📖 **See**: [Basic Usage](basic-usage.md), [Builder Patterns](builder-patterns.md)
 

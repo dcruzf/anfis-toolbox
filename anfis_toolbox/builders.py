@@ -18,7 +18,7 @@ from .membership import (
     TriangularMF,
     ZShapedMF,
 )
-from .model import ANFIS, ANFISClassifier
+from .model import ANFIS
 
 
 class ANFISBuilder:
@@ -117,11 +117,30 @@ class ANFISBuilder:
             random_state: Optional seed for deterministic FCM initialization.
         """
         arr = np.asarray(data, dtype=float).reshape(-1)
-        if init.strip().lower() == "fcm":
+
+        if init is None:
+            strategy = "grid"
+        else:
+            strategy = str(init).strip().lower()
+
+        if strategy == "fcm":
             self.input_mfs[name] = self._create_mfs_from_fcm(arr, n_mfs, mf_type, random_state)
             # store observed range for reference
             self.input_ranges[name] = (float(np.min(arr)), float(np.max(arr)))
             return self
+        if strategy == "random":
+            return self._add_input_random(
+                name=name,
+                data=arr,
+                n_mfs=n_mfs,
+                mf_type=mf_type,
+                overlap=overlap,
+                margin=margin,
+                random_state=random_state,
+            )
+        if strategy != "grid":
+            supported = "grid, fcm, random"
+            raise ValueError(f"Unknown init strategy '{init}'. Supported: {supported}")
         # default grid-based placement with margins
         rmin = float(np.min(arr))
         rmax = float(np.max(arr))
@@ -175,6 +194,64 @@ class ANFISBuilder:
         min_w = max(float(np.median(np.diff(np.sort(centers)))) if centers.size > 1 else float(np.std(x)), 1e-3)
         widths = np.maximum(2.0 * sigmas, min_w)
 
+        return self._build_mfs_from_layout(key, centers, sigmas, widths, rmin, rmax)
+
+    def _add_input_random(
+        self,
+        name: str,
+        data: np.ndarray,
+        n_mfs: int,
+        mf_type: str,
+        overlap: float,
+        margin: float,
+        random_state: int | None,
+    ) -> "ANFISBuilder":
+        x = np.asarray(data, dtype=float).reshape(-1)
+        if x.size == 0:
+            raise ValueError("Cannot initialize membership functions from empty data array")
+        rmin = float(np.min(x))
+        rmax = float(np.max(x))
+        pad = (rmax - rmin) * float(margin)
+        low = rmin - pad
+        high = rmax + pad
+
+        if isinstance(random_state, np.random.Generator):
+            rng = random_state
+        else:
+            rng = np.random.default_rng(random_state)
+
+        centers = np.sort(rng.uniform(low, high, size=max(int(n_mfs), 1)))
+        if centers.size == 1:
+            widths = np.array([max(high - low, 1e-3)])
+        else:
+            diffs = np.diff(centers)
+            # mirror edge spacings to maintain array shape
+            left = np.concatenate(([diffs[0]], diffs))
+            right = np.concatenate((diffs, [diffs[-1]]))
+            widths = (left + right) / 2.0
+
+        overlap = float(overlap)
+        base_span = (high - low) / max(centers.size, 1)
+        floor = max(base_span * max(overlap, 0.1), 1e-3)
+        widths = np.maximum(widths, floor)
+        sigmas = np.maximum(widths / 2.0, 1e-3)
+
+        key = mf_type.strip().lower()
+        mfs = self._build_mfs_from_layout(key, centers, sigmas, widths, low, high)
+
+        self.input_ranges[name] = (low, high)
+        self.input_mfs[name] = mfs
+        return self
+
+    def _build_mfs_from_layout(
+        self,
+        key: str,
+        centers: np.ndarray,
+        sigmas: np.ndarray,
+        widths: np.ndarray,
+        rmin: float,
+        rmax: float,
+    ) -> list:
         if key == "gaussian":
             return [GaussianMF(mean=float(c), sigma=float(s)) for c, s in zip(centers, sigmas, strict=False)]
         if key == "gaussian2":
@@ -190,7 +267,6 @@ class ANFISBuilder:
                 mfs.append(Gaussian2MF(sigma1=float(s), c1=c1, sigma2=float(s), c2=c2))
             return mfs
         if key in {"bell", "gbell"}:
-            # map sigma to bell half-width a; keep b=2 by default
             return [BellMF(a=float(s), b=2.0, c=float(c)) for c, s in zip(centers, sigmas, strict=False)]
         if key == "triangular":
             mfs: list[TriangularMF] = []
@@ -198,7 +274,6 @@ class ANFISBuilder:
                 a = float(max(c - w / 2.0, rmin))
                 cc = float(min(c + w / 2.0, rmax))
                 b = float(c)
-                # ensure ordering a < b < c
                 if not (a < b < cc):
                     eps = 1e-6
                     a, b, cc = c - 2 * eps, c, c + 2 * eps
@@ -212,7 +287,6 @@ class ANFISBuilder:
                 d = float(c + w / 2.0)
                 b = float(a + (w * (1 - plateau_frac)) / 2.0)
                 cr = float(b + w * plateau_frac)
-                # clamp
                 a = max(a, rmin)
                 d = min(d, rmax)
                 b = max(b, a + 1e-6)
@@ -223,7 +297,6 @@ class ANFISBuilder:
                 mfs.append(TrapezoidalMF(a, b, cr, d))
             return mfs
         if key in {"sigmoidal", "sigmoid"}:
-            # slope a from width: width ≈ 4.4 / a
             mfs: list[SigmoidalMF] = []
             for c, w in zip(centers, widths, strict=False):
                 a = 4.4 / max(float(w), 1e-8)
@@ -250,7 +323,6 @@ class ANFISBuilder:
                 mfs.append(LinZShapedMF(a, b))
             return mfs
         if key in {"diffsigmoidal", "diffsigmoid"}:
-            # Create plateau-like bands: two increasing sigmoids with centers symmetric around c
             mfs: list[DiffSigmoidalMF] = []
             for c, w in zip(centers, widths, strict=False):
                 c1 = float(max(c - w / 2.0, rmin))
@@ -262,7 +334,6 @@ class ANFISBuilder:
                 mfs.append(DiffSigmoidalMF(a1=float(a), c1=c1, a2=float(a), c2=c2))
             return mfs
         if key in {"prodsigmoidal", "prodsigmoid"}:
-            # Create bump-like bands: product of increasing and decreasing sigmoid
             mfs: list[ProdSigmoidalMF] = []
             for c, w in zip(centers, widths, strict=False):
                 c1 = float(max(c - w / 2.0, rmin))
@@ -271,7 +342,6 @@ class ANFISBuilder:
                     eps = 1e-6
                     c1, c2 = c - eps, c + eps
                 a = 4.4 / max(float(w), 1e-8)
-                # s1 increasing at c1, s2 decreasing at c2 (use negative slope)
                 mfs.append(ProdSigmoidalMF(a1=float(a), c1=c1, a2=float(-a), c2=c2))
             return mfs
         if key in {"sshape", "s"}:
@@ -302,7 +372,6 @@ class ANFISBuilder:
                 d = float(c + w / 2.0)
                 b = float(a + (w * (1 - plateau_frac)) / 2.0)
                 cr = float(b + w * plateau_frac)
-                # clamp and ensure ordering
                 a = max(a, rmin)
                 d = min(d, rmax)
                 b = max(b, a + 1e-6)
@@ -315,7 +384,7 @@ class ANFISBuilder:
         supported = (
             "gaussian, gaussian2, bell/gbell, triangular, trapezoidal, sigmoidal/sigmoid, sshape/s, zshape/z, pi/pimf"
         )
-        raise ValueError(f"FCM init supports: {supported}")
+        raise ValueError(f"Initialization supports: {supported}")
 
     def _create_gaussian_mfs(self, range_min: float, range_max: float, n_mfs: int, overlap: float) -> list[GaussianMF]:
         """Create evenly spaced Gaussian membership functions."""
@@ -600,105 +669,3 @@ class ANFISBuilder:
             raise ValueError("No input variables defined. Use add_input() to define inputs.")
 
         return ANFIS(self.input_mfs)
-
-
-class QuickANFIS:
-    """Quick setup class for common ANFIS use cases."""
-
-    @staticmethod
-    def for_regression(
-        X: np.ndarray,
-        n_mfs: int = 3,
-        mf_type: str = "gaussian",
-        init: str = "grid",
-        random_state: int | None = None,
-    ) -> ANFIS:
-        """Create ANFIS model automatically configured for regression data.
-
-        Parameters:
-            X: Input training data (n_samples, n_features)
-            n_mfs: Number of membership functions per input
-            mf_type: Type of membership functions
-            init: Initialization strategy per input: 'grid' (default) or 'fcm'.
-            random_state: Optional seed for deterministic FCM.
-
-        Returns:
-            Configured ANFIS model
-        """
-        if X.ndim != 2:
-            raise ValueError("Input data must be 2D (n_samples, n_features)")
-
-        builder = ANFISBuilder()
-
-        for i in range(X.shape[1]):
-            col_data = X[:, i]
-            if init.strip().lower() == "fcm":
-                builder.add_input_from_data(
-                    f"x{i + 1}",
-                    col_data,
-                    n_mfs=n_mfs,
-                    mf_type=mf_type,
-                    init="fcm",
-                    random_state=random_state,
-                )
-            else:
-                range_min = float(np.min(col_data))
-                range_max = float(np.max(col_data))
-                # Add some margin
-                margin = (range_max - range_min) * 0.1
-                range_min -= margin
-                range_max += margin
-                builder.add_input(f"x{i + 1}", range_min, range_max, n_mfs, mf_type)
-
-        return builder.build()
-
-    @staticmethod
-    def for_function_approximation(input_ranges: list[tuple[float, float]], n_mfs: int = 5) -> ANFIS:
-        """Create ANFIS model for function approximation.
-
-        Parameters:
-            input_ranges: List of (min, max) tuples for each input dimension
-            n_mfs: Number of membership functions per input
-
-        Returns:
-            Configured ANFIS model
-        """
-        builder = ANFISBuilder()
-
-        for i, (range_min, range_max) in enumerate(input_ranges):
-            builder.add_input(f"x{i + 1}", range_min, range_max, n_mfs, "gaussian")
-
-        return builder.build()
-
-    @staticmethod
-    def for_classification(
-        X: np.ndarray,
-        n_classes: int,
-        n_mfs: int = 3,
-        mf_type: str = "gaussian",
-        init: str = "grid",
-        random_state: int | None = None,
-    ) -> ANFISClassifier:
-        """Create ANFISClassifier configured from data.
-
-        Mirrors for_regression but returns a classifier with n_classes.
-        """
-        if X.ndim != 2:
-            raise ValueError("Input data must be 2D (n_samples, n_features)")
-
-        builder = ANFISBuilder()
-        for i in range(X.shape[1]):
-            col_data = X[:, i]
-            if init.strip().lower() == "fcm":
-                builder.add_input_from_data(
-                    f"x{i + 1}", col_data, n_mfs=n_mfs, mf_type=mf_type, init="fcm", random_state=random_state
-                )
-            else:
-                range_min = float(np.min(col_data))
-                range_max = float(np.max(col_data))
-                margin = (range_max - range_min) * 0.1
-                builder.add_input(f"x{i + 1}", range_min - margin, range_max + margin, n_mfs, mf_type)
-
-        # Build as usual and wrap into classifier
-        input_mfs = builder.input_mfs
-        return ANFISClassifier(input_mfs, n_classes=n_classes, random_state=random_state)

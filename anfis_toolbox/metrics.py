@@ -371,6 +371,20 @@ class ANFISMetrics:
         }
 
     @staticmethod
+    def classification_metrics(y_true: np.ndarray, y_proba: np.ndarray) -> dict[str, float]:
+        """Return common classification metrics for encoded targets and probabilities."""
+        encoded = np.asarray(y_true, dtype=int)
+        proba = np.asarray(y_proba, dtype=float)
+        if proba.ndim != 2:
+            raise ValueError("y_proba must be a 2D array of class probabilities")
+        if encoded.shape[0] != proba.shape[0]:
+            raise ValueError("y_true and y_proba must contain the same number of samples")
+        return {
+            "accuracy": accuracy(encoded, proba),
+            "log_loss": log_loss(encoded, proba),
+        }
+
+    @staticmethod
     def model_complexity_metrics(model: ANFIS) -> dict[str, int]:
         """Compute structural statistics for an ANFIS model instance."""
         n_inputs = model.n_inputs
