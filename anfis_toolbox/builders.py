@@ -18,7 +18,7 @@ from .membership import (
     TriangularMF,
     ZShapedMF,
 )
-from .model import ANFIS, ANFISClassifier
+from .model import ANFIS, TSKANFISClassifier
 
 
 class ANFISBuilder:
@@ -747,7 +747,7 @@ class QuickANFIS:
         mf_type: str = "gaussian",
         init: str = "grid",
         random_state: int | None = None,
-    ) -> ANFISClassifier:
+    ) -> TSKANFISClassifier:
         """Create ANFISClassifier configured from data.
 
         Mirrors for_regression but returns a classifier with n_classes.
@@ -770,4 +770,4 @@ class QuickANFIS:
 
         # Build as usual and wrap into classifier
         input_mfs = builder.input_mfs
-        return ANFISClassifier(input_mfs, n_classes=n_classes, random_state=random_state)
+        return TSKANFISClassifier(input_mfs, n_classes=n_classes, random_state=random_state)

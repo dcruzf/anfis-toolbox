@@ -297,8 +297,8 @@ class TSKANFIS:
         return f"TSKANFIS(n_inputs={self.n_inputs}, n_rules={self.n_rules})"
 
 
-class ANFISClassifier:
-    """ANFIS model variant for classification with a softmax head.
+class TSKANFISClassifier:
+    """Adaptive Neuro-Fuzzy classifier with a softmax head (TSK variant).
 
     Produces per-class logits aggregated from per-rule linear consequents and
     uses cross-entropy loss during training.
@@ -506,8 +506,9 @@ class ANFISClassifier:
         Returns:
             str: A formatted string describing the classifier's configuration.
         """
-        return f"ANFISClassifier(n_inputs={self.n_inputs}, n_rules={self.n_rules}, n_classes={self.n_classes})"
+        return f"TSKANFISClassifier(n_inputs={self.n_inputs}, n_rules={self.n_rules}, n_classes={self.n_classes})"
 
 
 # Backwards compatibility alias: legacy low-level TSK ANFIS engine
 ANFIS = TSKANFIS
+ANFISClassifier = TSKANFISClassifier
