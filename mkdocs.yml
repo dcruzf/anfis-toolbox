@@ -52,21 +52,37 @@ theme:
 
 nav:
   - Home: index.md
-  - Getting Started:
-    - Installation: getting-started/installation.md
-    - Quick Start: getting-started/quickstart.md
-  - User Guide:
-    - Overview: guide/index.md
-    - Introduction: guide/introduction.md
-  - Membership Functions: guide/membership_functions.md
+  - Models:
+    - regressor: models/anfis.md
+    - classifier: models/anfis-classifier.md
+    - fuzzy c-means: models/fuzzy_c-means.md
+  - Membership Functions:
+    - Gaussian: membership_functions/gaussian.ipynb
+    - Two-Sided Gaussian: membership_functions/gaussian-combination.ipynb
+    - Generalized Bell: membership_functions/bell.ipynb
+    - Pi-shaped: membership_functions/pi.ipynb
+    - Triangular: membership_functions/triangular.ipynb
+    - Trapezoidal: membership_functions/trapezoidal.ipynb
+    - Sigmoidal: membership_functions/sigmoidal.ipynb
+    - Difference of Sigmoidal: membership_functions/sigmoidal-difference.ipynb
+    - Product of Sigmoidal: membership_functions/sigmoidal-product.ipynb
+    - Z-Shaped: membership_functions/zshaped.ipynb
+    - Linear Z-Shaped: membership_functions/zshaped-linear.ipynb
+    - S-Shaped: membership_functions/sshaped.ipynb
+    - Linear S-Shaped: membership_functions/sshaped-linear.ipynb
   - Examples:
-    - Basic Example: examples/basic_example.ipynb
-    - Intermediate Example: examples/intermediate_example.ipynb
+    - Basic: examples/basic_example.ipynb
+    - Intermediate: examples/intermediate_example.ipynb
+    - Advanced: examples/advanced_example.ipynb
   - API Reference:
-    - Overview: api/overview.md
-    - Core: api/core.md
+    - index: api/index.md
     - Membership Functions: api/membership-functions.md
     - Builders: api/builders.md
+    - Models: api/models.md
+    - Layers: api/layers.md
+    - Clustering: api/clustering.md
+    - Optimization: api/optim.md
+    - Metrics: api/metrics.md
 
 plugins:
   - search
@@ -92,6 +108,13 @@ plugins:
       type: timeago
   - mkdocs-jupyter:
       execute: false
+      include_requirejs: true
+      no_input: false
+      remove_tag_config:
+              remove_input_tags:
+                  - hide
+
+
 markdown_extensions:
   - abbr
   - admonition
@@ -148,16 +171,16 @@ extra:
       link: https://github.com/dcruzf/anfis-toolbox
     - icon: fontawesome/brands/python
       link: https://pypi.org/project/anfis-toolbox/
-  analytics:
-    provider: google
-    property: !ENV GOOGLE_ANALYTICS_KEY
+
 
 extra_css:
-  - assets/extra.css
+  - css/stylesheets/extra.css
 
 extra_javascript:
-  - assets/extra.js
-  - https://polyfill.io/v3/polyfill.min.js?features=es6
+  - js/render_latex.js
   - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
+
+hooks:
+  - docs/hooks/test_hook.py
 
 copyright: Copyright &copy; 2025 Daniel França

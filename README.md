@@ -1,38 +1,45 @@
-# ANFIS Toolbox
-
-Adaptive Neuro-Fuzzy Inference Systems (ANFIS) in pure Python (TSK architecture) with simple APIs, local model selection utilities, robust validation, and clear visualization.
+<div align="center">
+  <a href="https://dcruzf.github.io/anfis-toolbox">
+  <h1>ANFIS Toolbox</h1>
+  <img src="docs/assets/logo.svg" alt="ANFIS Toolbox">
+  </a>
+</div>
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 
-## Highlights
+A batteries-included Adaptive Neuro-Fuzzy Inference System (ANFIS) toolkit built in pure Python. It exposes high-level regression and classification APIs, modern trainers, and a rich catalog of membership functions.
 
-- 4-layer ANFIS (Membership → Rules → Normalization → Consequent)
-- Training: SGD and Hybrid trainer (least-squares + gradient) decoupled from the model
-- Membership functions: Gaussian, Bell, Sigmoidal, Triangular, Trapezoidal, S-shaped (S), Z-shaped (Z), Pi-shaped (Π)
-- Builders: ANFISBuilder and QuickANFIS for fast setup from data
-- Validation: ANFISValidator with deterministic CV, metrics, learning curves
-- Model selection: Local `KFold` and `train_test_split` (no scikit-learn dependency)
-- Visualization: EDA plots, training curves, residuals, membership and rule-activation plots
-- Tested across Python 3.10–3.13 with 100% coverage; linted with Ruff; docs via MkDocs
+## 🚀 Overview
 
-## Installation
+- Takagi–Sugeno–Kang (TSK) ANFIS with the classic four-layer architecture (Membership → Rules → Normalization → Consequent).
+- Regressor and classifier facades with a familiar scikit-learn style (`fit`, `predict`, `score`).
+- Trainers (Hybrid, SGD, Adam, RMSProp, PSO) decoupled from the model for easy experimentation.
+- 10+ membership function families with convenient builders, aliases, and data-driven initialization (grid, FCM, random).
+- Thorough test coverage (100%+) across Python 3.10–3.13.
+
+## 📦 Installation
+
+Install from PyPI:
 
 ```bash
-# From source
-git clone https://github.com/<your-user>/anfis-toolbox.git
-cd anfis-toolbox
-pip install -e .
+pip install anfis-toolbox
 ```
 
-## Quick start
 
-### High-level regressor facade
+```bash
+make install
+```
+
+## 🧠 Quick start
+
+### Regression
 
 ```python
 import numpy as np
 from anfis_toolbox import ANFISRegressor
 
-X = np.random.uniform(-2, 2, (200, 2))
+rng = np.random.default_rng(0)
+X = rng.uniform(-2, 2, size=(200, 2))
 y = np.sin(X[:, 0]) + 0.5 * X[:, 1]
 
 reg = ANFISRegressor(
@@ -41,71 +48,92 @@ reg = ANFISRegressor(
     learning_rate=0.01,
     inputs_config={"x1": {"mf_type": "triangular", "n_mfs": 4}},
 )
+
 reg.fit(X, y)
-preds = reg.predict([[0.2, -1.5]])
+prediction = reg.predict([[0.2, -1.5]])
 metrics = reg.evaluate(X, y)
 ```
 
-Minimal example using QuickANFIS:
+### Classification
 
 ```python
 import numpy as np
-from anfis_toolbox import QuickANFIS
+from anfis_toolbox import ANFISClassifier
 
-X = np.random.uniform(-2, 2, (200, 2))
-y = (X[:, 0] ** 2 + X[:, 1] ** 2)
+rng = np.random.default_rng(1)
+X = rng.uniform(-1.0, 1.0, size=(150, 2))
+y = (1.2 * X[:, 0] - 0.8 * X[:, 1] > 0).astype(int)
 
-model = QuickANFIS.for_regression(X, n_mfs=3)
-losses = model.fit_hybrid(X, y, epochs=50)
-preds = model.predict([[1.0, -0.5], [0.5, 1.2]])
+clf = ANFISClassifier(
+    n_classes=2,
+    optimizer="sgd",
+    epochs=25,
+    learning_rate=0.05,
+    random_state=0,
+)
+
+clf.fit(X, y)
+preds = clf.predict([[0.4, -0.2]])
+proba = clf.predict_proba([[0.4, -0.2]])
+report = clf.evaluate(X, y)
 ```
 
-Or with explicit membership functions:
+## 🧩 Membership functions at a glance
+
+| Family | Aliases | Notes |
+| --- | --- | --- |
+| `gaussian`, `gaussian2` | – | Single or dual-sided Gaussians with automatic width control |
+| `triangular`, `trapezoidal` | – | Piecewise-linear shapes with edge clamping |
+| `bell`, `gbell` | `gbell` | Generalized bell with configurable slope |
+| `sigmoidal`, `sigmoid` | `sigmoid` | Smooth step functions with width-derived slope |
+| `sshape`, `linsshape`, `s` | `ls` | Linear S transitions (grid & FCM support) |
+| `zshape`, `linzshape`, `z` | `lz` | Linear Z transitions |
+| `prodsigmoidal`, `prodsigmoid` | `prodsigmoid` | Product of opposing sigmoids forming bumps |
+| `diffsigmoidal`, `diffsigmoid` | `diffsigmoid` | Difference of sigmoids, ideal for band-pass behavior |
+| `pi`, `pimf` | `pimf` | Pi-shaped with configurable plateau |
+
+Builders support grid, fuzzy C-means (FCM), and random initialization strategies—combine them per input via `inputs_config`.
+
+## 🛠️ Training options
 
 ```python
-import numpy as np
-from anfis_toolbox import ANFIS, GaussianMF
+from anfis_toolbox import ANFISRegressor
+from anfis_toolbox.optim import SGDTrainer
 
-input_mfs = {
-    "x1": [GaussianMF(-1.0, 1.0), GaussianMF(1.0, 1.0)],
-    "x2": [GaussianMF(-1.0, 1.0), GaussianMF(1.0, 1.0)],
-}
-
-model = ANFIS(input_mfs)
-X = np.random.randn(100, 2)
-y = X.sum(axis=1)
-losses = model.fit_hybrid(X, y, epochs=50)
-pred = model.predict([[0.5, -0.5]])
+reg = ANFISRegressor(optimizer=SGDTrainer, epochs=200, learning_rate=0.02)
 ```
 
-## Visualization (optional)
+- **Hybrid**: Jang-style least-squares + gradient descent (default for regression).
+- **Backprop trainers**: SGD, Adam, RMSProp, PSO – all expose `learning_rate`, `epochs`, `batch_size`, and optional custom losses.
+- **Losses**: Choose by name (`"mse"`, `"cross_entropy"`, …) or provide a custom `LossFunction` implementation.
 
-```python
-from anfis_toolbox import ANFISVisualizer, quick_plot_training, quick_plot_results
+## 📚 Documentation
 
-quick_plot_training(losses)
-quick_plot_results(X, y, model)
+- Comprehensive guides, API reference, and examples: [docs/](docs/) (built with MkDocs).
+- Example notebooks: `docs/examples/*.ipynb` showcase regression, classification, and visualization recipes.
 
-viz = ANFISVisualizer(model)
-viz.plot_membership_functions()
+## 🧪 Testing & quality
+
+Run the full suite (pytest + coverage + lint):
+
+```bash
+make test
 ```
 
-## Validation and model selection
+Additional targets:
 
-```python
-from anfis_toolbox import ANFISValidator
-from anfis_toolbox.model_selection import train_test_split, KFold
+- `make lint` — Run Ruff linting
+- `make docs` — Build the MkDocs site locally
+- `make help` — Show all available targets with their help messages
 
-Xtr, Xte, ytr, yte = train_test_split(X, y, train_size=0.8, shuffle=True, random_state=42)
+## 🤝 Contributing
 
-validator = ANFISValidator(model)
-cv = validator.cross_validate(Xtr, ytr, cv=KFold(n_splits=5, shuffle=True, random_state=42))
-```
+Issues and pull requests are welcome! Please open a discussion if you’d like to propose larger changes. See the [docs/guide](docs/guide/) section for architecture notes and examples.
 
-## License
+## 📄 License
 
-MIT – see [LICENSE](LICENSE).
+Distributed under the MIT License. See [LICENSE](LICENSE) for details.
 
-## References
+## 📚 References
 
-1. Jang, J. S. (1993). ANFIS: adaptive-network-based fuzzy inference system. IEEE TSMC, 23(3), 665–685.
+1. Jang, J. S. (1993). ANFIS: adaptive-network-based fuzzy inference system. IEEE transactions on systems, man, and cybernetics, 23(3), 665-685. https://doi.org/10.1109/21.256541
