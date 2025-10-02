@@ -1,4 +1,10 @@
-# ANFIS Toolbox
+---
+hide:
+    - navigation
+    - toc
+---
+
+<h1 style="text-align:center">ANFIS Toolbox</h1>
 
 <p align="center">
   <img src="assets/logo.svg" alt="ANFIS Toolbox Logo" width="300" />
@@ -10,24 +16,81 @@
 
 ---
 
-**Documentation**: <a href="https://dcruzf.github.io/anfis-toolbox" target="_blank">https://dcruzf.github.io/anfis-toolbox</a>
-
-**Source Code**: <a href="https://github.com/dcruzf/anfis-toolbox" target="_blank">https://github.com/dcruzf/anfis-toolbox</a>
-
-**PyPI**: <a href="https://pypi.org/project/anfis-toolbox" target="_blank">https://pypi.org/project/anfis-toolbox</a>
+ANFIS Toolbox is a comprehensive Python library for creating, training, and deploying **Adaptive Neuro-Fuzzy Inference Systems (ANFIS)**. It provides an intuitive API that makes fuzzy neural networks accessible to both beginners and experts.
 
 ---
 
-ANFIS Toolbox is a comprehensive Python library for creating, training, and deploying **Adaptive Neuro-Fuzzy Inference Systems (ANFIS)**. It provides an intuitive API that makes fuzzy neural networks accessible to both beginners and experts.
+<div style="text-align:center">
+    <a href="https://github.com/dcruzf/anfis-toolbox" target="_blank">🔗 <strong>GitHub</strong></a> | <a href="https://pypi.org/project/anfis-toolbox" target="_blank">📦 <strong>PyPI</strong></a>
+</div>
+
+---
 
 ## Key Features
 
-✨ **Easy to Use** - Get started with just 3 lines of code
-🏗️ **Flexible Architecture** - 6 membership functions, hybrid learning
-📊 **Built-in Visualization** - Automatic plots for training and results
-✅ **Robust Validation** - Cross-validation, metrics, model comparison
-📚 **Rich Documentation** - Comprehensive examples and tutorials
-🔧 **Production Ready** - Model persistence and configuration management
+<div style="display: flex; gap: 1.5rem; flex-wrap: wrap; margin-top: 1rem;">
+    <div style="flex: 1; min-width: 280px; padding: 1rem; border: 1px solid #ddd; border-radius: 8px;">
+        ✨ <strong>Easy to Use</strong><br>
+        Get started with just 3 lines of code
+    </div>
+    <div style="flex: 1; min-width: 280px; padding: 1rem; border: 1px solid #ddd; border-radius: 8px;">
+        🏗️ <strong>Flexible Architecture</strong><br>
+        13 membership functions, hybrid learning
+    </div>
+    <div style="flex: 1; min-width: 280px; padding: 1rem; border: 1px solid #ddd; border-radius: 8px;">
+        📊 <strong>Built-in Visualization</strong><br>
+        Automatic plots for training and results
+    </div>
+    <div style="flex: 1; min-width: 280px; padding: 1rem; border: 1px solid #ddd; border-radius: 8px;">
+        ✅ <strong>Robust Validation</strong><br>
+        Cross-validation, metrics, model comparison
+    </div>
+    <div style="flex: 1; min-width: 280px; padding: 1rem; border: 1px solid #ddd; border-radius: 8px;">
+        📚 <strong>Rich Documentation</strong><br>
+        Comprehensive examples and tutorials
+    </div>
+    <div style="flex: 1; min-width: 280px; padding: 1rem; border: 1px solid #ddd; border-radius: 8px;">
+        🔧 <strong>Production Ready</strong><br>
+        Model persistence and configuration management
+    </div>
+</div>
+
+## Why ANFIS Toolbox?
+
+### 🚀 Simplicity First
+
+Most fuzzy logic libraries require extensive boilerplate code. ANFIS Toolbox gets you running in seconds:
+
+```python
+# Traditional approach (10+ lines)
+input_mfs = {
+    'x1': [GaussianMF(-1, 1), GaussianMF(1, 1)],
+    'x2': [GaussianMF(-1, 1), GaussianMF(1, 1)]
+}
+model = ANFIS(input_mfs)
+# ... manual setup ...
+
+# ANFIS Toolbox approach (1 line)
+model = QuickANFIS.for_regression(X)
+```
+
+### ✅ Validation Made Easy (Built-in)
+
+Comprehensive model evaluation with minimal code:
+
+```python
+from anfis_toolbox import ANFISValidator
+
+validator = ANFISValidator(model)
+
+# Cross-validation
+cv_results = validator.cross_validate(X, y, cv=5)
+print(f"CV R²: {cv_results['r2_mean']:.4f} ± {cv_results['r2_std']:.4f}")
+
+# Learning curves
+learning_data = validator.learning_curve(X, y)
+```
+
 
 ## Quick Example
 
@@ -70,75 +133,6 @@ That's it! 🎉 You just created and trained a neuro-fuzzy system!
     pip install anfis-toolbox[all]
     ```
 
-=== "Specific Features"
-
-    Install with specific optional features:
-
-    ```bash
-    # For visualization features
-    pip install anfis-toolbox[visualization]
-
-    # Validation features are built-in (no extra needed)
-    ```
-
-=== "Development Installation"
-
-    For development and contribution:
-
-    ```bash
-    git clone https://github.com/dcruzf/anfis-toolbox.git
-    cd anfis-toolbox
-    pip install -e .[all,dev]
-    ```
-
-## Why ANFIS Toolbox?
-
-### 🚀 Simplicity First
-
-Most fuzzy logic libraries require extensive boilerplate code. ANFIS Toolbox gets you running in seconds:
-
-```python
-# Traditional approach (10+ lines)
-input_mfs = {
-    'x1': [GaussianMF(-1, 1), GaussianMF(1, 1)],
-    'x2': [GaussianMF(-1, 1), GaussianMF(1, 1)]
-}
-model = ANFIS(input_mfs)
-# ... manual setup ...
-
-# ANFIS Toolbox approach (1 line)
-model = QuickANFIS.for_regression(X)
-```
-
-### 📊 Visual Insights
-
-Built-in visualization helps you understand your models:
-
-```python
-from anfis_toolbox import ANFISVisualizer
-
-visualizer = ANFISVisualizer(model)
-visualizer.plot_membership_functions()  # Show MF shapes
-visualizer.plot_training_curves(losses)  # Training progress
-visualizer.plot_prediction_vs_target(X, y)  # Model performance
-```
-
-### ✅ Validation Made Easy (Built-in)
-
-Comprehensive model evaluation with minimal code:
-
-```python
-from anfis_toolbox import ANFISValidator
-
-validator = ANFISValidator(model)
-
-# Cross-validation
-cv_results = validator.cross_validate(X, y, cv=5)
-print(f"CV R²: {cv_results['r2_mean']:.4f} ± {cv_results['r2_std']:.4f}")
-
-# Learning curves
-learning_data = validator.learning_curve(X, y)
-```
 
 ## Use Cases
 
@@ -155,29 +149,80 @@ learning_data = validator.learning_curve(X, y)
 ANFIS Toolbox implements the complete 4-layer ANFIS architecture:
 
 ```mermaid
-graph LR
-    A[Input Layer] --> B[Membership Layer]
-    B --> C[Rule Layer]
-    C --> D[Normalization Layer]
-    D --> E[Consequent Layer]
-    E --> F[Output]
+flowchart LR
 
-    style A fill:#e1f5fe
-    style B fill:#f3e5f5
-    style C fill:#e8f5e8
-    style D fill:#fff3e0
-    style E fill:#fce4ec
-    style F fill:#f1f8e9
+    %% Layer 1
+    subgraph L1 [layer 1]
+      direction TB
+      A1["A1"]
+      A2["A2"]
+      B1["B1"]
+      B2["B2"]
+    end
+
+    %% Inputs
+    x_input[x] --> A1
+    x_input --> A2
+    y_input[y] --> B1
+    y_input --> B2
+
+    %% Layer 2
+    subgraph L2 [layer 2]
+      direction TB
+      P1((Π))
+      P2((Π))
+    end
+    A1 --> P1
+    B1 --> P1
+    A2 --> P2
+    B2 --> P2
+
+    %% Layer 3
+    subgraph L3 [layer 3]
+      direction TB
+      N1((N))
+      N2((N))
+    end
+    P1 -- w₁ --> N1
+    P1 ----> N2
+    P2 ----> N1
+    P2 -- w₂ --> N2
+
+    %% Layer 4
+    subgraph L4 [layer 4]
+      direction TB
+      L4_1[x y]
+      L4_2[x y]
+    end
+    N1 -- w̅₁ --> L4_1
+    N2 -- w̅₂ --> L4_2
+
+    %% Layer 5
+    subgraph L5 [layer 5]
+      direction TB
+      Sum((Σ))
+    end
+    L4_1 -- "w₁ f₁" --> Sum
+    L4_2 -- "w₂ f₂" --> Sum
+
+    %% Output
+    Sum -- f --> f_out[f]
 ```
 
 ### Supported Membership Functions
 
 - **Gaussian** (`GaussianMF`) - Smooth bell curves
+- **Gaussian2** (`Gaussian2MF`) - Two-sided Gaussian with flat region
 - **Triangular** (`TriangularMF`) - Simple triangular shapes
 - **Trapezoidal** (`TrapezoidalMF`) - Plateau regions
 - **Bell-shaped** (`BellMF`) - Generalized bell curves
 - **Sigmoidal** (`SigmoidalMF`) - S-shaped transitions
-- **S-shaped** (`SShapedMF`) and **Z-shaped** (`ZShapedMF`) - Smoothstep transitions
+- **Diff-Sigmoidal** (`DiffSigmoidalMF`) - Difference of two sigmoids
+- **Prod-Sigmoidal** (`ProdSigmoidalMF`) - Product of two sigmoids
+- **S-shaped** (`SShapedMF`) - Smooth S-curve transitions
+- **Linear S-shaped** (`LinSShapedMF`) - Piecewise linear S-curve
+- **Z-shaped** (`ZShapedMF`) - Smooth Z-curve transitions
+- **Linear Z-shaped** (`LinZShapedMF`) - Piecewise linear Z-curve
 - **Pi-shaped** (`PiMF`) - Bell with flat top
 
 ### Training Methods
@@ -186,30 +231,18 @@ graph LR
 - **Pure Backpropagation** - Full gradient-based training
 - **Analytical Gradients** - Fast and accurate derivative computation
 
-## Performance
-
-| Model Size | Training Speed | Memory Usage |
-|------------|----------------|--------------|
-| Small (2×3) | ~1s / 50 epochs | <10 MB |
-| Medium (3×4) | ~3s / 50 epochs | <50 MB |
-| Large (5×5) | ~15s / 50 epochs | <200 MB |
-
-*Benchmarks on Intel i7, 16GB RAM*
-
 ## What's Next?
 
-- 📖 **[Getting Started](getting-started/installation.md)** - Install and run your first model
-- 🎯 **[Quick Start](getting-started/quickstart.md)** - 5-minute tutorial
-- 📚 **[User Guide](guide/introduction.md)** - Comprehensive documentation
 - 💡 **[Examples](examples/basic.md)** - Real-world use cases
 - 🔧 **[API Reference](api/overview.md)** - Complete function documentation
-    - 📐 [Membership Functions](api/membership-functions.md) - All MF classes
+- 🤖 **[ANFIS Models](models/anfis.md)** - Regression and classification models
+- 📐 **[Membership Functions](membership_functions/01_gaussianmf.ipynb)** - All MF classes
+- 🔍 **[Fuzzy C-Means](models/fuzzy_c-means.md)** - Clustering for MF initialization
 
 ## Community & Support
 
 - 🐛 **[Report Issues](https://github.com/dcruzf/anfis-toolbox/issues)** - Bug reports and feature requests
 - 💬 **[Discussions](https://github.com/dcruzf/anfis-toolbox/discussions)** - Questions and community chat
-- 📧 **[Contact](mailto:daniel@ci.ufpb.br)** - Direct contact with maintainers
 - ⭐ **[Star on GitHub](https://github.com/dcruzf/anfis-toolbox)** - Show your support!
 
 ---
