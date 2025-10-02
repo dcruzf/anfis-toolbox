@@ -6,12 +6,20 @@ for training and evaluating ANFIS models.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 import numpy as np
 
 if TYPE_CHECKING:  # pragma: no cover - typing helper
     from .model import ANFIS
+
+
+@runtime_checkable
+class _PredictorLike(Protocol):
+    """Minimal protocol for objects exposing a ``predict`` method."""
+
+    def predict(self, X: np.ndarray) -> np.ndarray:  # pragma: no cover - typing helper
+        """Return predictions for the provided samples."""
 
 
 def mean_squared_error(y_true, y_pred) -> float:
@@ -406,15 +414,37 @@ class ANFISMetrics:
         }
 
 
+def _resolve_predictor(model: object) -> _PredictorLike:
+    """Return an object exposing ``predict`` for use in :func:`quick_evaluate`."""
+    predict_fn = getattr(model, "predict", None)
+    if callable(predict_fn):
+        return model  # type: ignore[return-value]
+
+    underlying = getattr(model, "model_", None)
+    if underlying is not None:
+        predict_fn = getattr(underlying, "predict", None)
+        if callable(predict_fn):
+            return underlying  # type: ignore[return-value]
+
+    raise TypeError(
+        "quick_evaluate requires an object with a callable 'predict' method. Pass a fitted ANFIS "
+        "model or estimator such as ANFISRegressor."
+    )
+
+
 def quick_evaluate(
-    model: ANFIS,
+    model: object,
     X_test: np.ndarray,
     y_test: np.ndarray,
     print_results: bool = True,
 ) -> dict[str, float]:
-    """Evaluate a trained ANFIS model on test data and optionally print a summary."""
-    y_pred = model.predict(X_test)
-    metrics = ANFISMetrics.regression_metrics(y_test, y_pred)
+    """Evaluate a trained ANFIS model or estimator on test data."""
+    predictor = _resolve_predictor(model)
+    X_arr = np.asarray(X_test, dtype=float)
+    y_vec = np.asarray(y_test, dtype=float).reshape(-1)
+    y_pred = np.asarray(predictor.predict(X_arr), dtype=float).reshape(-1)
+
+    metrics = ANFISMetrics.regression_metrics(y_vec, y_pred)
 
     if print_results:
         print("=" * 50)  # noqa: T201

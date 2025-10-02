@@ -379,6 +379,71 @@ def test_quick_evaluate_without_prints_returns_metrics_silently(capsys):
     assert output.out == ""
 
 
+def test_quick_evaluate_accepts_estimators_with_predict_method():
+    class DummyEstimator:
+        def __init__(self):
+            self.called_with = None
+
+        def predict(self, X):
+            self.called_with = X
+            return np.array([0.1, 0.9])
+
+    estimator = DummyEstimator()
+    X = [[0.0], [1.0]]
+    y = np.array([0.0, 1.0])
+
+    metrics = quick_evaluate(estimator, X, y, print_results=False)
+
+    assert isinstance(estimator.called_with, np.ndarray)
+    np.testing.assert_allclose(estimator.called_with, np.array([[0.0], [1.0]]))
+    expected = ANFISMetrics.regression_metrics(y, np.array([0.1, 0.9]))
+    assert metrics == expected
+
+
+def test_quick_evaluate_uses_model_attribute_when_available():
+    class InnerModel:
+        def __init__(self):
+            self.calls = 0
+
+        def predict(self, X):
+            self.calls += 1
+            return np.array([0.5, 0.5])
+
+    class Wrapper:
+        def __init__(self):
+            self.model_ = InnerModel()
+
+    wrapper = Wrapper()
+    X = np.zeros((2, 1))
+    y = np.array([0.5, 0.5])
+
+    result = quick_evaluate(wrapper, X, y, print_results=False)
+
+    assert wrapper.model_.calls == 1
+    expected = ANFISMetrics.regression_metrics(y, np.array([0.5, 0.5]))
+    assert result == expected
+
+
+def test_quick_evaluate_raises_for_missing_predict():
+    class NoPredict:
+        pass
+
+    with pytest.raises(TypeError, match="requires an object with a callable 'predict'"):
+        quick_evaluate(NoPredict(), np.zeros((1, 1)), np.zeros(1))
+
+
+def test_quick_evaluate_rejects_wrapper_without_predict():
+    class Inner:
+        pass
+
+    class Wrapper:
+        def __init__(self):
+            self.model_ = Inner()
+
+    with pytest.raises(TypeError, match="requires an object with a callable 'predict'"):
+        quick_evaluate(Wrapper(), np.zeros((1, 1)), np.zeros(1))
+
+
 def test_softmax_rows_sum_to_one_and_invariant_to_shift():
     z = np.array([[1.0, 2.0, 3.0], [-1.0, 0.0, 1.0]])
     p = softmax(z, axis=1)
