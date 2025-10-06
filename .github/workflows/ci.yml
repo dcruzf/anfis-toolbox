@@ -2,13 +2,15 @@ name: CI
 
 on:
   pull_request:
-    branches:
-      - 'main'
-      - 'dev'
+    branches: [main, dev]
+    types: [opened, synchronize, reopened, closed]
+
+permissions:
+  contents: write
 
 jobs:
   tests:
-    name: Tests
+    name: Lint & Test Suite
     runs-on: ubuntu-latest
 
     steps:
@@ -27,12 +29,14 @@ jobs:
       - name: Run tests
         run: make test-all
 
-      - name: Docs publish
-        if: github.event.pull_request.merged == true && github.ref == 'refs/heads/main'
-        run: make cov-report
-        run: make docs-gh-deploy
+      - name: Publish docs (main)
+        if: github.event.action == 'closed' && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main'
+        run: |
+          make cov-report
+          make docs-gh-deploy
 
-      - name: Docs publish
-        if: github.event.pull_request.merged == true && github.ref == 'refs/heads/dev'
-        run: make cov-report
-        run: make docs-gh-deploy-dev
+      - name: Publish docs (dev)
+        if: github.event.action == 'closed' && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'dev'
+        run: |
+          make cov-report
+          make docs-gh-deploy-dev
