@@ -397,7 +397,8 @@ def test_anfis_classifier_fit_predict_flow():
     assert set(np.unique(preds)).issubset(set(clf.classes_))
 
     metrics = clf.evaluate(X[:5], y[:5])
-    assert set(metrics.keys()) == {"accuracy", "log_loss"}
+    assert "accuracy" in metrics
+    assert "log_loss" in metrics
     assert 0.0 <= metrics["accuracy"] <= 1.0
 
 
@@ -638,7 +639,8 @@ def test_anfis_classifier_evaluate_prints_results(capsys):
     captured = capsys.readouterr().out
     assert "ANFISClassifier evaluation:" in captured
     assert "Accuracy" in captured and "LogLoss" in captured
-    assert set(metrics.keys()) == {"accuracy", "log_loss"}
+    assert "accuracy" in metrics
+    assert "log_loss" in metrics
 
 
 def test_anfis_classifier_build_model_respects_range_overrides(monkeypatch):

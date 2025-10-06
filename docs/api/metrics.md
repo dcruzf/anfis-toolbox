@@ -14,6 +14,9 @@ Functions for evaluating regression model performance:
 - [`mean_absolute_percentage_error()`][anfis_toolbox.metrics.mean_absolute_percentage_error] - Mean absolute percentage error
 - [`symmetric_mean_absolute_percentage_error()`][anfis_toolbox.metrics.symmetric_mean_absolute_percentage_error] - Symmetric MAPE
 - [`r2_score()`][anfis_toolbox.metrics.r2_score] - Coefficient of determination
+- [`explained_variance_score()`][anfis_toolbox.metrics.explained_variance_score] - Explained variance of predictions
+- [`median_absolute_error()`][anfis_toolbox.metrics.median_absolute_error] - Median absolute error (robust to outliers)
+- [`mean_bias_error()`][anfis_toolbox.metrics.mean_bias_error] - Mean prediction bias
 - [`pearson_correlation()`][anfis_toolbox.metrics.pearson_correlation] - Pearson correlation coefficient
 - [`mean_squared_logarithmic_error()`][anfis_toolbox.metrics.mean_squared_logarithmic_error] - Mean squared logarithmic error
 
@@ -25,6 +28,8 @@ Functions for evaluating classification model performance:
 - [`cross_entropy()`][anfis_toolbox.metrics.cross_entropy] - Cross-entropy loss
 - [`log_loss()`][anfis_toolbox.metrics.log_loss] - Log loss
 - [`accuracy()`][anfis_toolbox.metrics.accuracy] - Classification accuracy
+- [`balanced_accuracy_score()`][anfis_toolbox.metrics.balanced_accuracy_score] - Macro average of per-class recall
+- [`precision_recall_f1()`][anfis_toolbox.metrics.precision_recall_f1] - Precision, recall, and F1 with macro/micro/binary averaging
 
 ## Clustering Validation
 
@@ -33,3 +38,8 @@ Functions for evaluating fuzzy clustering quality:
 - [`partition_coefficient()`][anfis_toolbox.metrics.partition_coefficient] - Bezdek's partition coefficient
 - [`classification_entropy()`][anfis_toolbox.metrics.classification_entropy] - Classification entropy
 - [`xie_beni_index()`][anfis_toolbox.metrics.xie_beni_index] - Xie-Beni validity index
+
+## Metric Reports & Automation
+
+- [`compute_metrics()`][anfis_toolbox.metrics.compute_metrics] - One-stop helper that infers the task (regression vs. classification) and returns a [`MetricReport`][anfis_toolbox.metrics.MetricReport]
+- [`MetricReport`][anfis_toolbox.metrics.MetricReport] - Read-only container with attribute/dict-style access and a `.to_dict()` export

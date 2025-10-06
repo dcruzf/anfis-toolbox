@@ -77,9 +77,11 @@ Comprehensive metrics for model evaluation:
 
 | Category | Functions | Module |
 |----------|-----------|--------|
-| **Regression** | MSE, RMSE, MAE, MAPE, SMAPE, R², Pearson correlation, MSLE | [metrics](metrics) |
-| **Classification** | Cross-entropy, accuracy, softmax | [metrics](metrics) |
+| **Regression** | MSE, RMSE, MAE, MAPE, SMAPE, R², explained variance, median AE, bias, Pearson, MSLE | [metrics](metrics) |
+| **Classification** | Accuracy, balanced accuracy, precision/recall/F1, log loss, cross-entropy | [metrics](metrics) |
 | **Clustering** | Partition coefficient, classification entropy, Xie-Beni index | [metrics](metrics) |
+
+> 💡 Use [`compute_metrics`](metrics/#metric-reports--automation) to auto-detect the task type and retrieve a full [`MetricReport`](metrics/#metric-reports--automation).
 
 ## 🔍 Clustering
 
