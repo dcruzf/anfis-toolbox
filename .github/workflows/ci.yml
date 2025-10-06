@@ -26,3 +26,13 @@ jobs:
 
       - name: Run tests
         run: make test-all
+
+      - name: Docs publish
+        if: github.event.pull_request.merged == true && github.ref == 'refs/heads/main'
+        run: make cov-report
+        run: make docs-gh-deploy
+
+      - name: Docs publish
+        if: github.event.pull_request.merged == true && github.ref == 'refs/heads/dev'
+        run: make cov-report
+        run: make docs-gh-deploy-dev

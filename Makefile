@@ -51,6 +51,10 @@ test-all: .hatch
 lf: .uv
 	uv run pytest --lf -vv
 
+.PHONY: cov-report ## Generate coverage report after running `make test-all`
+cov-report: .uv
+	uvx coverage html -d docs/assets/cov/
+
 .PHONY: all
 all: format lint test-all
 
@@ -79,7 +83,7 @@ docs-build: .uv
 		--with ruff \
 		mkdocs build
 
-.PHONY: docs-gh-deploy  ## deploy gh-pages/
+.PHONY: docs-gh-deploy  ## deploy gh-pages
 docs-gh-deploy: .uv
 	uvx --with mkdocs-material \
 		--with mkdocstrings --with mkdocstrings-python \
@@ -88,6 +92,16 @@ docs-gh-deploy: .uv
 		--with mkdocs-jupyter \
 		--with ruff \
 		mkdocs gh-deploy
+
+.PHONY: docs-gh-deploy-dev  ## deploy gh-pages to /dev
+docs-gh-deploy-dev: .uv
+	uvx --with mkdocs-material \
+		--with mkdocstrings --with mkdocstrings-python \
+		--with mkdocs-awesome-pages-plugin \
+		--with mkdocs-git-revision-date-localized-plugin \
+		--with mkdocs-jupyter \
+		--with ruff \
+		mkdocs gh-deploy -d dev
 
 .PHONY: clean  ## Clear local caches and build artifacts
 clean:
