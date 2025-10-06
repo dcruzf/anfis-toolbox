@@ -797,3 +797,52 @@ def test_anfis_classifier_custom_trainer_without_loss():
     assert isinstance(clf.optimizer_, NoLossTrainer)
     assert clf.optimizer_.epochs == 3
     assert not hasattr(clf.optimizer_, "loss")
+
+
+def test_classifier_fit_forwards_validation_kwargs():
+    X, labels = _generate_classification_data(seed=23)
+    y = np.eye(2)[labels]
+    X_val = X[:4]
+    y_val = np.eye(2)[labels[:4]]
+
+    captured: dict[str, object] = {}
+
+    class RecordingTrainer:
+        def fit(self, model, X_fit, y_fit, **kwargs):
+            captured["model"] = model
+            captured["kwargs"] = kwargs
+            captured["X"] = X_fit
+            captured["y"] = y_fit
+            return {"train": [0.0], "val": [0.0]}
+
+    classifier = LowLevelClassifier(make_simple_input_mfs(n_features=2, n_mfs=2), n_classes=2)
+    history = classifier.fit(
+        X,
+        y,
+        trainer=RecordingTrainer(),
+        validation_data=(X_val, y_val),
+        validation_frequency=5,
+    )
+
+    assert history == {"train": [0.0], "val": [0.0]}
+    assert captured["model"] is classifier
+    np.testing.assert_array_equal(captured["X"], X)
+    np.testing.assert_array_equal(captured["y"], y)
+    forwarded = captured["kwargs"]
+    assert forwarded["validation_frequency"] == 5
+    val_X, val_y = forwarded["validation_data"]
+    np.testing.assert_array_equal(val_X, X_val)
+    np.testing.assert_array_equal(val_y, y_val)
+
+
+def test_classifier_fit_raises_for_non_dict_history():
+    X, labels = _generate_classification_data(seed=24)
+    y = np.eye(2)[labels]
+
+    class BadTrainer:
+        def fit(self, model, X_fit, y_fit, **kwargs):
+            return [0.0]
+
+    classifier = LowLevelClassifier(make_simple_input_mfs(n_features=2, n_mfs=2), n_classes=2)
+    with pytest.raises(TypeError, match="Trainer.fit must return a TrainingHistory dictionary"):
+        classifier.fit(X, y, trainer=BadTrainer())

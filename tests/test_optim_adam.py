@@ -1,5 +1,3 @@
-from copy import deepcopy
-
 import numpy as np
 import pytest
 
@@ -99,6 +97,45 @@ def test_adam_fit_raises_when_target_rows_mismatch():
         trainer.fit(model, X, y)
 
 
+class _ToyOptimModel:
+    def __init__(self):
+        self.consequent = np.zeros((1, 2), dtype=float)
+        self.membership_params = {"x": [{"mean": 0.0, "sigma": 1.0}]}
+        self._grads: dict | None = None
+
+    def get_parameters(self):
+        return {
+            "consequent": self.consequent.copy(),
+            "membership": {"x": [self.membership_params["x"][0].copy()]},
+        }
+
+    def set_parameters(self, params):
+        self.consequent = params["consequent"].copy()
+        self.membership_params = {
+            name: [mf.copy() for mf in params["membership"][name]] for name in params["membership"]
+        }
+
+    def reset_gradients(self):
+        self._grads = None
+
+    def forward(self, X):
+        return np.zeros((X.shape[0], 1), dtype=float)
+
+    def backward(self, grad):
+        self._grads = {
+            "consequent": np.full_like(self.consequent, 0.5, dtype=float),
+            "membership": {"x": [{"mean": 0.1, "sigma": -0.2}]},
+        }
+
+    def get_gradients(self):
+        if self._grads is None:
+            raise RuntimeError("Gradients not computed")
+        return {
+            "consequent": self._grads["consequent"].copy(),
+            "membership": {"x": [self._grads["membership"]["x"][0].copy()]},
+        }
+
+
 def test_adam_train_step_lazy_initializes_loss_and_updates_membership():
     rng = np.random.default_rng(7)
     X = rng.normal(size=(12, 2))
@@ -109,7 +146,6 @@ def test_adam_train_step_lazy_initializes_loss_and_updates_membership():
     X_prepared, y_prepared = trainer._prepare_training_data(model, X, y)
     assert hasattr(trainer, "_loss_fn")
     state = trainer.init_state(model, X_prepared, y_prepared)
-    membership_before = deepcopy(state["params"]["membership"])
 
     loss, updated_state = trainer.train_step(model, X_prepared[:4], y_prepared[:4], state)
 
@@ -117,14 +153,78 @@ def test_adam_train_step_lazy_initializes_loss_and_updates_membership():
     assert np.isfinite(loss)
     assert hasattr(trainer, "_loss_fn")
 
-    membership_after = state["params"]["membership"]
-    assert any(
-        not np.isclose(membership_before[name][i][key], membership_after[name][i][key])
-        for name in membership_after
-        for i in range(len(membership_after[name]))
-        for key in membership_after[name][i]
-    )
-
     loss2, state_again = trainer.train_step(model, X_prepared[4:8], y_prepared[4:8], state)
     assert state_again is state
     assert np.isfinite(loss2)
+
+
+def test_adam_apply_step_updates_membership_and_time_step():
+    trainer = AdamTrainer(learning_rate=0.01, epochs=1, batch_size=None, shuffle=False, verbose=False)
+    model = _ToyOptimModel()
+    X = np.array([[0.0], [1.0]], dtype=float)
+    y = np.zeros((2, 1), dtype=float)
+
+    trainer._prepare_training_data(model, X, y)
+    state = trainer.init_state(model, X, y)
+    membership_before = state["params"]["membership"]["x"][0]["mean"]
+
+    loss, updated_state = trainer.train_step(model, X, y, state)
+
+    assert updated_state is state
+    assert np.isfinite(loss)
+    assert updated_state["t"] == 1
+    assert model.membership_params["x"][0]["mean"] != membership_before
+    assert state["m"]["membership"]["x"][0]["mean"] != 0.0
+    assert trainer.compute_loss(model, X, y) == pytest.approx(0.0, abs=1e-12)
+
+
+class _CaptureModel:
+    def __init__(self):
+        self.last_params = None
+
+    def set_parameters(self, params):
+        self.last_params = {
+            "consequent": params["consequent"].copy(),
+            "membership": {name: [mf.copy() for mf in params["membership"][name]] for name in params["membership"]},
+        }
+
+
+def test_adam_apply_step_updates_membership_nested_structure_directly():
+    trainer = AdamTrainer(learning_rate=0.01, epochs=1, batch_size=None, shuffle=False, verbose=False)
+    params = {
+        "consequent": np.zeros((1, 1), dtype=float),
+        "membership": {"x": [{"a": 0.0}]},
+    }
+    grads = {
+        "consequent": np.full((1, 1), 0.5, dtype=float),
+        "membership": {"x": [{"a": 0.25}]},
+    }
+    m = {"consequent": np.zeros_like(params["consequent"]), "membership": {"x": [{"a": 0.0}]}}
+    v = {"consequent": np.zeros_like(params["consequent"]), "membership": {"x": [{"a": 0.0}]}}
+    model = _CaptureModel()
+
+    t_new = trainer._apply_adam_step(model, params, grads, m, v, t=0)
+
+    assert t_new == 1
+    assert model.last_params is not None
+    assert model.last_params["membership"]["x"][0]["a"] < 0.0
+    assert m["membership"]["x"][0]["a"] != 0.0
+    assert v["membership"]["x"][0]["a"] != 0.0
+
+
+def test_adam_prepare_validation_data_checks_rows():
+    trainer = AdamTrainer(learning_rate=0.01, epochs=1, batch_size=None, shuffle=False, verbose=False)
+    model = _ToyOptimModel()
+    X = np.arange(6, dtype=float).reshape(3, 2)
+    y = np.array([0.0, 1.0, 2.0])
+
+    trainer._prepare_training_data(model, X, y)
+
+    X_val = X[:2]
+    y_val = y[:2]
+    X_val_prepared, y_val_prepared = trainer._prepare_validation_data(model, X_val, y_val)
+    assert X_val_prepared.shape == (2, 2)
+    assert y_val_prepared.shape == (2, 1)
+
+    with pytest.raises(ValueError, match="Validation targets must match input rows"):
+        trainer._prepare_validation_data(model, X_val, y)

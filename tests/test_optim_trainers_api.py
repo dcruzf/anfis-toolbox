@@ -5,6 +5,7 @@ from anfis_toolbox import ANFIS, TSKANFISClassifier
 from anfis_toolbox.losses import LossFunction
 from anfis_toolbox.membership import GaussianMF
 from anfis_toolbox.optim import AdamTrainer, HybridTrainer, RMSPropTrainer, SGDTrainer
+from anfis_toolbox.optim.base import BaseTrainer
 
 
 def _make_regression_model(n_inputs: int = 2) -> ANFIS:
@@ -19,6 +20,43 @@ def _make_classifier(n_inputs: int = 1, n_classes: int = 2) -> TSKANFISClassifie
     for i in range(n_inputs):
         input_mfs[f"x{i + 1}"] = [GaussianMF(mean=-1.0, sigma=1.0), GaussianMF(mean=1.0, sigma=1.0)]
     return TSKANFISClassifier(input_mfs, n_classes=n_classes, random_state=0)
+
+
+class _DummyModel:
+    def __init__(self, scale: float = 1.0):
+        self.scale = scale
+
+    def forward(self, X: np.ndarray) -> np.ndarray:
+        return self.scale * X.sum(axis=1, keepdims=True)
+
+    def reset_gradients(self) -> None:
+        pass
+
+    def backward(self, grad: np.ndarray) -> None:
+        pass
+
+    def update_parameters(self, lr: float) -> None:
+        pass
+
+
+class _SimpleTrainer(BaseTrainer):
+    def __init__(self, *, epochs: int = 2, verbose: bool = True):
+        self.epochs = epochs
+        self.verbose = verbose
+        self.batch_size = None
+        self.shuffle = False
+
+    def init_state(self, model, X: np.ndarray, y: np.ndarray):
+        return None
+
+    def train_step(self, model, Xb: np.ndarray, yb: np.ndarray, state):
+        preds = model.forward(Xb)
+        loss = float(np.mean((preds - yb) ** 2))
+        return loss, state
+
+    def compute_loss(self, model, X: np.ndarray, y: np.ndarray) -> float:
+        preds = model.forward(X)
+        return float(np.mean((preds - y) ** 2))
 
 
 def test_sgd_train_step_and_init_state():
@@ -100,6 +138,105 @@ def test_hybrid_train_step_accepts_1d_target_and_reshapes():
     loss, state_after = trainer.train_step(model, X[:5], y[:5], state)
     assert np.isfinite(loss)
     assert state_after is None
+
+
+def test_base_trainer_fit_with_validation_and_logging(caplog):
+    model = _DummyModel()
+    trainer = _SimpleTrainer(epochs=2, verbose=True)
+    X = np.array([[0.0, 0.0], [1.0, -1.0], [2.0, 0.5]], dtype=float)
+    y = np.array([0.0, 0.5, 1.5])  # 1D target to trigger reshape
+    X_val = X[:2]
+    y_val = y[:2]
+
+    caplog.set_level("INFO")
+    history = trainer.fit(model, X, y, validation_data=(X_val, y_val), validation_frequency=2)
+
+    assert "train" in history and "val" in history
+    assert history["val"][0] is None and history["val"][1] is not None
+    messages = [record.message for record in caplog.records if "train_loss" in record.message]
+    assert any("val_loss" in msg for msg in messages)
+
+
+def test_base_trainer_validation_frequency_must_be_positive():
+    model = _DummyModel()
+    trainer = _SimpleTrainer()
+    X = np.zeros((4, 2))
+    y = np.zeros(4)
+
+    with pytest.raises(ValueError, match="validation_frequency"):
+        trainer.fit(model, X, y, validation_frequency=0)
+
+
+def test_base_trainer_fit_without_verbose_skips_logging(caplog):
+    model = _DummyModel()
+    trainer = _SimpleTrainer(epochs=1, verbose=False)
+    X = np.array([[0.0, 1.0], [1.0, -1.0]], dtype=float)
+    y = np.array([1.0, 0.0])
+
+    caplog.set_level("INFO")
+    trainer.fit(model, X, y)
+
+    assert not caplog.records
+
+
+def test_base_trainer_log_epoch_handles_val_loss(caplog):
+    trainer = _SimpleTrainer()
+
+    caplog.set_level("INFO")
+    trainer._log_epoch(epoch_idx=0, train_loss=0.1, val_loss=None, verbose=True)
+    trainer._log_epoch(epoch_idx=1, train_loss=0.2, val_loss=0.3, verbose=True)
+
+    assert "val_loss" not in caplog.records[0].message
+    assert "val_loss" in caplog.records[1].message
+
+
+def test_base_trainer_prepare_training_data_checks_shapes():
+    trainer = _SimpleTrainer()
+    X = np.ones((3, 2))
+    y = np.array([1.0, 2.0, 3.0])
+
+    X_prepared, y_prepared = trainer._prepare_training_data(_DummyModel(), X, y)
+    assert X_prepared.shape == (3, 2)
+    assert y_prepared.shape == (3, 1)
+
+    with pytest.raises(ValueError, match="Target array must have same number of rows"):
+        trainer._prepare_training_data(_DummyModel(), X, np.array([1.0, 2.0]))
+
+
+def test_base_trainer_prepare_validation_data_uses_training_logic():
+    trainer = _SimpleTrainer()
+    X = np.arange(6, dtype=float).reshape(3, 2)
+    y = np.array([0.0, 1.0, 2.0])
+
+    X_prepared, y_prepared = trainer._prepare_validation_data(_DummyModel(), X, y)
+    assert X_prepared.shape == (3, 2)
+    assert y_prepared.shape == (3, 1)
+
+    with pytest.raises(ValueError, match="Target array must have same number of rows"):
+        trainer._prepare_validation_data(_DummyModel(), X, np.array([1.0, 2.0]))
+
+
+def test_sgd_prepare_validation_data_checks_rows():
+    trainer = SGDTrainer(epochs=1)
+    model = _DummyModel()
+    X = np.arange(6, dtype=float).reshape(3, 2)
+    y = np.array([0.0, 1.0, 2.0])
+
+    X_train, y_train = trainer._prepare_training_data(model, X, y)
+    assert X_train.shape == (3, 2)
+    assert y_train.shape == (3, 1)
+
+    X_val = X[:2]
+    y_val = y[:2]
+    X_val_prepared, y_val_prepared = trainer._prepare_validation_data(model, X_val, y_val)
+    assert X_val_prepared.shape == (2, 2)
+    assert y_val_prepared.shape == (2, 1)
+
+    loss_value = trainer.compute_loss(model, X_train, y_train)
+    assert loss_value >= 0
+
+    with pytest.raises(ValueError, match="Validation targets must match input rows"):
+        trainer._prepare_validation_data(model, X_val, y)
 
 
 def test_hybrid_fit_uses_pinv_on_solve_error(monkeypatch):

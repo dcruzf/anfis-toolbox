@@ -243,6 +243,56 @@ def test_sgd_trainer_minibatch_no_shuffle_and_shuffle_and_1d_y():
     assert len(history_s["train"]) == 4
 
 
+def test_tskanfis_fit_forwards_validation_kwargs():
+    model = _make_simple_model()
+    X = np.array([[0.0, 0.0], [1.0, -1.0]], dtype=float)
+    y = (X[:, 0] + 0.25 * X[:, 1]).reshape(-1, 1)
+    X_val = np.array([[0.5, 0.5]], dtype=float)
+    y_val = (X_val[:, 0] + 0.25 * X_val[:, 1]).reshape(-1, 1)
+
+    captured: dict[str, object] = {}
+
+    class RecordingTrainer:
+        def fit(self, model, X_fit, y_fit, **kwargs):
+            captured["model"] = model
+            captured["X"] = X_fit
+            captured["y"] = y_fit
+            captured["kwargs"] = kwargs
+            return {"train": [0.0], "val": [0.0]}
+
+    trainer = RecordingTrainer()
+    history = model.fit(
+        X,
+        y,
+        trainer=trainer,
+        validation_data=(X_val, y_val),
+        validation_frequency=3,
+    )
+
+    assert history == {"train": [0.0], "val": [0.0]}
+    assert captured["model"] is model
+    np.testing.assert_array_equal(captured["X"], X)
+    np.testing.assert_array_equal(captured["y"], y)
+    forwarded = captured["kwargs"]
+    assert forwarded["validation_frequency"] == 3
+    val_X, val_y = forwarded["validation_data"]
+    np.testing.assert_array_equal(val_X, X_val)
+    np.testing.assert_array_equal(val_y, y_val)
+
+
+def test_tskanfis_fit_raises_for_non_dict_history():
+    model = _make_simple_model()
+    X = np.array([[0.0, 0.0], [1.0, -1.0]], dtype=float)
+    y = (X[:, 0] + 0.5 * X[:, 1]).reshape(-1, 1)
+
+    class BadTrainer:
+        def fit(self, model, X_fit, y_fit, **kwargs):
+            return [0.0]
+
+    with pytest.raises(TypeError, match="Trainer.fit must return a TrainingHistory dictionary"):
+        model.fit(X, y, trainer=BadTrainer())
+
+
 def test_anfis_nonlinear_function():
     """Test ANFIS on a nonlinear function approximation task."""
     # Create ANFIS with more membership functions for better approximation
