@@ -212,6 +212,30 @@ def test_optimizer_params_forwarded():
     assert pytest.approx(reg.optimizer_.learning_rate, rel=1e-6) == 0.05
 
 
+def test_regressor_propagates_explicit_rules():
+    captured: dict[str, list[tuple[int, ...]]] = {}
+
+    class DummyTrainer(BaseTrainer):
+        def fit(self, model, X_fit, y_fit):
+            captured["rules"] = model.rules
+            return []
+
+        def init_state(self, model, X_fit, y_fit):
+            return None
+
+        def train_step(self, model, X_batch, y_batch, state):
+            return 0.0, state
+
+    X, y = _generate_dataset(seed=5)
+    explicit_rules = [(0, 0), (1, 1)]
+    reg = ANFISRegressor(n_mfs=2, optimizer=DummyTrainer, epochs=1, rules=explicit_rules)
+    reg.fit(X, y)
+
+    expected = [tuple(rule) for rule in explicit_rules]
+    assert reg.rules_ == expected
+    assert captured["rules"] == expected
+
+
 def test_inputs_config_mfs_alias_applies_memberships():
     X, y = _generate_dataset()
     mfs = [GaussianMF(-1.0, 0.4), GaussianMF(0.0, 0.4), GaussianMF(1.0, 0.4)]

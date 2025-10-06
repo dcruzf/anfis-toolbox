@@ -9,7 +9,7 @@ while targeting categorical prediction tasks.
 from __future__ import annotations
 
 import inspect
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from copy import deepcopy
 from typing import Any
 
@@ -84,6 +84,10 @@ class ANFISClassifier(BaseEstimatorLike, FittedMixin, ClassifierMixinLike):
         selected trainer supports the parameter it is included automatically.
     loss : str or LossFunction, optional
         Custom loss forwarded to trainers that expose a ``loss`` parameter.
+    rules : Sequence[Sequence[int]] | None, optional
+        Explicit fuzzy rule indices to use instead of the full Cartesian product. Each
+        rule lists the membership-function index per input. ``None`` keeps the default
+        exhaustive rule set.
     """
 
     def __init__(
@@ -105,6 +109,7 @@ class ANFISClassifier(BaseEstimatorLike, FittedMixin, ClassifierMixinLike):
         shuffle: bool | None = None,
         verbose: bool = True,
         loss: LossFunction | str | None = None,
+        rules: Sequence[Sequence[int]] | None = None,
     ) -> None:
         """Initialize the ANFIS classifier."""
         if int(n_classes) < 2:
@@ -125,6 +130,7 @@ class ANFISClassifier(BaseEstimatorLike, FittedMixin, ClassifierMixinLike):
         self.shuffle = shuffle
         self.verbose = verbose
         self.loss = loss
+        self.rules = None if rules is None else tuple(tuple(int(idx) for idx in rule) for rule in rules)
 
         # Fitted attributes (initialised during fit)
         self.model_: LowLevelANFISClassifier | None = None
@@ -135,6 +141,7 @@ class ANFISClassifier(BaseEstimatorLike, FittedMixin, ClassifierMixinLike):
         self.input_specs_: list[dict[str, Any]] | None = None
         self.classes_: np.ndarray | None = None
         self._class_to_index_: dict[Any, int] | None = None
+        self.rules_: list[tuple[int, ...]] | None = None
 
         # ------------------------------------------------------------------
         # Public API
@@ -157,6 +164,7 @@ class ANFISClassifier(BaseEstimatorLike, FittedMixin, ClassifierMixinLike):
         trainer = self._instantiate_trainer()
         self.optimizer_ = trainer
         self.training_history_ = trainer.fit(self.model_, X_arr, y_encoded)
+        self.rules_ = self.model_.rules
 
         self._mark_fitted()
         return self
@@ -303,7 +311,12 @@ class ANFISClassifier(BaseEstimatorLike, FittedMixin, ClassifierMixinLike):
                     init=init_arg,
                     random_state=self.random_state,
                 )
-        return LowLevelANFISClassifier(builder.input_mfs, n_classes=self.n_classes, random_state=self.random_state)
+        return LowLevelANFISClassifier(
+            builder.input_mfs,
+            n_classes=self.n_classes,
+            random_state=self.random_state,
+            rules=self.rules,
+        )
 
     def _instantiate_trainer(self) -> BaseTrainer:
         optimizer = self.optimizer if self.optimizer is not None else "adam"

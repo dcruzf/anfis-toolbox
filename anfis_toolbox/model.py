@@ -5,6 +5,7 @@ model that combines all the individual layers into a unified architecture.
 """
 
 import logging
+from collections.abc import Sequence
 
 import numpy as np
 
@@ -39,16 +40,22 @@ class TSKANFIS:
         consequent_layer (ConsequentLayer): Layer 4 — final TSK output.
         input_names (list[str]): Ordered list of input variable names.
         n_inputs (int): Number of input variables (features).
-        n_rules (int): Number of fuzzy rules (Cartesian product of MFs per input).
+        n_rules (int): Number of fuzzy rules used by the system.
     """
 
-    def __init__(self, input_mfs: dict[str, list[MembershipFunction]]):
+    def __init__(
+        self,
+        input_mfs: dict[str, list[MembershipFunction]],
+        rules: Sequence[Sequence[int]] | None = None,
+    ):
         """Initialize the ANFIS model.
 
         Args:
             input_mfs (dict[str, list[MembershipFunction]]): Mapping from input
                 name to a list of membership functions. Example:
                 ``{"x1": [GaussianMF(0,1), ...], "x2": [...]}``.
+            rules: Optional explicit set of rules, each specifying one membership index per
+                input. When ``None``, the Cartesian product of all membership functions is used.
 
         Examples:
             >>> from anfis_toolbox.membership import GaussianMF
@@ -65,12 +72,10 @@ class TSKANFIS:
         # Calculate number of membership functions per input
         mf_per_input = [len(mfs) for mfs in input_mfs.values()]
 
-        # Calculate total number of rules (Cartesian product)
-        self.n_rules = np.prod(mf_per_input)
-
         # Initialize all layers
         self.membership_layer = MembershipLayer(input_mfs)
-        self.rule_layer = RuleLayer(self.input_names, mf_per_input)
+        self.rule_layer = RuleLayer(self.input_names, mf_per_input, rules=rules)
+        self.n_rules = self.rule_layer.n_rules
         self.normalization_layer = NormalizationLayer()
         self.consequent_layer = ConsequentLayer(self.n_rules, self.n_inputs)
 
@@ -83,6 +88,11 @@ class TSKANFIS:
             its list of membership functions.
         """
         return self.input_mfs
+
+    @property
+    def rules(self) -> list[tuple[int, ...]]:
+        """Return the fuzzy rule definitions used by the model."""
+        return list(self.rule_layer.rules)
 
     def forward(self, x: np.ndarray) -> np.ndarray:
         """Run a forward pass through the model.
@@ -326,7 +336,13 @@ class TSKANFISClassifier:
     with cross-entropy loss.
     """
 
-    def __init__(self, input_mfs: dict[str, list[MembershipFunction]], n_classes: int, random_state: int | None = None):
+    def __init__(
+        self,
+        input_mfs: dict[str, list[MembershipFunction]],
+        n_classes: int,
+        random_state: int | None = None,
+        rules: Sequence[Sequence[int]] | None = None,
+    ):
         """Initialize the ANFIS model for classification.
 
         Args:
@@ -334,6 +350,9 @@ class TSKANFISClassifier:
                 variable name to its list of membership functions.
             n_classes (int): Number of output classes (>= 2).
             random_state (int | None): Optional random seed for parameter init.
+            rules (Sequence[Sequence[int]] | None): Optional explicit rule definitions
+                where each inner sequence lists the membership-function index per input.
+                When ``None``, all combinations are used.
 
         Raises:
             ValueError: If ``n_classes < 2``.
@@ -356,9 +375,9 @@ class TSKANFISClassifier:
         self.n_inputs = len(input_mfs)
         self.n_classes = int(n_classes)
         mf_per_input = [len(mfs) for mfs in input_mfs.values()]
-        self.n_rules = int(np.prod(mf_per_input))
         self.membership_layer = MembershipLayer(input_mfs)
-        self.rule_layer = RuleLayer(self.input_names, mf_per_input)
+        self.rule_layer = RuleLayer(self.input_names, mf_per_input, rules=rules)
+        self.n_rules = self.rule_layer.n_rules
         self.normalization_layer = NormalizationLayer()
         self.consequent_layer = ClassificationConsequentLayer(
             self.n_rules, self.n_inputs, self.n_classes, random_state=random_state
@@ -461,6 +480,11 @@ class TSKANFISClassifier:
             for mf in self.input_mfs[name]:
                 params["membership"][name].append(mf.parameters.copy())
         return params
+
+    @property
+    def rules(self) -> list[tuple[int, ...]]:
+        """Return the fuzzy rule definitions used by the classifier."""
+        return list(self.rule_layer.rules)
 
     def set_parameters(self, parameters: dict[str, np.ndarray]):
         """Load parameters into the classifier.

@@ -55,6 +55,18 @@ reg = ANFISRegressor(
 reg.fit(X, y)
 prediction = reg.predict([[0.2, -1.5]])
 metrics = reg.evaluate(X, y)
+
+# Use a custom subset of fuzzy rules (optional)
+explicit_rules = [(0, 0), (1, 1), (2, 2)]
+reg_subset = ANFISRegressor(
+  optimizer="adam",
+  epochs=40,
+  learning_rate=0.01,
+  rules=explicit_rules,
+)
+reg_subset.fit(X, y)
+# Fitted estimators expose their final rule list via the ``rules_`` attribute.
+assert reg_subset.rules_ == [tuple(rule) for rule in explicit_rules]
 ```
 
 ### Classification
@@ -79,6 +91,18 @@ clf.fit(X, y)
 preds = clf.predict([[0.4, -0.2]])
 proba = clf.predict_proba([[0.4, -0.2]])
 report = clf.evaluate(X, y)
+
+# Explicit rules also work for classifiers
+clf_subset = ANFISClassifier(
+  n_classes=2,
+  optimizer="sgd",
+  epochs=25,
+  learning_rate=0.05,
+  random_state=0,
+  rules=[(0, 0), (1, 1)],
+)
+clf_subset.fit(X, y)
+assert clf_subset.rules_ == [(0, 0), (1, 1)]
 ```
 
 ## 🧩 Membership functions at a glance

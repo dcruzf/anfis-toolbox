@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from itertools import product
 
 import numpy as np
@@ -124,18 +125,53 @@ class RuleLayer:
         last (dict): Cache of last forward pass computations for backward pass.
     """
 
-    def __init__(self, input_names: list, mf_per_input: list):
+    def __init__(
+        self,
+        input_names: list,
+        mf_per_input: list,
+        rules: Sequence[Sequence[int]] | None = None,
+    ):
         """Initializes the rule layer with input configuration.
 
         Parameters:
             input_names (list): List of input variable names.
             mf_per_input (list): Number of membership functions per input variable.
+            rules (Sequence[Sequence[int]] | None): Optional explicit rule set where each
+                rule is a sequence of membership-function indices, one per input. When
+                ``None``, the full Cartesian product of membership functions is used.
         """
         self.input_names = input_names
         self.n_inputs = len(input_names)
-        self.mf_per_input = mf_per_input
-        # Generate all possible rule combinations (Cartesian product)
-        self.rules = list(product(*[range(n) for n in self.mf_per_input]))
+        self.mf_per_input = list(mf_per_input)
+
+        if rules is None:
+            # Generate all possible rule combinations (Cartesian product)
+            self.rules = [tuple(rule) for rule in product(*[range(n) for n in self.mf_per_input])]
+        else:
+            validated_rules: list[tuple[int, ...]] = []
+            for idx, rule in enumerate(rules):
+                if len(rule) != self.n_inputs:
+                    raise ValueError(
+                        "Each rule must specify exactly one membership index per input. "
+                        f"Rule at position {idx} has length {len(rule)} while {self.n_inputs} were expected."
+                    )
+                normalized_rule: list[int] = []
+                for input_idx, mf_idx in enumerate(rule):
+                    max_mf = self.mf_per_input[input_idx]
+                    if not 0 <= mf_idx < max_mf:
+                        raise ValueError(
+                            "Rule membership index out of range. "
+                            f"Received {mf_idx} for input {input_idx} with {max_mf} membership functions."
+                        )
+                    normalized_rule.append(int(mf_idx))
+                validated_rules.append(tuple(normalized_rule))
+
+            if not validated_rules:
+                raise ValueError("At least one rule must be provided when specifying custom rules.")
+            self.rules = validated_rules
+
+        self.n_rules = len(self.rules)
+
         self.last = {}
 
     def forward(self, membership_outputs: dict) -> np.ndarray:

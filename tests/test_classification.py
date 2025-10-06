@@ -426,6 +426,37 @@ def test_anfis_classifier_inputs_config_membership_overrides():
     assert type(clf.model_.membership_functions["x2"][0]).__name__ == "BellMF"
 
 
+def test_anfis_classifier_propagates_explicit_rules():
+    captured: dict[str, list[tuple[int, ...]]] = {}
+
+    class DummyTrainer(BaseTrainer):
+        def fit(self, model, X_fit, y_fit):
+            captured["rules"] = model.rules
+            return []
+
+        def init_state(self, model, X_fit, y_fit):
+            return None
+
+        def train_step(self, model, X_batch, y_batch, state):
+            return 0.0, state
+
+    X, y = _generate_classification_data(seed=7)
+    explicit_rules = [(0, 0), (1, 1)]
+    clf = ANFISClassifier(
+        n_classes=2,
+        n_mfs=2,
+        optimizer=DummyTrainer,
+        epochs=1,
+        verbose=False,
+        rules=explicit_rules,
+    )
+    clf.fit(X, y)
+
+    expected = [tuple(rule) for rule in explicit_rules]
+    assert clf.rules_ == expected
+    assert captured["rules"] == expected
+
+
 def test_anfis_classifier_custom_trainer_instance_overrides():
     X, y = _generate_classification_data(seed=3)
     base_trainer = SGDTrainer(epochs=1, learning_rate=0.01, verbose=True)
@@ -628,10 +659,11 @@ def test_anfis_classifier_build_model_respects_range_overrides(monkeypatch):
             self.add_input_from_data_calls.append((args, kwargs))
 
     class StubClassifier:
-        def __init__(self, input_mfs, n_classes, random_state=None):
+        def __init__(self, input_mfs, n_classes, random_state=None, rules=None):
             self.membership_functions = input_mfs
             self.n_classes = n_classes
             self.random_state = random_state
+            self.rules = rules
 
     monkeypatch.setattr("anfis_toolbox.classifier.ANFISBuilder", StubBuilder)
     monkeypatch.setattr("anfis_toolbox.classifier.LowLevelANFISClassifier", StubClassifier)

@@ -9,7 +9,7 @@ under the hood without introducing an external dependency on scikit-learn.
 from __future__ import annotations
 
 import inspect
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from copy import deepcopy
 from typing import Any
 
@@ -83,6 +83,10 @@ class ANFISRegressor(BaseEstimatorLike, FittedMixin, RegressorMixinLike):
         selected trainer supports the parameter it is included automatically.
     loss : str or LossFunction, optional
         Custom loss forwarded to trainers that expose a ``loss`` parameter.
+    rules : Sequence[Sequence[int]] | None, optional
+        Explicit fuzzy rule indices to use instead of the full Cartesian product. Each
+        rule lists the membership-function index per input. ``None`` keeps the default
+        exhaustive rule set.
     """
 
     def __init__(
@@ -103,6 +107,7 @@ class ANFISRegressor(BaseEstimatorLike, FittedMixin, RegressorMixinLike):
         shuffle: bool | None = None,
         verbose: bool = True,
         loss: LossFunction | str | None = None,
+        rules: Sequence[Sequence[int]] | None = None,
     ) -> None:
         """Initialize the ANFIS regressor."""
         self.n_mfs = int(n_mfs)
@@ -120,6 +125,7 @@ class ANFISRegressor(BaseEstimatorLike, FittedMixin, RegressorMixinLike):
         self.shuffle = shuffle
         self.verbose = verbose
         self.loss = loss
+        self.rules = None if rules is None else tuple(tuple(int(idx) for idx in rule) for rule in rules)
 
         # Fitted attributes (initialised later)
         self.model_: LowLevelANFIS | None = None
@@ -128,6 +134,7 @@ class ANFISRegressor(BaseEstimatorLike, FittedMixin, RegressorMixinLike):
         self.n_features_in_: int | None = None
         self.training_history_: list[float] | None = None
         self.input_specs_: list[dict[str, Any]] | None = None
+        self.rules_: list[tuple[int, ...]] | None = None
 
     # ------------------------------------------------------------------
     # Public API
@@ -147,6 +154,7 @@ class ANFISRegressor(BaseEstimatorLike, FittedMixin, RegressorMixinLike):
         trainer = self._instantiate_trainer()
         self.optimizer_ = trainer
         self.training_history_ = trainer.fit(self.model_, X_arr, y_vec)
+        self.rules_ = self.model_.rules
 
         self._mark_fitted()
         return self
@@ -280,6 +288,7 @@ class ANFISRegressor(BaseEstimatorLike, FittedMixin, RegressorMixinLike):
                     init=init_arg,
                     random_state=self.random_state,
                 )
+        builder.set_rules(self.rules)
         return builder.build()
 
     def _instantiate_trainer(self) -> BaseTrainer:
