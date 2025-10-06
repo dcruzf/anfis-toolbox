@@ -6,6 +6,9 @@
 </div>
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![coverage](https://img.shields.io/badge/dynamic/regex?url=https%3A%2F%2Fdcruzf.github.io%2Fanfis-toolbox%2Fassets%2Fcov%2Findex.html&search=%3Cspan%20class%3D%22pc_cov%22%3E(%3F%3Ccov%3E%5Cd%2B%25)%3C%2Fspan%3E&replace=%24%3Ccov%3E&style=flat&logo=pytest&logoColor=white&label=coverage&color=green)](https://dcruzf.github.io/anfis-toolbox/assets/cov/)
+
+
 
 A batteries-included Adaptive Neuro-Fuzzy Inference System (ANFIS) toolkit built in pure Python. It exposes high-level regression and classification APIs, modern trainers, and a rich catalog of membership functions.
 
