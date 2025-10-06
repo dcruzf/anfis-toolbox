@@ -111,8 +111,9 @@ def test_classifier_fit_binary_toy():
     y = np.array([0] * len(X_left) + [1] * len(X_right))
 
     model = _build_classifier_from_data(X, n_classes=2, n_mfs=2, mf_type="gaussian", init="fcm", random_state=0)
-    losses = model.fit(X, y, epochs=10, learning_rate=0.1, verbose=False)
-    assert len(losses) == 10
+    history = model.fit(X, y, epochs=10, learning_rate=0.1, verbose=False)
+    train_losses = history["train"]
+    assert len(train_losses) == 10
     proba = model.predict_proba(X)
     acc = accuracy(y, proba)
     assert acc >= 0.8
@@ -125,8 +126,8 @@ def test_classifier_fit_with_one_hot_and_invalid_shapes():
     y_oh = np.zeros((X.shape[0], 2), dtype=float)
     y_oh[np.arange(X.shape[0]), y_int] = 1.0
     model = _build_classifier_from_data(X, n_classes=2, n_mfs=2)
-    losses = model.fit(X, y_oh, epochs=2, learning_rate=0.05, verbose=False)
-    assert len(losses) == 2
+    history = model.fit(X, y_oh, epochs=2, learning_rate=0.05, verbose=False)
+    assert len(history["train"]) == 2
     # invalid one-hot columns
     with pytest.raises(ValueError):
         model.fit(X, np.zeros((X.shape[0], 3)))
@@ -174,8 +175,8 @@ def test_classifier_parameters_and_gradients_management():
     y = np.array([0] * 10 + [1] * 10)
     model = _build_classifier_from_data(X, n_classes=2, n_mfs=2)
     # One epoch to populate gradients
-    losses = model.fit(X, y, epochs=1, learning_rate=0.01, verbose=False)
-    assert len(losses) == 1
+    history = model.fit(X, y, epochs=1, learning_rate=0.01, verbose=False)
+    assert len(history["train"]) == 1
     grads = model.get_gradients()
     assert "consequent" in grads and np.any(grads["consequent"] != 0)
     # Params roundtrip
@@ -293,13 +294,13 @@ def test_classifier_fit_uses_custom_loss_and_default_trainer(monkeypatch):
             self.model = model
             self.X_shape = X_fit.shape
             self.y_shape = y_fit.shape
-            return [0.0]
+            return {"train": [0.0]}
 
     monkeypatch.setattr("anfis_toolbox.optim.AdamTrainer", CaptureTrainer)
 
-    losses = clf.fit(X, y, epochs=1, learning_rate=0.01, verbose=False, loss="mse")
+    history = clf.fit(X, y, epochs=1, learning_rate=0.01, verbose=False, loss="mse")
 
-    assert losses == [0.0]
+    assert history == {"train": [0.0]}
     assert resolve_calls == ["mse"]
     assert CaptureTrainer.created, "Expected AdamTrainer to be instantiated"
     trainer_instance = CaptureTrainer.created[-1]
@@ -319,7 +320,7 @@ def test_classifier_fit_updates_existing_trainer_loss():
             self.model = model
             self.X_shape = X.shape
             self.y_shape = y.shape
-            return [1.0]
+            return {"train": [1.0]}
 
     dummy = DummyTrainer()
     mfs = make_simple_input_mfs(n_features=1, n_mfs=2)
@@ -327,9 +328,9 @@ def test_classifier_fit_updates_existing_trainer_loss():
     X = np.array([[0.1], [-0.3]])
     y = np.array([0, 1])
 
-    losses = clf.fit(X, y, trainer=dummy, loss="cross_entropy")
+    history = clf.fit(X, y, trainer=dummy, loss="cross_entropy")
 
-    assert losses == [1.0]
+    assert history == {"train": [1.0]}
     assert dummy.fit_called
     assert isinstance(dummy.loss, LossFunction)
     assert dummy.X_shape == X.shape
@@ -346,7 +347,7 @@ def test_classifier_fit_with_trainer_without_loss_attribute():
             self.model = model
             self.X_shape = X.shape
             self.y_shape = y.shape
-            return [2.0]
+            return {"train": [2.0]}
 
     trainer = NoLossTrainer()
     mfs = make_simple_input_mfs(n_features=1, n_mfs=2)
@@ -354,9 +355,9 @@ def test_classifier_fit_with_trainer_without_loss_attribute():
     X = np.array([[-0.2], [0.4]])
     y = np.array([0, 1])
 
-    losses = clf.fit(X, y, trainer=trainer)
+    history = clf.fit(X, y, trainer=trainer)
 
-    assert losses == [2.0]
+    assert history == {"train": [2.0]}
     assert trainer.fit_called
     assert not hasattr(trainer, "loss")
     assert trainer.X_shape == X.shape
@@ -382,7 +383,8 @@ def test_anfis_classifier_fit_predict_flow():
     assert clf.optimizer_ is not None
     assert isinstance(clf.optimizer_, SGDTrainer)
     assert clf.training_history_ is not None
-    assert len(clf.training_history_) == clf.optimizer_.epochs
+    assert isinstance(clf.training_history_, dict)
+    assert len(clf.training_history_["train"]) == clf.optimizer_.epochs
     assert clf.feature_names_in_ == ["x1", "x2"]
     assert clf.n_features_in_ == 2
     assert clf.classes_.shape == (2,)
@@ -432,13 +434,16 @@ def test_anfis_classifier_propagates_explicit_rules():
     class DummyTrainer(BaseTrainer):
         def fit(self, model, X_fit, y_fit):
             captured["rules"] = model.rules
-            return []
+            return {"train": []}
 
         def init_state(self, model, X_fit, y_fit):
             return None
 
         def train_step(self, model, X_batch, y_batch, state):
             return 0.0, state
+
+        def compute_loss(self, model, X_eval, y_eval):
+            return 0.0
 
     X, y = _generate_classification_data(seed=7)
     explicit_rules = [(0, 0), (1, 1)]
@@ -476,7 +481,8 @@ def test_anfis_classifier_custom_trainer_instance_overrides():
     assert pytest.approx(clf.optimizer_.learning_rate, rel=1e-6) == 0.2
     assert clf.optimizer_.verbose is False
     assert clf.training_history_ is not None
-    assert len(clf.training_history_) == clf.optimizer_.epochs
+    assert isinstance(clf.training_history_, dict)
+    assert len(clf.training_history_["train"]) == clf.optimizer_.epochs
 
 
 def test_anfis_classifier_invalid_optimizer_string():
@@ -718,13 +724,16 @@ def test_anfis_classifier_collect_trainer_params_skips_self(monkeypatch):
             self.beta = beta
 
         def fit(self, model, X_fit, y_fit):
-            return [0.0]
+            return {"train": [0.0]}
 
         def init_state(self, model, X_fit, y_fit):
             return None
 
         def train_step(self, model, Xb, yb, state):
             return 0.0, state
+
+        def compute_loss(self, model, X_eval, y_eval):
+            return 0.0
 
     real_signature = inspect.signature
 
@@ -762,13 +771,16 @@ def test_anfis_classifier_custom_trainer_without_loss():
             self.learning_rate = 0.01
 
         def fit(self, model, X_fit, y_fit):
-            return [0.0]
+            return {"train": [0.0]}
 
         def init_state(self, model, X_fit, y_fit):
             return None
 
         def train_step(self, model, Xb, yb, state):
             return 0.0, state
+
+        def compute_loss(self, model, X_eval, y_eval):
+            return 0.0
 
     trainer = NoLossTrainer()
     clf = ANFISClassifier(

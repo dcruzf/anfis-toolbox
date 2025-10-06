@@ -27,10 +27,11 @@ def test_sgd_train_step_and_init_state():
     y = (0.5 * X[:, 0] - 0.25 * X[:, 1]).reshape(-1, 1)
     model = _make_regression_model(n_inputs=2)
     trainer = SGDTrainer(learning_rate=0.01)
-    state = trainer.init_state(model, X, y)
+    X_prepared, y_prepared = trainer._prepare_training_data(model, X, y)
+    state = trainer.init_state(model, X_prepared, y_prepared)
     assert state is None
     params_before = model.get_parameters()
-    loss, state_after = trainer.train_step(model, X[:5], y[:5], state)
+    loss, state_after = trainer.train_step(model, X_prepared[:5], y_prepared[:5], state)
     assert np.isfinite(loss)
     params_after = model.get_parameters()
     assert not np.allclose(params_before["consequent"], params_after["consequent"])  # parameters updated
@@ -43,11 +44,12 @@ def test_adam_train_step_and_state_progress():
     y = (X[:, 0] + 0.3 * X[:, 1]).reshape(-1, 1)
     model = _make_regression_model(n_inputs=2)
     trainer = AdamTrainer(learning_rate=0.01)
-    state = trainer.init_state(model, X, y)
+    X_prepared, y_prepared = trainer._prepare_training_data(model, X, y)
+    state = trainer.init_state(model, X_prepared, y_prepared)
     assert isinstance(state, dict) and set(state.keys()) == {"params", "m", "v", "t"}
     t0 = state["t"]
     params_before = model.get_parameters()
-    loss, state = trainer.train_step(model, X[:6], y[:6], state)
+    loss, state = trainer.train_step(model, X_prepared[:6], y_prepared[:6], state)
     assert np.isfinite(loss)
     assert state["t"] == t0 + 1
     params_after = model.get_parameters()
@@ -60,10 +62,11 @@ def test_rmsprop_train_step_and_state():
     y = (0.1 * X[:, 0] - 0.2 * X[:, 1]).reshape(-1, 1)
     model = _make_regression_model(n_inputs=2)
     trainer = RMSPropTrainer(learning_rate=0.01)
-    state = trainer.init_state(model, X, y)
+    X_prepared, y_prepared = trainer._prepare_training_data(model, X, y)
+    state = trainer.init_state(model, X_prepared, y_prepared)
     assert isinstance(state, dict) and set(state.keys()) == {"params", "cache"}
     params_before = model.get_parameters()
-    loss, state = trainer.train_step(model, X[:6], y[:6], state)
+    loss, state = trainer.train_step(model, X_prepared[:6], y_prepared[:6], state)
     assert np.isfinite(loss)
     params_after = model.get_parameters()
     assert not np.allclose(params_before["consequent"], params_after["consequent"])  # updated by RMSProp
@@ -113,11 +116,12 @@ def test_hybrid_fit_uses_pinv_on_solve_error(monkeypatch):
 
     monkeypatch.setattr(np.linalg, "solve", _raise_linalg_error)
     try:
-        losses = trainer.fit(model, X, y)
+        history = trainer.fit(model, X, y)
     finally:
         monkeypatch.setattr(np.linalg, "solve", original_solve)
-
-    assert isinstance(losses, list) and len(losses) == 1 and np.isfinite(losses[0])
+    assert isinstance(history, dict)
+    train_losses = history["train"]
+    assert len(train_losses) == 1 and np.isfinite(train_losses[0])
 
 
 def test_hybrid_train_step_uses_pinv_on_solve_error(monkeypatch):
@@ -163,9 +167,9 @@ def test_sgd_trainer_with_cross_entropy_loss_on_classifier():
         verbose=False,
         loss="cross_entropy",
     )
-    losses = trainer.fit(clf, X, y)
-    assert len(losses) == 2
-    assert all(np.isfinite(loss) for loss in losses)
+    history = trainer.fit(clf, X, y)
+    assert len(history["train"]) == 2
+    assert all(np.isfinite(loss) for loss in history["train"])
 
 
 def test_sgd_fit_raises_when_target_rows_mismatch():
@@ -177,11 +181,13 @@ def test_sgd_fit_raises_when_target_rows_mismatch():
         trainer.fit(model, X, y)
 
 
-def test_sgd_ensure_loss_fn_lazy_initializes():
+def test_sgd_prepare_training_data_sets_loss_fn():
     trainer = SGDTrainer()
-    assert not hasattr(trainer, "_loss_fn")
-    resolved = trainer._ensure_loss_fn()
-    assert isinstance(resolved, LossFunction)
+    model = _make_regression_model(n_inputs=1)
+    X = np.linspace(-1, 1, 4).reshape(-1, 1)
+    y = 0.5 * X[:, 0]
+    Xt, yt = trainer._prepare_training_data(model, X, y)
     assert hasattr(trainer, "_loss_fn")
-    # Subsequent calls should reuse the same instance
-    assert trainer._ensure_loss_fn() is resolved
+    assert isinstance(trainer._loss_fn, LossFunction)
+    assert Xt.shape == (4, 1)
+    assert yt.shape == (4, 1)

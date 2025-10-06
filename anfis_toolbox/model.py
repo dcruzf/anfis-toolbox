@@ -13,6 +13,7 @@ from .layers import ClassificationConsequentLayer, ConsequentLayer, MembershipLa
 from .losses import LossFunction, resolve_loss
 from .membership import MembershipFunction
 from .metrics import softmax
+from .optim.base import TrainingHistory
 
 # Setup logger for ANFIS
 logger = logging.getLogger(__name__)
@@ -283,7 +284,10 @@ class TSKANFIS:
         learning_rate: float = 0.01,
         verbose: bool = True,
         trainer: None | object = None,
-    ) -> list[float]:
+        *,
+        validation_data: tuple[np.ndarray, np.ndarray] | None = None,
+        validation_frequency: int = 1,
+    ) -> TrainingHistory:
         """Train the ANFIS model.
 
         If a trainer is provided (see ``anfis_toolbox.optim``), delegate training
@@ -300,9 +304,12 @@ class TSKANFIS:
             verbose (bool, optional): Whether to log progress. Defaults to ``True``.
             trainer (object | None, optional): External trainer implementing
                 ``fit(model, X, y)``. Defaults to ``None``.
+            validation_data (tuple[np.ndarray, np.ndarray] | None, optional): Optional
+                validation inputs and targets evaluated according to ``validation_frequency``.
+            validation_frequency (int, optional): Evaluate validation loss every N epochs.
 
         Returns:
-            list[float]: Per-epoch loss values.
+            TrainingHistory: Dictionary with ``"train"`` losses and optional ``"val"`` losses.
         """
         if trainer is None:
             # Lazy import to avoid unnecessary dependency at module import time
@@ -311,7 +318,16 @@ class TSKANFIS:
             trainer = HybridTrainer(learning_rate=learning_rate, epochs=epochs, verbose=verbose)
 
         # Delegate training to the provided or default trainer
-        return trainer.fit(self, x, y)
+        fit_kwargs: dict[str, object] = {}
+        if validation_data is not None:
+            fit_kwargs["validation_data"] = validation_data
+        if validation_frequency != 1 or validation_data is not None:
+            fit_kwargs["validation_frequency"] = validation_frequency
+
+        history = trainer.fit(self, x, y, **fit_kwargs)
+        if not isinstance(history, dict):
+            raise TypeError("Trainer.fit must return a TrainingHistory dictionary")
+        return history
 
     def __str__(self) -> str:
         """Returns string representation of the ANFIS model."""
@@ -560,7 +576,10 @@ class TSKANFISClassifier:
         verbose: bool = True,
         trainer: None | object = None,
         loss: LossFunction | str | None = None,
-    ) -> list[float]:
+        *,
+        validation_data: tuple[np.ndarray, np.ndarray] | None = None,
+        validation_frequency: int = 1,
+    ) -> TrainingHistory:
         """Fits the ANFIS model to the provided training data using the specified optimization strategy.
 
         Parameters:
@@ -572,9 +591,11 @@ class TSKANFISClassifier:
             trainer (object or None, optional): Custom trainer object. If None, uses AdamTrainer. Defaults to None.
             loss (LossFunction, str, or None, optional): Loss function to use.
                 If None, defaults to cross-entropy for classification.
+            validation_data (tuple[np.ndarray, np.ndarray] | None, optional): Optional validation dataset.
+            validation_frequency (int, optional): Evaluate validation metrics every N epochs.
 
         Returns:
-            list[float]: List of loss values recorded during training.
+            TrainingHistory: Dictionary containing ``"train"`` and optionally ``"val"`` loss curves.
         """
         # Resolve loss: default to cross-entropy for classification when unspecified
         if loss is None:
@@ -594,7 +615,16 @@ class TSKANFISClassifier:
         elif hasattr(trainer, "loss"):
             trainer.loss = resolved_loss
 
-        return trainer.fit(self, X, y)
+        fit_kwargs: dict[str, object] = {}
+        if validation_data is not None:
+            fit_kwargs["validation_data"] = validation_data
+        if validation_frequency != 1 or validation_data is not None:
+            fit_kwargs["validation_frequency"] = validation_frequency
+
+        history = trainer.fit(self, X, y, **fit_kwargs)
+        if not isinstance(history, dict):
+            raise TypeError("Trainer.fit must return a TrainingHistory dictionary")
+        return history
 
     def __repr__(self) -> str:
         """Return a string representation of the ANFISClassifier.

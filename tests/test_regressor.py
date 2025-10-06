@@ -35,6 +35,7 @@ def test_anfis_regressor_fit_predict_and_metrics():
     preds = reg.predict(X[:5])
     assert preds.shape == (5,)
     assert reg.training_history_ is not None
+    assert isinstance(reg.training_history_, dict)
     metrics = reg.evaluate(X, y)
     assert {"mse", "rmse", "mae", "r2"}.issubset(metrics.keys())
 
@@ -218,13 +219,16 @@ def test_regressor_propagates_explicit_rules():
     class DummyTrainer(BaseTrainer):
         def fit(self, model, X_fit, y_fit):
             captured["rules"] = model.rules
-            return []
+            return {"train": []}
 
         def init_state(self, model, X_fit, y_fit):
             return None
 
         def train_step(self, model, X_batch, y_batch, state):
             return 0.0, state
+
+        def compute_loss(self, model, X_eval, y_eval):
+            return 0.0
 
     X, y = _generate_dataset(seed=5)
     explicit_rules = [(0, 0), (1, 1)]
@@ -255,13 +259,16 @@ def test_custom_trainer_class_triggers_self_parameter_handling():
             self.scale = scale
 
         def fit(self, model, X, y):
-            return []
+            return {"train": []}
 
         def init_state(self, model, X, y):
             return None
 
         def train_step(self, model, Xb, yb, state):
             return 0.0, state
+
+        def compute_loss(self, model, X_eval, y_eval):
+            return 0.0
 
     X, y = _generate_dataset()
     reg = ANFISRegressor(optimizer=MinimalTrainer, optimizer_params={"scale": 2.0}, epochs=1)
@@ -277,13 +284,16 @@ def test_regressor_collect_trainer_params_skips_self(monkeypatch):
             self.beta = beta
 
         def fit(self, model, X_fit, y_fit):
-            return [0.0]
+            return {"train": [0.0]}
 
         def init_state(self, model, X_fit, y_fit):
             return None
 
         def train_step(self, model, Xb, yb, state):
             return 0.0, state
+
+        def compute_loss(self, model, X_eval, y_eval):
+            return 0.0
 
     real_signature = inspect.signature
 
@@ -319,13 +329,16 @@ def test_regressor_apply_runtime_overrides_skips_verbose_when_none():
             self.verbose = True
 
         def fit(self, model, X_fit, y_fit):
-            return [0.0]
+            return {"train": [0.0]}
 
         def init_state(self, model, X_fit, y_fit):
             return None
 
         def train_step(self, model, Xb, yb, state):
             return 0.0, state
+
+        def compute_loss(self, model, X_eval, y_eval):
+            return 0.0
 
     trainer = VerboseTrainer()
     X, y = _generate_dataset(seed=22)

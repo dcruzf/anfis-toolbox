@@ -35,6 +35,7 @@ from .optim import (
     RMSPropTrainer,
     SGDTrainer,
 )
+from .optim.base import TrainingHistory
 
 TRAINER_REGISTRY: dict[str, type[BaseTrainer]] = {
     "hybrid": HybridTrainer,
@@ -137,7 +138,7 @@ class ANFISClassifier(BaseEstimatorLike, FittedMixin, ClassifierMixinLike):
         self.optimizer_: BaseTrainer | None = None
         self.feature_names_in_: list[str] | None = None
         self.n_features_in_: int | None = None
-        self.training_history_: list[float] | None = None
+        self.training_history_: TrainingHistory | None = None
         self.input_specs_: list[dict[str, Any]] | None = None
         self.classes_: np.ndarray | None = None
         self._class_to_index_: dict[Any, int] | None = None
@@ -163,7 +164,10 @@ class ANFISClassifier(BaseEstimatorLike, FittedMixin, ClassifierMixinLike):
         self.model_ = self._build_model(X_arr, feature_names)
         trainer = self._instantiate_trainer()
         self.optimizer_ = trainer
-        self.training_history_ = trainer.fit(self.model_, X_arr, y_encoded)
+        history = trainer.fit(self.model_, X_arr, y_encoded)
+        if not isinstance(history, dict):
+            raise TypeError("Trainer.fit must return a TrainingHistory dictionary")
+        self.training_history_ = history
         self.rules_ = self.model_.rules
 
         self._mark_fitted()

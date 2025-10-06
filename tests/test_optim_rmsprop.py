@@ -19,9 +19,10 @@ def test_rmsprop_trains_full_batch_regression():
     y = (0.8 * X[:, 0] - 0.2 * X[:, 1]).reshape(-1, 1)
     model = _make_regression_model(n_inputs=2)
     trainer = RMSPropTrainer(learning_rate=0.01, epochs=3, batch_size=None, shuffle=False, verbose=False)
-    losses = trainer.fit(model, X, y)
-    assert len(losses) == 3
-    assert all(np.isfinite(loss) and loss >= 0 for loss in losses)
+    history = trainer.fit(model, X, y)
+    train_losses = history["train"]
+    assert len(train_losses) == 3
+    assert all(np.isfinite(loss) and loss >= 0 for loss in train_losses)
 
 
 def test_rmsprop_trains_minibatch_regression_and_updates_params():
@@ -31,8 +32,8 @@ def test_rmsprop_trains_minibatch_regression_and_updates_params():
     model = _make_regression_model(n_inputs=2)
     params_before = model.get_parameters()
     trainer = RMSPropTrainer(learning_rate=0.005, epochs=2, batch_size=8, shuffle=True, verbose=False)
-    losses = trainer.fit(model, X, y)
-    assert len(losses) == 2
+    history = trainer.fit(model, X, y)
+    assert len(history["train"]) == 2
     params_after = model.get_parameters()
     # Consequent should differ due to RMSProp updates
     assert not np.allclose(params_before["consequent"], params_after["consequent"])
@@ -52,8 +53,8 @@ def test_rmsprop_with_classifier_does_not_error_on_forward_backward():
     y = (X[:, 0] > 0).astype(float).reshape(-1, 1)  # treat as regression target to check plumbing
     clf = _make_classifier(n_inputs=1, n_classes=2)
     trainer = RMSPropTrainer(learning_rate=0.005, epochs=1, batch_size=5, shuffle=False, verbose=False)
-    losses = trainer.fit(clf, X, y)
-    assert len(losses) == 1 and np.isfinite(losses[0])
+    history = trainer.fit(clf, X, y)
+    assert len(history["train"]) == 1 and np.isfinite(history["train"][0])
 
 
 def test_rmsprop_accepts_1d_target_and_reshapes():
@@ -63,8 +64,8 @@ def test_rmsprop_accepts_1d_target_and_reshapes():
     y = 0.6 * X[:, 0] + 0.3 * X[:, 1]
     model = _make_regression_model(n_inputs=2)
     trainer = RMSPropTrainer(learning_rate=0.01, epochs=1, batch_size=None, shuffle=False, verbose=False)
-    losses = trainer.fit(model, X, y)
-    assert len(losses) == 1 and np.isfinite(losses[0])
+    history = trainer.fit(model, X, y)
+    assert len(history["train"]) == 1 and np.isfinite(history["train"][0])
 
 
 def test_rmsprop_classifier_with_cross_entropy_loss():
@@ -80,9 +81,9 @@ def test_rmsprop_classifier_with_cross_entropy_loss():
         verbose=False,
         loss="cross_entropy",
     )
-    losses = trainer.fit(clf, X, y)
-    assert len(losses) == 2
-    assert all(np.isfinite(loss) for loss in losses)
+    history = trainer.fit(clf, X, y)
+    assert len(history["train"]) == 2
+    assert all(np.isfinite(loss) for loss in history["train"])
 
 
 def test_rmsprop_fit_raises_when_target_rows_mismatch():
@@ -103,16 +104,17 @@ def test_rmsprop_train_step_lazy_initializes_loss():
     model = _make_regression_model(n_inputs=2)
     trainer = RMSPropTrainer(learning_rate=0.01, epochs=1, batch_size=4, shuffle=False, verbose=False)
 
-    state = trainer.init_state(model, X, y)
-    assert not hasattr(trainer, "_loss_fn")
+    X_prepared, y_prepared = trainer._prepare_training_data(model, X, y)
+    assert hasattr(trainer, "_loss_fn")
+    state = trainer.init_state(model, X_prepared, y_prepared)
 
-    loss, updated_state = trainer.train_step(model, X[:4], y[:4], state)
+    loss, updated_state = trainer.train_step(model, X_prepared[:4], y_prepared[:4], state)
 
     assert updated_state is state
     assert np.isfinite(loss)
     assert hasattr(trainer, "_loss_fn")
 
     # Second call should reuse cached loss without re-resolving
-    loss2, state_again = trainer.train_step(model, X[4:8], y[4:8], state)
+    loss2, state_again = trainer.train_step(model, X_prepared[4:8], y_prepared[4:8], state)
     assert state_again is state
     assert np.isfinite(loss2)

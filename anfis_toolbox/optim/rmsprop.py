@@ -52,47 +52,25 @@ class RMSPropTrainer(BaseTrainer):
     loss: LossFunction | str | None = None
     _loss_fn: LossFunction = field(init=False, repr=False)
 
-    def fit(self, model, X: np.ndarray, y: np.ndarray) -> list[float]:
-        """Train the model using RMSProp optimization.
-
-        Steps per update:
-        1) forward -> compute MSE loss
-        2) backward -> obtain gradients via ``model.get_gradients()``
-        3) update parameters with RMSProp rule using per-parameter caches
-        """
+    def _prepare_training_data(self, model, X: np.ndarray, y: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         self._loss_fn = resolve_loss(self.loss)
-        X = np.asarray(X, dtype=float)
-        y_prepared = self._loss_fn.prepare_targets(y, model=model)
-        if y_prepared.shape[0] != X.shape[0]:
+        X_arr = np.asarray(X, dtype=float)
+        y_arr = self._loss_fn.prepare_targets(y, model=model)
+        if y_arr.shape[0] != X_arr.shape[0]:
             raise ValueError("Target array must have same number of rows as X")
+        return X_arr, y_arr
 
-        n_samples = X.shape[0]
-
-        # Parameter structures and RMSProp caches
-        params = model.get_parameters()
-        cache = _zeros_like_structure(params)
-
-        losses: list[float] = []
-        for _ in range(self.epochs):
-            if self.batch_size is None:
-                # Full-batch RMSProp step
-                loss, grads = self._compute_loss_and_grads(model, X, y_prepared)
-                self._apply_rmsprop_step(model, params, cache, grads)
-                losses.append(loss)
-            else:
-                indices = np.arange(n_samples)
-                if self.shuffle:
-                    np.random.shuffle(indices)
-                batch_losses: list[float] = []
-                for start in range(0, n_samples, self.batch_size):
-                    end = start + self.batch_size
-                    batch_idx = indices[start:end]
-                    batch_loss, grads_b = self._compute_loss_and_grads(model, X[batch_idx], y_prepared[batch_idx])
-                    self._apply_rmsprop_step(model, params, cache, grads_b)
-                    batch_losses.append(batch_loss)
-                losses.append(float(np.mean(batch_losses)))
-
-        return losses
+    def _prepare_validation_data(
+        self,
+        model,
+        X_val: np.ndarray,
+        y_val: np.ndarray,
+    ) -> tuple[np.ndarray, np.ndarray]:
+        X_arr = np.asarray(X_val, dtype=float)
+        y_arr = self._loss_fn.prepare_targets(y_val, model=model)
+        if y_arr.shape[0] != X_arr.shape[0]:
+            raise ValueError("Validation targets must match input rows")
+        return X_arr, y_arr
 
     def init_state(self, model, X: np.ndarray, y: np.ndarray):
         """Initialize RMSProp caches for consequents and membership scalars."""
@@ -101,9 +79,7 @@ class RMSPropTrainer(BaseTrainer):
 
     def train_step(self, model, Xb: np.ndarray, yb: np.ndarray, state):
         """One RMSProp step on a batch; returns (loss, updated_state)."""
-        loss_fn = self._ensure_loss_fn()
-        yb_prepared = loss_fn.prepare_targets(yb, model=model)
-        loss, grads = self._compute_loss_and_grads(model, Xb, yb_prepared)
+        loss, grads = self._compute_loss_and_grads(model, Xb, yb)
         self._apply_rmsprop_step(model, state["params"], state["cache"], grads)
         return loss, state
 
@@ -150,6 +126,11 @@ class RMSPropTrainer(BaseTrainer):
 
         # Push updated params back into the model
         model.set_parameters(params)
+
+    def compute_loss(self, model, X: np.ndarray, y: np.ndarray) -> float:
+        """Return the current loss value for ``(X, y)`` without modifying state."""
+        preds = model.forward(X)
+        return float(self._loss_fn.loss(y, preds))
 
     def _ensure_loss_fn(self) -> LossFunction:
         if not hasattr(self, "_loss_fn"):

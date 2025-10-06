@@ -152,8 +152,9 @@ def test_backprop_updates_params_via_trainer(sample_anfis):
     y = np.array([[1.0], [2.0]])
     params_initial = sample_anfis.get_parameters()
     trainer = SGDTrainer(learning_rate=0.1, epochs=1, verbose=False)
-    losses = trainer.fit(sample_anfis, x, y)
-    assert len(losses) == 1 and np.isfinite(losses[0]) and losses[0] >= 0
+    history = trainer.fit(sample_anfis, x, y)
+    train_losses = history["train"]
+    assert len(train_losses) == 1 and np.isfinite(train_losses[0]) and train_losses[0] >= 0
     params_after = sample_anfis.get_parameters()
     param_changed = not np.allclose(params_initial["consequent"], params_after["consequent"])
     if not param_changed:
@@ -176,7 +177,8 @@ def test_anfis_fit(sample_anfis):
     y = np.sum(x, axis=1, keepdims=True) + 0.1 * np.random.randn(20, 1)  # y = x1 + x2 + noise
 
     # Train the model
-    losses = sample_anfis.fit(x, y, epochs=10, learning_rate=0.01, verbose=False)
+    history = sample_anfis.fit(x, y, epochs=10, learning_rate=0.01, verbose=False)
+    losses = history["train"]
 
     # Check that we got the right number of loss values
     assert len(losses) == 10
@@ -198,19 +200,19 @@ def test_trainer_api_sgd_and_hybrid_and_fit_compat():
     model1 = _make_simple_model()
     # Use trainer argument on fit (sklearn-style entry)
     sgd = SGDTrainer(learning_rate=0.05, epochs=5, batch_size=None, shuffle=False, verbose=False)
-    losses1 = model1.fit(X, y, trainer=sgd)
-    assert len(losses1) == 5
+    history1 = model1.fit(X, y, trainer=sgd)
+    assert len(history1["train"]) == 5
 
     model2 = _make_simple_model()
     # Explicit HybridTrainer
     hyb = HybridTrainer(learning_rate=0.1, epochs=5, verbose=False)
-    losses2 = hyb.fit(model2, X, y)
-    assert len(losses2) == 5
+    history2 = hyb.fit(model2, X, y)
+    assert len(history2["train"]) == 5
 
     # Backward-compatible path still works (no trainer param)
     model3 = _make_simple_model()
-    losses3 = model3.fit(X, y, epochs=5, learning_rate=0.05, verbose=False)
-    assert len(losses3) == 5
+    history3 = model3.fit(X, y, epochs=5, learning_rate=0.05, verbose=False)
+    assert len(history3["train"]) == 5
 
 
 def test_hybrid_trainer_accepts_1d_y_and_reshapes():
@@ -221,8 +223,8 @@ def test_hybrid_trainer_accepts_1d_y_and_reshapes():
 
     model = _make_simple_model()
     trainer = HybridTrainer(learning_rate=0.05, epochs=3, verbose=False)
-    losses = trainer.fit(model, X, y)
-    assert len(losses) == 3
+    history = trainer.fit(model, X, y)
+    assert len(history["train"]) == 3
 
 
 def test_sgd_trainer_minibatch_no_shuffle_and_shuffle_and_1d_y():
@@ -232,13 +234,13 @@ def test_sgd_trainer_minibatch_no_shuffle_and_shuffle_and_1d_y():
     # No shuffle
     model_ns = _make_simple_model()
     sgd_ns = SGDTrainer(learning_rate=0.05, epochs=4, batch_size=5, shuffle=False, verbose=False)
-    losses_ns = sgd_ns.fit(model_ns, X, y)
-    assert len(losses_ns) == 4
+    history_ns = sgd_ns.fit(model_ns, X, y)
+    assert len(history_ns["train"]) == 4
     # With shuffle
     model_s = _make_simple_model()
     sgd_s = SGDTrainer(learning_rate=0.05, epochs=4, batch_size=6, shuffle=True, verbose=False)
-    losses_s = sgd_s.fit(model_s, X, y)
-    assert len(losses_s) == 4
+    history_s = sgd_s.fit(model_s, X, y)
+    assert len(history_s["train"]) == 4
 
 
 def test_anfis_nonlinear_function():
@@ -254,7 +256,7 @@ def test_anfis_nonlinear_function():
     y = x**2
 
     # Train the model
-    _losses = model.fit(x, y, epochs=100, learning_rate=0.1, verbose=False)
+    _history = model.fit(x, y, epochs=100, learning_rate=0.1, verbose=False)
 
     # Test prediction accuracy
     x_test = np.array([[-1.5], [0.0], [1.5]])
@@ -299,7 +301,8 @@ def test_anfis_edge_cases():
     # Use SGDTrainer single-epoch backprop to simulate one step
     from anfis_toolbox.optim import SGDTrainer
 
-    loss = SGDTrainer(learning_rate=0.1, epochs=1, verbose=False).fit(model, x, y)[0]
+    history = SGDTrainer(learning_rate=0.1, epochs=1, verbose=False).fit(model, x, y)
+    loss = history["train"][0]
     assert np.isfinite(loss)
 
 
@@ -318,11 +321,13 @@ def test_anfis_hybrid_algorithm():
     y = np.sum(x, axis=1, keepdims=True) + 0.1 * np.random.randn(20, 1)
 
     # Ensure a single-epoch hybrid fit works (via default HybridTrainer)
-    losses_once = model.fit(x, y, epochs=1, learning_rate=0.1, verbose=False)
+    history_once = model.fit(x, y, epochs=1, learning_rate=0.1, verbose=False)
+    losses_once = history_once["train"]
     assert len(losses_once) == 1 and np.isfinite(losses_once[0]) and losses_once[0] >= 0
 
     # Test hybrid training over multiple epochs via default fit (HybridTrainer)
-    losses = model.fit(x, y, epochs=10, learning_rate=0.1, verbose=False)
+    history = model.fit(x, y, epochs=10, learning_rate=0.1, verbose=False)
+    losses = history["train"]
 
     assert len(losses) == 10
     assert all(np.isfinite(loss) and loss >= 0 for loss in losses)
@@ -344,8 +349,10 @@ def test_anfis_hybrid_vs_backprop_comparison():
     y = x**2
 
     # Train both models
-    losses_hybrid = model_hybrid.fit(x, y, epochs=20, learning_rate=0.1, verbose=False)
-    losses_backprop = model_backprop.fit(x, y, epochs=20, learning_rate=0.1, verbose=False)
+    history_hybrid = model_hybrid.fit(x, y, epochs=20, learning_rate=0.1, verbose=False)
+    history_backprop = model_backprop.fit(x, y, epochs=20, learning_rate=0.1, verbose=False)
+    losses_hybrid = history_hybrid["train"]
+    losses_backprop = history_backprop["train"]
 
     # Both should converge
     assert losses_hybrid[-1] < losses_hybrid[0]
@@ -360,6 +367,9 @@ def test_anfis_hybrid_vs_backprop_comparison():
     assert y_pred_backprop.shape == (2, 1)
     assert np.all(np.isfinite(y_pred_hybrid))
     assert np.all(np.isfinite(y_pred_backprop))
+
+
+def test_logging_configuration():
     """Test ANFIS logging configuration."""
     from anfis_toolbox import disable_training_logs, enable_training_logs, setup_logging
 
@@ -452,7 +462,8 @@ def test_fit_logging_branch_and_hybrid_logging(monkeypatch, caplog):
 
     # Trigger logging with epochs=1 (always logs at least once)
     caplog.set_level("INFO")
-    losses = model.fit(X, y, epochs=1, learning_rate=0.01, verbose=True)
+    history = model.fit(X, y, epochs=1, learning_rate=0.01, verbose=True)
+    losses = history["train"]
     assert len(losses) == 1
 
     # For hybrid, force the pseudo-inverse fallback to exercise the except path
@@ -460,7 +471,8 @@ def test_fit_logging_branch_and_hybrid_logging(monkeypatch, caplog):
         raise np.linalg.LinAlgError
 
     monkeypatch.setattr(np.linalg, "solve", raise_lin_alg_error)
-    hyb_losses = model.fit(X, y, epochs=1, learning_rate=0.01, verbose=True)
+    hyb_history = model.fit(X, y, epochs=1, learning_rate=0.01, verbose=True)
+    hyb_losses = hyb_history["train"]
     assert len(hyb_losses) == 1
 
 
@@ -539,6 +551,7 @@ def test_hybrid_lsm_fallback_runs_with_pseudoinverse(monkeypatch):
     monkeypatch.setattr(np.linalg, "solve", _raise)
 
     # One epoch fit triggers the hybrid fallback path inside HybridTrainer
-    losses = model.fit(X, y, epochs=1, learning_rate=0.01, verbose=False)
+    history = model.fit(X, y, epochs=1, learning_rate=0.01, verbose=False)
+    losses = history["train"]
     # Should complete without error and return a finite loss
     assert len(losses) == 1 and np.isfinite(losses[0])

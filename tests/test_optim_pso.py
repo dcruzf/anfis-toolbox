@@ -33,9 +33,10 @@ def test_pso_trains_and_updates_regression_params():
     model = _make_regression_model(n_inputs=2)
     params_before = model.get_parameters()
     trainer = PSOTrainer(swarm_size=10, epochs=3, random_state=0, init_sigma=0.05, verbose=False)
-    losses = trainer.fit(model, X, y)
-    assert len(losses) == 3
-    assert all(np.isfinite(loss) and loss >= 0 for loss in losses)
+    history = trainer.fit(model, X, y)
+    train_losses = history["train"]
+    assert len(train_losses) == 3
+    assert all(np.isfinite(loss) and loss >= 0 for loss in train_losses)
     params_after = model.get_parameters()
     assert not np.allclose(params_before["consequent"], params_after["consequent"])  # updated
 
@@ -47,11 +48,13 @@ def test_pso_train_step_api_progression():
     model = _make_regression_model(n_inputs=2)
     trainer = PSOTrainer(swarm_size=8, epochs=1, random_state=1, init_sigma=0.05, verbose=False)
     params_before = _flatten_model_params(model)
-    state = trainer.init_state(model, X, y)
+    X_prepared, y_prepared = trainer._prepare_training_data(model, X, y)
+    assert hasattr(trainer, "_loss_fn")
+    state = trainer.init_state(model, X_prepared, y_prepared)
     # init_state should not mutate the caller's model parameters
     np.testing.assert_allclose(_flatten_model_params(model), params_before)
     best0 = state["gbest_val"]
-    loss1, state = trainer.train_step(model, X[:10], y[:10], state)
+    loss1, state = trainer.train_step(model, X_prepared[:10], y_prepared[:10], state)
     assert np.isfinite(loss1)
     # Global best should be finite and typically non-increasing after a step
     assert state["gbest_val"] <= best0 or np.isfinite(state["gbest_val"])  # not strict monotonic in stochastic PSO
@@ -68,7 +71,8 @@ def test_pso_init_state_preserves_model_parameters():
     model = _make_regression_model(n_inputs=2)
     params_before = _flatten_model_params(model)
     trainer = PSOTrainer(swarm_size=6, epochs=1, random_state=5, init_sigma=0.05, verbose=False)
-    trainer.init_state(model, X, y)
+    X_prepared, y_prepared = trainer._prepare_training_data(model, X, y)
+    trainer.init_state(model, X_prepared, y_prepared)
     params_after = _flatten_model_params(model)
     np.testing.assert_allclose(params_before, params_after)
 
@@ -79,8 +83,9 @@ def test_pso_runs_with_classifier_logits():
     y = (X[:, 0] > 0).astype(float).reshape(-1, 1)
     clf = _make_classifier(n_inputs=1, n_classes=2)
     trainer = PSOTrainer(swarm_size=6, epochs=2, random_state=2, init_sigma=0.05, verbose=False)
-    losses = trainer.fit(clf, X, y)
-    assert len(losses) == 2 and np.isfinite(losses[0]) and np.isfinite(losses[1])
+    history = trainer.fit(clf, X, y)
+    train_losses = history["train"]
+    assert len(train_losses) == 2 and np.isfinite(train_losses[0]) and np.isfinite(train_losses[1])
 
 
 def test_pso_flatten_handles_no_membership():
@@ -109,8 +114,8 @@ def test_pso_fit_applies_velocity_and_position_clamps():
         clamp_position=(-0.1, 0.1),
         verbose=False,
     )
-    losses = trainer.fit(model, X, y)  # y is 1D to exercise reshape branch as well
-    assert len(losses) == 1 and np.isfinite(losses[0])
+    history = trainer.fit(model, X, y)  # y is 1D to exercise reshape branch as well
+    assert len(history["train"]) == 1 and np.isfinite(history["train"][0])
 
 
 def test_pso_train_step_with_clamps_and_no_improvement_path():
@@ -132,9 +137,10 @@ def test_pso_train_step_with_clamps_and_no_improvement_path():
         clamp_position=(-1e9, 1e9),
         verbose=False,
     )
-    state = trainer.init_state(model, X, y)
+    X_prepared, y_prepared = trainer._prepare_training_data(model, X, y)
+    state = trainer.init_state(model, X_prepared, y_prepared)
     prev_pbest = state["pbest_val"].copy()
-    loss, state = trainer.train_step(model, X, y, state)
+    loss, state = trainer.train_step(model, X_prepared, y_prepared, state)
     # No movement implies no improvement; bests stay the same, loss finite
     assert np.isfinite(loss)
     assert np.allclose(state["pbest_val"], prev_pbest)
@@ -153,9 +159,9 @@ def test_pso_classifier_with_cross_entropy_loss():
         verbose=False,
         loss="cross_entropy",
     )
-    losses = trainer.fit(clf, X, y)
-    assert len(losses) == 2
-    assert all(np.isfinite(loss) for loss in losses)
+    history = trainer.fit(clf, X, y)
+    assert len(history["train"]) == 2
+    assert all(np.isfinite(loss) for loss in history["train"])
 
 
 def test_pso_fit_raises_when_target_rows_mismatch():
