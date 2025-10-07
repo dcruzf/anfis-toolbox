@@ -1,4 +1,5 @@
 import inspect
+from typing import Any
 
 import numpy as np
 import pytest
@@ -275,6 +276,55 @@ def test_custom_trainer_class_triggers_self_parameter_handling():
     reg.fit(X, y)
     assert isinstance(reg.optimizer_, MinimalTrainer)
     assert reg.optimizer_.scale == 2.0
+
+
+def test_regressor_fit_forwards_validation_and_extra_params():
+    X, y = _generate_dataset(seed=34)
+    X_val, y_val = X[:10], y[:10]
+
+    class RecordingTrainer(BaseTrainer):
+        def __init__(self):
+            self.epochs = 4
+            self.verbose = False
+            self.batch_size = None
+            self.received_kwargs: dict[str, Any] | None = None
+
+        def fit(self, model, X_fit, y_fit, **kwargs):
+            self.received_kwargs = dict(kwargs)
+            kwargs.pop("dummy_flag", None)
+            return super().fit(model, X_fit, y_fit, **kwargs)
+
+        def init_state(self, model, X_fit, y_fit):
+            return None
+
+        def train_step(self, model, X_batch, y_batch, state):
+            return 0.0, state
+
+        def compute_loss(self, model, X_eval, y_eval):
+            return 0.123
+
+    trainer = RecordingTrainer()
+    reg = ANFISRegressor(optimizer=trainer)
+
+    history = reg.fit(
+        X,
+        y,
+        validation_data=(X_val, y_val),
+        validation_frequency=2,
+        dummy_flag=True,
+    ).training_history_
+
+    fitted_trainer = reg.optimizer_
+    assert isinstance(fitted_trainer, RecordingTrainer)
+    assert fitted_trainer.received_kwargs is not None
+    assert fitted_trainer.received_kwargs["validation_data"] == (X_val, y_val)
+    assert fitted_trainer.received_kwargs["validation_frequency"] == 2
+    assert fitted_trainer.received_kwargs["dummy_flag"] is True
+    assert history is not None
+    assert "val" in history
+    assert len(history["val"]) == fitted_trainer.epochs
+    # Every second epoch should record the computed loss, others None
+    assert [history["val"][i] for i in range(fitted_trainer.epochs)] == [None, 0.123, None, 0.123]
 
 
 def test_regressor_collect_trainer_params_skips_self(monkeypatch):

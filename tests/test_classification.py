@@ -1,4 +1,5 @@
 import inspect
+from typing import Any
 
 import numpy as np
 import pytest
@@ -484,6 +485,55 @@ def test_anfis_classifier_custom_trainer_instance_overrides():
     assert clf.training_history_ is not None
     assert isinstance(clf.training_history_, dict)
     assert len(clf.training_history_["train"]) == clf.optimizer_.epochs
+
+
+def test_anfis_classifier_fit_accepts_validation_and_extra_params():
+    X, y = _generate_classification_data(seed=41)
+    y_one_hot = np.eye(2)[y]
+    X_val, y_val = X[:12], y_one_hot[:12]
+
+    class RecordingTrainer(BaseTrainer):
+        def __init__(self):
+            self.epochs = 3
+            self.verbose = False
+            self.batch_size = None
+            self.received_kwargs: dict[str, Any] | None = None
+
+        def fit(self, model, X_fit, y_fit, **kwargs):
+            self.received_kwargs = dict(kwargs)
+            kwargs.pop("track_logits", None)
+            return super().fit(model, X_fit, y_fit, **kwargs)
+
+        def init_state(self, model, X_fit, y_fit):
+            return None
+
+        def train_step(self, model, X_batch, y_batch, state):
+            return 0.0, state
+
+        def compute_loss(self, model, X_eval, y_eval):
+            return 0.456
+
+    trainer = RecordingTrainer()
+    clf = ANFISClassifier(n_classes=2, optimizer=trainer)
+
+    history = clf.fit(
+        X,
+        y_one_hot,
+        validation_data=(X_val, y_val),
+        validation_frequency=2,
+        track_logits=True,
+    ).training_history_
+
+    fitted_trainer = clf.optimizer_
+    assert isinstance(fitted_trainer, RecordingTrainer)
+    assert fitted_trainer.received_kwargs is not None
+    assert fitted_trainer.received_kwargs["validation_data"] == (X_val, y_val)
+    assert fitted_trainer.received_kwargs["validation_frequency"] == 2
+    assert fitted_trainer.received_kwargs["track_logits"] is True
+    assert history is not None
+    assert "val" in history
+    assert len(history["val"]) == fitted_trainer.epochs
+    assert history["val"] == [None, 0.456, None]
 
 
 def test_anfis_classifier_invalid_optimizer_string():

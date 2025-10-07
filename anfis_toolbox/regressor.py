@@ -140,8 +140,28 @@ class ANFISRegressor(BaseEstimatorLike, FittedMixin, RegressorMixinLike):
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
-    def fit(self, X, y):
-        """Fit the ANFIS regressor on data."""
+    def fit(
+        self,
+        X,
+        y,
+        *,
+        validation_data: tuple[np.ndarray, np.ndarray] | None = None,
+        validation_frequency: int = 1,
+        **fit_params: Any,
+    ):
+        """Fit the ANFIS regressor on data.
+
+        Parameters
+        ----------
+        X, y : array-like
+            Training data and targets.
+        validation_data : tuple[np.ndarray, np.ndarray], optional
+            Optional validation split forwarded to the underlying trainer.
+        validation_frequency : int, default=1
+            Evaluate validation loss every N epochs when validation data is provided.
+        **fit_params : Any
+            Additional keyword arguments forwarded to the trainer ``fit`` method.
+        """
         X_arr, feature_names = _ensure_2d_array(X)
         y_vec = _ensure_vector(y)
         if X_arr.shape[0] != y_vec.shape[0]:
@@ -154,7 +174,13 @@ class ANFISRegressor(BaseEstimatorLike, FittedMixin, RegressorMixinLike):
         self.model_ = self._build_model(X_arr, feature_names)
         trainer = self._instantiate_trainer()
         self.optimizer_ = trainer
-        history = trainer.fit(self.model_, X_arr, y_vec)
+        trainer_kwargs: dict[str, Any] = dict(fit_params)
+        if validation_data is not None:
+            trainer_kwargs.setdefault("validation_data", validation_data)
+        if validation_data is not None or validation_frequency != 1:
+            trainer_kwargs.setdefault("validation_frequency", validation_frequency)
+
+        history = trainer.fit(self.model_, X_arr, y_vec, **trainer_kwargs)
         if not isinstance(history, dict):
             raise TypeError("Trainer.fit must return a TrainingHistory dictionary")
         self.training_history_ = history
