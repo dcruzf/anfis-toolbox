@@ -777,7 +777,6 @@ def quick_evaluate(
             print(f"Median Absolute Error:        {metrics['median_absolute_error']:.6f}")  # noqa: T201
             print(f"R-squared (R²):               {metrics['r2']:.4f}")  # noqa: T201
             print(f"Explained Variance:           {metrics['explained_variance']:.4f}")  # noqa: T201
-            print(f"Mean Abs. Percentage Error:   {metrics['mape']:.2f}%")  # noqa: T201
             print(f"Symmetric MAPE:               {metrics['smape']:.2f}%")  # noqa: T201
             print(f"Max Error:                    {metrics['max_error']:.6f}")  # noqa: T201
             print(f"Std. of Error:                {metrics['std_error']:.6f}")  # noqa: T201

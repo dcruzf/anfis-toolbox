@@ -368,7 +368,6 @@ def test_quick_evaluate_prints_full_summary(capsys):
         "Median Absolute Error:",
         "R-squared (R²):",
         "Explained Variance:",
-        "Mean Abs. Percentage Error:",
         "Symmetric MAPE:",
         "Max Error:",
         "Std. of Error:",
