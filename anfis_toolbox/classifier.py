@@ -249,6 +249,13 @@ class ANFISClassifier(BaseEstimatorLike, FittedMixin, ClassifierMixinLike):
                 print(f"  {name:>8}: {value:.6f}")  # noqa: T201
         return metrics if return_dict else None
 
+    def get_rules(self) -> tuple[tuple[int, ...], ...]:
+        """Return the fuzzy rule index combinations of the fitted model."""
+        check_is_fitted(self, attributes=["rules_"])
+        if not self.rules_:
+            return ()
+        return tuple(tuple(rule) for rule in self.rules_)
+
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------

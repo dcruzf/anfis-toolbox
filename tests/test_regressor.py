@@ -241,6 +241,21 @@ def test_regressor_propagates_explicit_rules():
     assert captured["rules"] == expected
 
 
+def test_regressor_get_rules_requires_fit_and_returns_tuples():
+    X, y = _generate_dataset(seed=6)
+    reg = ANFISRegressor(n_mfs=2, optimizer="hybrid", epochs=1)
+
+    with pytest.raises(NotFittedError):
+        reg.get_rules()
+
+    reg.fit(X, y)
+    rules = reg.get_rules()
+
+    assert isinstance(rules, tuple)
+    assert all(isinstance(rule, tuple) for rule in rules)
+    assert tuple(reg.rules_) == rules
+
+
 def test_inputs_config_mfs_alias_applies_memberships():
     X, y = _generate_dataset()
     mfs = [GaussianMF(-1.0, 0.4), GaussianMF(0.0, 0.4), GaussianMF(1.0, 0.4)]

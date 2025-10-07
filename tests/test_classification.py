@@ -464,6 +464,21 @@ def test_anfis_classifier_propagates_explicit_rules():
     assert captured["rules"] == expected
 
 
+def test_anfis_classifier_get_rules_requires_fit_and_returns_tuples():
+    X, y = _generate_classification_data(seed=19)
+    clf = ANFISClassifier(n_classes=2, n_mfs=2, optimizer="sgd", epochs=1, verbose=False)
+
+    with pytest.raises(NotFittedError):
+        clf.get_rules()
+
+    clf.fit(X, y)
+    rules = clf.get_rules()
+
+    assert isinstance(rules, tuple)
+    assert all(isinstance(rule, tuple) for rule in rules)
+    assert tuple(clf.rules_) == rules
+
+
 def test_anfis_classifier_custom_trainer_instance_overrides():
     X, y = _generate_classification_data(seed=3)
     base_trainer = SGDTrainer(epochs=1, learning_rate=0.01, verbose=True)
