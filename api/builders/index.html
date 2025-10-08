@@ -16,11 +16,11 @@
         <link rel="prev" href="../membership-functions/">
       
       
-        <link rel="next" href="../models/">
+        <link rel="next" href="../regressor/">
       
       
       <link rel="icon" href="../../assets/icon.svg">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.20">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.21">
     
     
       
@@ -28,7 +28,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.e53b48f4.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.2a3383ac.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
@@ -221,7 +221,7 @@
         <a href="https://github.com/dcruzf/anfis-toolbox" title="Go to repository" class="md-source" data-md-component="source">
   <div class="md-source__icon md-icon">
     
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.0.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.0.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
   </div>
   <div class="md-source__repository">
     dcruzf/anfis-toolbox
@@ -386,7 +386,7 @@
       <a href="https://github.com/dcruzf/anfis-toolbox" title="Go to repository" class="md-source" data-md-component="source">
   <div class="md-source__icon md-icon">
     
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.0.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.0.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
   </div>
   <div class="md-source__repository">
     dcruzf/anfis-toolbox
@@ -935,8 +935,6 @@
       
         
       
-        
-      
     
     
     
@@ -1003,35 +1001,12 @@
   
   
     <li class="md-nav__item">
-      <a href="../../examples/intermediate_example/" class="md-nav__link">
+      <a href="../../examples/modeling/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
-    Basic: Exploring QuickANFIS Options
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../examples/advanced_example/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    Advanced ANFIS Example
+    Modeling a Two-Input Nonlinear Function
     
   </span>
   
@@ -1062,6 +1037,14 @@
       
         
           
+        
+      
+        
+      
+        
+      
+        
+      
         
       
         
@@ -1206,48 +1189,6 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#anfis_toolbox.QuickANFIS" class="md-nav__link">
-    <span class="md-ellipsis">
-      QuickANFIS
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="QuickANFIS">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#anfis_toolbox.QuickANFIS.for_classification" class="md-nav__link">
-    <span class="md-ellipsis">
-      for_classification
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#anfis_toolbox.QuickANFIS.for_function_approximation" class="md-nav__link">
-    <span class="md-ellipsis">
-      for_function_approximation
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#anfis_toolbox.QuickANFIS.for_regression" class="md-nav__link">
-    <span class="md-ellipsis">
-      for_regression
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#anfis_toolbox.ANFISBuilder" class="md-nav__link">
     <span class="md-ellipsis">
       ANFISBuilder
@@ -1284,6 +1225,15 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#anfis_toolbox.ANFISBuilder.set_rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      set_rules
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1293,6 +1243,52 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../regressor/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Regressor
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../classifier/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Classifier
+    
+  </span>
+  
+
+      </a>
     </li>
   
 
@@ -1357,6 +1353,52 @@
   
   <span class="md-ellipsis">
     Clustering
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../config/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Configuration
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../logging/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Logging
     
   </span>
   
@@ -1447,48 +1489,6 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#anfis_toolbox.QuickANFIS" class="md-nav__link">
-    <span class="md-ellipsis">
-      QuickANFIS
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="QuickANFIS">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#anfis_toolbox.QuickANFIS.for_classification" class="md-nav__link">
-    <span class="md-ellipsis">
-      for_classification
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#anfis_toolbox.QuickANFIS.for_function_approximation" class="md-nav__link">
-    <span class="md-ellipsis">
-      for_function_approximation
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#anfis_toolbox.QuickANFIS.for_regression" class="md-nav__link">
-    <span class="md-ellipsis">
-      for_regression
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#anfis_toolbox.ANFISBuilder" class="md-nav__link">
     <span class="md-ellipsis">
       ANFISBuilder
@@ -1520,6 +1520,15 @@
   <a href="#anfis_toolbox.ANFISBuilder.build" class="md-nav__link">
     <span class="md-ellipsis">
       build
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#anfis_toolbox.ANFISBuilder.set_rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      set_rules
     </span>
   </a>
   
@@ -1564,327 +1573,6 @@
 
 <h1 id="builders">Builders<a class="headerlink" href="#builders" title="Permanent link">&para;</a></h1>
 
-
-<div class="doc doc-object doc-class">
-
-
-
-<h2 id="anfis_toolbox.QuickANFIS" class="doc doc-heading">
-            <span class="doc doc-object-name doc-class-name">anfis_toolbox.QuickANFIS</span>
-
-
-<a href="#anfis_toolbox.QuickANFIS" class="headerlink" title="Permanent link">&para;</a></h2>
-
-
-    <div class="doc doc-contents first">
-
-
-        <p>Quick setup class for common ANFIS use cases.</p>
-
-
-
-
-
-
-
-
-
-
-
-  <div class="doc doc-children">
-
-
-
-
-
-
-
-
-
-
-<div class="doc doc-object doc-function">
-
-
-<h3 id="anfis_toolbox.QuickANFIS.for_classification" class="doc doc-heading">
-            <span class="doc doc-object-name doc-function-name">for_classification</span>
-
-
-  <span class="doc doc-labels">
-      <small class="doc doc-label doc-label-staticmethod"><code>staticmethod</code></small>
-  </span>
-
-<a href="#anfis_toolbox.QuickANFIS.for_classification" class="headerlink" title="Permanent link">&para;</a></h3>
-<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">for_classification</span><span class="p">(</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n">X</span><span class="p">:</span> <span class="n">ndarray</span><span class="p">,</span>
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    <span class="n">n_classes</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="n">n_mfs</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span>
-</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="n">mf_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;gaussian&quot;</span><span class="p">,</span>
-</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    <span class="n">init</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;grid&quot;</span><span class="p">,</span>
-</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    <span class="n">random_state</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ANFISClassifier</span>
-</span></code></pre></div>
-
-    <div class="doc doc-contents ">
-
-        <p>Create ANFISClassifier configured from data.</p>
-<p>Mirrors for_regression but returns a classifier with n_classes.</p>
-
-
-    </div>
-
-</div>
-
-<div class="doc doc-object doc-function">
-
-
-<h3 id="anfis_toolbox.QuickANFIS.for_function_approximation" class="doc doc-heading">
-            <span class="doc doc-object-name doc-function-name">for_function_approximation</span>
-
-
-  <span class="doc doc-labels">
-      <small class="doc doc-label doc-label-staticmethod"><code>staticmethod</code></small>
-  </span>
-
-<a href="#anfis_toolbox.QuickANFIS.for_function_approximation" class="headerlink" title="Permanent link">&para;</a></h3>
-<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">for_function_approximation</span><span class="p">(</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n">input_ranges</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]],</span> <span class="n">n_mfs</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span>
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ANFIS</span>
-</span></code></pre></div>
-
-    <div class="doc doc-contents ">
-
-        <p>Create ANFIS model for function approximation.</p>
-
-
-<p><span class="doc-section-title">Parameters:</span></p>
-    <table>
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>Type</th>
-          <th>Description</th>
-          <th>Default</th>
-        </tr>
-      </thead>
-      <tbody>
-          <tr class="doc-section-item">
-            <td>
-                <code>input_ranges</code>
-            </td>
-            <td>
-                  <code><span title="list">list</span>[<span title="tuple">tuple</span>[<span title="float">float</span>, <span title="float">float</span>]]</code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>List of (min, max) tuples for each input dimension</p>
-              </div>
-            </td>
-            <td>
-                <em>required</em>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
-                <code>n_mfs</code>
-            </td>
-            <td>
-                  <code><span title="int">int</span></code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Number of membership functions per input</p>
-              </div>
-            </td>
-            <td>
-                  <code>5</code>
-            </td>
-          </tr>
-      </tbody>
-    </table>
-
-
-    <p><span class="doc-section-title">Returns:</span></p>
-    <table>
-      <thead>
-        <tr>
-          <th>Type</th>
-          <th>Description</th>
-        </tr>
-      </thead>
-      <tbody>
-          <tr class="doc-section-item">
-            <td>
-                  <code><a class="autorefs autorefs-internal" title="&lt;span class=&quot;doc doc-object-name doc-class-name&quot;&gt;anfis_toolbox.model.ANFIS&lt;/span&gt;" href="../models/#anfis_toolbox.model.ANFIS">ANFIS</a></code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Configured ANFIS model</p>
-              </div>
-            </td>
-          </tr>
-      </tbody>
-    </table>
-
-
-    </div>
-
-</div>
-
-<div class="doc doc-object doc-function">
-
-
-<h3 id="anfis_toolbox.QuickANFIS.for_regression" class="doc doc-heading">
-            <span class="doc doc-object-name doc-function-name">for_regression</span>
-
-
-  <span class="doc doc-labels">
-      <small class="doc doc-label doc-label-staticmethod"><code>staticmethod</code></small>
-  </span>
-
-<a href="#anfis_toolbox.QuickANFIS.for_regression" class="headerlink" title="Permanent link">&para;</a></h3>
-<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">for_regression</span><span class="p">(</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n">X</span><span class="p">:</span> <span class="n">ndarray</span><span class="p">,</span>
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    <span class="n">n_mfs</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span>
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="n">mf_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;gaussian&quot;</span><span class="p">,</span>
-</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="n">init</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;grid&quot;</span><span class="p">,</span>
-</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    <span class="n">random_state</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ANFIS</span>
-</span></code></pre></div>
-
-    <div class="doc doc-contents ">
-
-        <p>Create ANFIS model automatically configured for regression data.</p>
-
-
-<p><span class="doc-section-title">Parameters:</span></p>
-    <table>
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>Type</th>
-          <th>Description</th>
-          <th>Default</th>
-        </tr>
-      </thead>
-      <tbody>
-          <tr class="doc-section-item">
-            <td>
-                <code>X</code>
-            </td>
-            <td>
-                  <code><span title="numpy.ndarray">ndarray</span></code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Input training data (n_samples, n_features)</p>
-              </div>
-            </td>
-            <td>
-                <em>required</em>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
-                <code>n_mfs</code>
-            </td>
-            <td>
-                  <code><span title="int">int</span></code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Number of membership functions per input</p>
-              </div>
-            </td>
-            <td>
-                  <code>3</code>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
-                <code>mf_type</code>
-            </td>
-            <td>
-                  <code><span title="str">str</span></code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Type of membership functions</p>
-              </div>
-            </td>
-            <td>
-                  <code>&#39;gaussian&#39;</code>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
-                <code>init</code>
-            </td>
-            <td>
-                  <code><span title="str">str</span></code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Initialization strategy per input: 'grid' (default) or 'fcm'.</p>
-              </div>
-            </td>
-            <td>
-                  <code>&#39;grid&#39;</code>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
-                <code>random_state</code>
-            </td>
-            <td>
-                  <code><span title="int">int</span> | None</code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Optional seed for deterministic FCM.</p>
-              </div>
-            </td>
-            <td>
-                  <code>None</code>
-            </td>
-          </tr>
-      </tbody>
-    </table>
-
-
-    <p><span class="doc-section-title">Returns:</span></p>
-    <table>
-      <thead>
-        <tr>
-          <th>Type</th>
-          <th>Description</th>
-        </tr>
-      </thead>
-      <tbody>
-          <tr class="doc-section-item">
-            <td>
-                  <code><a class="autorefs autorefs-internal" title="&lt;span class=&quot;doc doc-object-name doc-class-name&quot;&gt;anfis_toolbox.model.ANFIS&lt;/span&gt;" href="../models/#anfis_toolbox.model.ANFIS">ANFIS</a></code>
-            </td>
-            <td>
-              <div class="doc-md-description">
-                <p>Configured ANFIS model</p>
-              </div>
-            </td>
-          </tr>
-      </tbody>
-    </table>
-
-
-    </div>
-
-</div>
-
-
-
-  </div>
-
-    </div>
-
-</div>
 
 <div class="doc doc-object doc-class">
 
@@ -2281,6 +1969,84 @@ clusters from the data determine MF centers and widths (supports
 
 </div>
 
+<div class="doc doc-object doc-function">
+
+
+<h3 id="anfis_toolbox.ANFISBuilder.set_rules" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">set_rules</span>
+
+
+<a href="#anfis_toolbox.ANFISBuilder.set_rules" class="headerlink" title="Permanent link">&para;</a></h3>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">set_rules</span><span class="p">(</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n">rules</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">int</span><span class="p">]]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ANFISBuilder</span>
+</span></code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Define an explicit set of fuzzy rules to use when building the model.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>rules</code>
+            </td>
+            <td>
+                  <code><span title="collections.abc.Sequence">Sequence</span>[<span title="collections.abc.Sequence">Sequence</span>[<span title="int">int</span>]] | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Iterable of rules where each rule lists the membership index per input.
+<code>None</code> removes any previously configured custom rules and restores the
+default Cartesian-product behaviour.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="&lt;span class=&quot;doc doc-object-name doc-class-name&quot;&gt;anfis_toolbox.ANFISBuilder&lt;/span&gt; (&lt;code&gt;anfis_toolbox.builders.ANFISBuilder&lt;/code&gt;)" href="#anfis_toolbox.ANFISBuilder">ANFISBuilder</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Self for method chaining.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    </div>
+
+</div>
+
 
 
   </div>
@@ -2310,7 +2076,7 @@ clusters from the data determine MF centers and widths (supports
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-timeago" title="August 18, 2025 21:03:39 UTC"><span class="timeago" datetime="2025-08-18T21:03:39+00:00" locale="en"></span></span><span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="August 18, 2025 21:03:39 UTC">2025-08-18</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-timeago" title="September 30, 2025 19:28:13 UTC"><span class="timeago" datetime="2025-09-30T19:28:13+00:00" locale="en"></span></span><span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="September 30, 2025 19:28:13 UTC">2025-09-30</span>
   </span>
 
     
@@ -2372,13 +2138,13 @@ clusters from the data determine MF centers and widths (supports
         
         
           
-          <a href="../models/" class="md-footer__link md-footer__link--next" aria-label="Next: Models">
+          <a href="../regressor/" class="md-footer__link md-footer__link--next" aria-label="Next: Regressor">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Models
+                Regressor
               </div>
             </div>
             <div class="md-footer__button md-icon">
@@ -2417,7 +2183,7 @@ clusters from the data determine MF centers and widths (supports
       
     
     <a href="https://github.com/dcruzf/anfis-toolbox" target="_blank" rel="noopener" title="github.com" class="md-social__link">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.0.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.0.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
     </a>
   
     
@@ -2428,7 +2194,7 @@ clusters from the data determine MF centers and widths (supports
       
     
     <a href="https://pypi.org/project/anfis-toolbox/" target="_blank" rel="noopener" title="pypi.org" class="md-social__link">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.0.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.8 200.5c-7.7-30.9-22.3-54.2-53.4-54.2h-40.1v47.4c0 36.8-31.2 67.8-66.8 67.8H172.7c-29.2 0-53.4 25-53.4 54.3v101.8c0 29 25.2 46 53.4 54.3 33.8 9.9 66.3 11.7 106.8 0 26.9-7.8 53.4-23.5 53.4-54.3v-40.7H226.2v-13.6h160.2c31.1 0 42.6-21.7 53.4-54.2 11.2-33.5 10.7-65.7 0-108.6M286.2 444.7a20.4 20.4 0 1 1 0-40.7 20.4 20.4 0 1 1 0 40.7M167.8 248.1h106.8c29.7 0 53.4-24.5 53.4-54.3V91.9c0-29-24.4-50.7-53.4-55.6-35.8-5.9-74.7-5.6-106.8.1-45.2 8-53.4 24.7-53.4 55.6v40.7h106.9v13.6h-147c-31.1 0-58.3 18.7-66.8 54.2-9.8 40.7-10.2 66.1 0 108.6 7.6 31.6 25.7 54.2 56.8 54.2H101v-48.8c0-35.3 30.5-66.4 66.8-66.4m-6.6-183.4a20.4 20.4 0 1 1 0 40.8 20.4 20.4 0 1 1 0-40.8"/></svg>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.0.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.8 200.5c-7.7-30.9-22.3-54.2-53.4-54.2h-40.1v47.4c0 36.8-31.2 67.8-66.8 67.8H172.7c-29.2 0-53.4 25-53.4 54.3v101.8c0 29 25.2 46 53.4 54.3 33.8 9.9 66.3 11.7 106.8 0 26.9-7.8 53.4-23.5 53.4-54.3v-40.7H226.2v-13.6h160.2c31.1 0 42.6-21.7 53.4-54.2 11.2-33.5 10.7-65.7 0-108.6M286.2 444.7a20.4 20.4 0 1 1 0-40.7 20.4 20.4 0 1 1 0 40.7M167.8 248.1h106.8c29.7 0 53.4-24.5 53.4-54.3V91.9c0-29-24.4-50.7-53.4-55.6-35.8-5.9-74.7-5.6-106.8.1-45.2 8-53.4 24.7-53.4 55.6v40.7h106.9v13.6h-147c-31.1 0-58.3 18.7-66.8 54.2-9.8 40.7-10.2 66.1 0 108.6 7.6 31.6 25.7 54.2 56.8 54.2H101v-48.8c0-35.3 30.5-66.4 66.8-66.4m-6.6-183.4a20.4 20.4 0 1 1 0 40.8 20.4 20.4 0 1 1 0-40.8"/></svg>
     </a>
   
 </div>
