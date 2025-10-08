@@ -4,12 +4,19 @@ Complete reference documentation for all ANFIS Toolbox classes, functions, and m
 
 ## 🏗️ Core Architecture
 
-### Main Model Classes
+### Core Model Classes
 
 | Class | Purpose | Module |
 |-------|---------|--------|
 | **`ANFIS`** | Core ANFIS implementation for regression tasks | [models](models) |
 | **`ANFISClassifier`** | ANFIS for multi-class classification | [models](models) |
+
+### High-Level Estimators
+
+| Estimator | Purpose | Module |
+|-----------|---------|--------|
+| **`ANFISRegressor`** | Scikit-learn style regression interface | [regressor](regressor) |
+| **`ANFISClassifier`** | Scikit-learn style classification interface | [classifier](classifier) |
 
 ### Builder Classes
 
@@ -55,6 +62,7 @@ Complete set of 13 fuzzy membership function implementations:
 | Trainer | Method | Module |
 |---------|--------|--------|
 | **`HybridTrainer`** | Least squares + backpropagation (recommended) | [optim](optim) |
+| **`HybridAdamTrainer`** | Least squares + Adam with adaptive moments | [optim](optim) |
 | **`SGDTrainer`** | Stochastic gradient descent | [optim](optim) |
 | **`AdamTrainer`** | Adaptive moment estimation | [optim](optim) |
 | **`RMSPropTrainer`** | Root mean square propagation | [optim](optim) |
@@ -94,6 +102,8 @@ Comprehensive metrics for model evaluation:
 ### By Category
 
 - **[ANFIS Models](../models/anfis.md)** - High-level model documentation
+- **[Regressor](regressor)** - High-level regression estimator API
+- **[Classifier](classifier)** - High-level classification estimator API
 - **[Builders](builders)** - Model construction utilities
 - **[Membership Functions](membership-functions)** - All 13 MF implementations
 - **[Models](models)** - Core ANFIS and ANFISClassifier classes
@@ -101,6 +111,8 @@ Comprehensive metrics for model evaluation:
 - **[Clustering](clustering)** - FuzzyCMeans clustering
 - **[Losses](losses)** - Training loss functions and gradients
 - **[Metrics](metrics)** - Performance evaluation metrics
+- **[Configuration](config)** - Persisting setups and presets
+- **[Logging](logging)** - Training log helpers
 - **[Optimization](optim)** - Training algorithm implementations
 
 ## 🔍 Search and Navigation
@@ -111,12 +123,16 @@ Comprehensive metrics for model evaluation:
 |-------------|------------|
 | Create a simple model | `QuickANFIS` in [Builders](builders) |
 | Build custom architecture | `ANFISBuilder` in [Builders](builders) |
+| Use a regression estimator | [ANFISRegressor](regressor) |
+| Use a classification estimator | [ANFISClassifier](classifier) |
 | Choose membership functions | [Membership Functions](membership-functions) |
 | Choose loss functions | [Losses](losses) |
 | Train my model | `fit()` method in [Models](models) |
 | Evaluate performance | [Metrics](metrics) |
 | Cluster data | `FuzzyCMeans` in [Clustering](clustering) |
 | Configure training | [Optimization](optim) |
+| Save configs or presets | [Configuration](config) |
+| Enable training logs | [Logging](logging) |
 
 ## Navigation
 
@@ -127,3 +143,5 @@ Comprehensive metrics for model evaluation:
 - 📊 **Analyzing results?** → [Metrics](metrics)
 - 🔍 **Clustering?** → [Clustering](clustering)
 - ⚙️ **Training?** → [Optimization](optim)
+- 🧪 **Using estimators?** → [Regressor](regressor) / [Classifier](classifier)
+- 📝 **Saving configs or logs?** → [Configuration](config) & [Logging](logging)

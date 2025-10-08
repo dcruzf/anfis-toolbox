@@ -12,6 +12,12 @@
       show_source: true
       heading_level: 2
 
+::: anfis_toolbox.optim.hybrid_adam.HybridAdamTrainer
+    options:
+      show_root_heading: true
+      show_source: true
+      heading_level: 2
+
 ::: anfis_toolbox.optim.sgd.SGDTrainer
     options:
       show_root_heading: true
