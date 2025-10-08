@@ -74,7 +74,7 @@ class MembershipLayer:
 
         return membership_outputs
 
-    def backward(self, gradients: dict):
+    def backward(self, gradients: dict) -> dict:
         """Performs backward pass to compute gradients for membership functions.
 
         Parameters:
@@ -82,18 +82,26 @@ class MembershipLayer:
                              Format: {input_name: np.ndarray with shape (batch_size, n_mfs)}
 
         Returns:
-            None: Gradients are accumulated in the membership functions.
+            dict: Nested structure with parameter gradients mirroring ``model.get_gradients()``.
         """
-        # Propagate gradients to each membership function
+        param_grads: dict[str, list[dict[str, float]]] = {}
+
         for name in self.input_names:
             mfs = self.input_mfs[name]
-            grad_array = gradients[name]  # (batch_size, n_mfs)
+            grad_array = gradients[name]
+            mf_param_grads: list[dict[str, float]] = []
 
             for mf_idx, mf in enumerate(mfs):
-                # Extract gradient for this specific membership function
-                mf_gradient = grad_array[:, mf_idx]  # (batch_size,)
-                # Propagate gradient to the membership function
+                prev = {key: float(value) for key, value in mf.gradients.items()}
+                mf_gradient = grad_array[:, mf_idx]
                 mf.backward(mf_gradient)
+                updated = mf.gradients
+                delta = {key: float(updated[key] - prev.get(key, 0.0)) for key in updated}
+                mf_param_grads.append(delta)
+
+            param_grads[name] = mf_param_grads
+
+        return {"membership": param_grads}
 
     def reset(self):
         """Resets all membership functions to their initial state.

@@ -31,6 +31,7 @@ from .model import ANFIS as LowLevelANFIS
 from .optim import (
     AdamTrainer,
     BaseTrainer,
+    HybridAdamTrainer,
     HybridTrainer,
     PSOTrainer,
     RMSPropTrainer,
@@ -40,6 +41,7 @@ from .optim.base import TrainingHistory
 
 TRAINER_REGISTRY: dict[str, type[BaseTrainer]] = {
     "hybrid": HybridTrainer,
+    "hybrid_adam": HybridAdamTrainer,
     "sgd": SGDTrainer,
     "adam": AdamTrainer,
     "rmsprop": RMSPropTrainer,

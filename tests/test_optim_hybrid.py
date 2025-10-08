@@ -2,7 +2,7 @@ import numpy as np
 
 from anfis_toolbox import ANFIS
 from anfis_toolbox.membership import GaussianMF
-from anfis_toolbox.optim import HybridTrainer
+from anfis_toolbox.optim import HybridAdamTrainer, HybridTrainer
 
 
 def _make_regression_model(n_inputs: int = 1) -> ANFIS:
@@ -56,3 +56,18 @@ def test_hybrid_train_step_uses_pseudoinverse_on_singular_system(monkeypatch):
 
     val_loss = trainer.compute_loss(model, X, y)
     assert np.isfinite(val_loss)
+
+
+def test_hybrid_adam_trainer_runs_and_reduces_loss():
+    rng = np.random.default_rng(42)
+    X = rng.normal(size=(30, 2))
+    y = 1.2 * X[:, 0] - 0.8 * X[:, 1] + rng.normal(scale=0.1, size=30)
+    model = _make_regression_model(n_inputs=2)
+    trainer = HybridAdamTrainer(learning_rate=0.01, epochs=10, verbose=False)
+    trainer._prepare_training_data(model, X, y)
+    initial_loss = trainer.compute_loss(model, X, y)
+    state = trainer.init_state(model, X, y)
+    for _ in range(10):
+        loss, state = trainer.train_step(model, X, y, state)
+    final_loss = trainer.compute_loss(model, X, y)
+    assert final_loss < initial_loss
