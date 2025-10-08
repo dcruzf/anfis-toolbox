@@ -112,7 +112,55 @@ class ANFISRegressor(BaseEstimatorLike, FittedMixin, RegressorMixinLike):
         loss: LossFunction | str | None = None,
         rules: Sequence[Sequence[int]] | None = None,
     ) -> None:
-        """Initialize the ANFIS regressor."""
+        """Construct an :class:`ANFISRegressor` with the provided hyper-parameters.
+
+        Parameters
+        ----------
+        n_mfs : int, default=3
+            Default number of membership functions allocated to each input when
+            the builder infers them from data.
+        mf_type : str, default="gaussian"
+            Membership function family used for automatically generated
+            membership functions. See :class:`ANFISBuilder` for supported
+            values.
+        init : {"grid", "fcm", "random", None}, default="grid"
+            Initialization strategy employed when synthesizing membership
+            functions from the training data. ``None`` falls back to
+            ``"grid"``.
+        overlap : float, default=0.5
+            Desired overlap between neighbouring membership functions during
+            automatic construction.
+        margin : float, default=0.10
+            Extra range added around the observed feature minima/maxima when
+            performing grid initialization.
+        inputs_config : Mapping, optional
+            Per-feature overrides for membership configuration. Keys may be
+            feature names (e.g. when ``X`` is a :class:`pandas.DataFrame`),
+            integer indices, or ``"x{i}"`` aliases. Values accept dictionaries
+            mirroring builder arguments, explicit membership function lists, or
+            scalars for simple overrides. ``None`` entries keep defaults.
+        random_state : int, optional
+            Seed propagated to stochastic components such as FCM-based
+            initialization and optimizers that rely on randomness.
+        optimizer : str | BaseTrainer | type[BaseTrainer] | None, default="hybrid"
+            Trainer identifier or instance used for fitting. String aliases are
+            looked up in :data:`TRAINER_REGISTRY`. ``None`` defaults to
+            ``"hybrid"``.
+        optimizer_params : Mapping, optional
+            Extra keyword arguments forwarded to the trainer constructor when a
+            string identifier or class is supplied.
+        learning_rate, epochs, batch_size, shuffle, verbose : optional
+            Convenience hyper-parameters that are injected into the selected
+            trainer when supported. ``shuffle`` accepts ``False`` to disable
+            randomisation.
+        loss : str | LossFunction, optional
+            Custom loss forwarded to trainers exposing a ``loss`` parameter.
+            ``None`` keeps the trainer default (typically mean squared error).
+        rules : Sequence[Sequence[int]] | None, optional
+            Optional explicit fuzzy rule definitions. Each rule lists the
+            membership index for every input. ``None`` uses the full Cartesian
+            product of configured membership functions.
+        """
         self.n_mfs = int(n_mfs)
         self.mf_type = str(mf_type)
         self.init = None if init is None else str(init)
@@ -151,18 +199,39 @@ class ANFISRegressor(BaseEstimatorLike, FittedMixin, RegressorMixinLike):
         validation_frequency: int = 1,
         **fit_params: Any,
     ):
-        """Fit the ANFIS regressor on data.
+        """Fit the ANFIS regressor on labelled data.
 
         Parameters
         ----------
-        X, y : array-like
-            Training data and targets.
+        X : array-like
+            Training inputs with shape ``(n_samples, n_features)``.
+        y : array-like
+            Target values aligned with ``X``. One-dimensional vectors are
+            accepted and reshaped internally.
         validation_data : tuple[np.ndarray, np.ndarray], optional
-            Optional validation split forwarded to the underlying trainer.
+            Optional validation split supplied to the underlying trainer. Both
+            arrays must already be numeric and share the same row count.
         validation_frequency : int, default=1
-            Evaluate validation loss every N epochs when validation data is provided.
+            Frequency (in epochs) at which validation loss is evaluated when
+            ``validation_data`` is provided.
         **fit_params : Any
-            Additional keyword arguments forwarded to the trainer ``fit`` method.
+            Arbitrary keyword arguments forwarded to the trainer ``fit``
+            method.
+
+        Returns:
+        -------
+        ANFISRegressor
+            Reference to ``self`` for fluent-style chaining.
+
+        Raises:
+        ------
+        ValueError
+            If ``X`` and ``y`` contain a different number of samples.
+        ValueError
+            If validation frequency is less than one.
+        TypeError
+            If the configured trainer returns an object that is not a
+            ``dict``-like training history.
         """
         X_arr, feature_names = _ensure_2d_array(X)
         y_vec = _ensure_vector(y)
@@ -192,7 +261,26 @@ class ANFISRegressor(BaseEstimatorLike, FittedMixin, RegressorMixinLike):
         return self
 
     def predict(self, X):
-        """Predict regression targets for input samples."""
+        """Predict regression targets for the provided samples.
+
+        Parameters
+        ----------
+        X : array-like
+            Samples to evaluate. Accepts one-dimensional arrays (interpreted as
+            a single sample) or matrices with shape ``(n_samples, n_features)``.
+
+        Returns:
+        -------
+        np.ndarray
+            Vector of predictions with shape ``(n_samples,)``.
+
+        Raises:
+        ------
+        RuntimeError
+            If the estimator has not been fitted yet.
+        ValueError
+            When the supplied samples do not match the fitted feature count.
+        """
         check_is_fitted(self, attributes=["model_"])
         X_arr = np.asarray(X, dtype=float)
         if X_arr.ndim == 1:
@@ -210,7 +298,35 @@ class ANFISRegressor(BaseEstimatorLike, FittedMixin, RegressorMixinLike):
         return np.asarray(preds, dtype=float).reshape(-1)
 
     def evaluate(self, X, y, *, return_dict: bool = True, print_results: bool = False):
-        """Evaluate predictions against targets using :class:`ANFISMetrics`."""
+        """Evaluate predictive performance on a dataset.
+
+        Parameters
+        ----------
+        X : array-like
+            Evaluation inputs with shape ``(n_samples, n_features)``.
+        y : array-like
+            Ground-truth targets aligned with ``X``.
+        return_dict : bool, default=True
+            When ``True``, return the computed metric dictionary. When
+            ``False``, only perform side effects (such as printing) and return
+            ``None``.
+        print_results : bool, default=False
+            If ``True``, log a small human-readable summary to stdout.
+
+        Returns:
+        -------
+        dict[str, float] | None
+            Regression metrics including mean squared error, root mean squared
+            error, mean absolute error, and :math:`R^2` when ``return_dict`` is
+            ``True``; otherwise ``None``.
+
+        Raises:
+        ------
+        RuntimeError
+            If called before ``fit``.
+        ValueError
+            When ``X`` and ``y`` disagree on the sample count.
+        """
         check_is_fitted(self, attributes=["model_"])
         X_arr, _ = _ensure_2d_array(X)
         y_vec = _ensure_vector(y)
@@ -229,7 +345,19 @@ class ANFISRegressor(BaseEstimatorLike, FittedMixin, RegressorMixinLike):
         return metrics if return_dict else None
 
     def get_rules(self) -> tuple[tuple[int, ...], ...]:
-        """Return the fuzzy rule index combinations of the fitted model."""
+        """Return the fuzzy rule index combinations used by the fitted model.
+
+        Returns:
+        -------
+        tuple[tuple[int, ...], ...]
+            Immutable tuple containing one tuple per fuzzy rule, where each
+            inner tuple lists the membership index chosen for each input.
+
+        Raises:
+        ------
+        RuntimeError
+            If invoked before the estimator is fitted.
+        """
         check_is_fitted(self, attributes=["rules_"])
         if not self.rules_:
             return ()
