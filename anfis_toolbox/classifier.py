@@ -9,6 +9,7 @@ while targeting categorical prediction tasks.
 from __future__ import annotations
 
 import inspect
+import logging
 from collections.abc import Mapping, Sequence
 from copy import deepcopy
 from typing import Any
@@ -23,6 +24,7 @@ from .estimator_utils import (
     _ensure_2d_array,
     check_is_fitted,
 )
+from .logging_config import enable_training_logs
 from .losses import LossFunction
 from .membership import MembershipFunction
 from .metrics import ANFISMetrics
@@ -44,6 +46,15 @@ TRAINER_REGISTRY: dict[str, type[BaseTrainer]] = {
     "rmsprop": RMSPropTrainer,
     "pso": PSOTrainer,
 }
+
+
+def _ensure_training_logging(verbose: bool) -> None:
+    if not verbose:
+        return
+    logger = logging.getLogger("anfis_toolbox")
+    if logger.handlers:
+        return
+    enable_training_logs()
 
 
 class ANFISClassifier(BaseEstimatorLike, FittedMixin, ClassifierMixinLike):
@@ -249,6 +260,7 @@ class ANFISClassifier(BaseEstimatorLike, FittedMixin, ClassifierMixinLike):
         self.n_features_in_ = X_arr.shape[1]
         self.input_specs_ = self._resolve_input_specs(feature_names)
 
+        _ensure_training_logging(self.verbose)
         self.model_ = self._build_model(X_arr, feature_names)
         trainer = self._instantiate_trainer()
         self.optimizer_ = trainer
