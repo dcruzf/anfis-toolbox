@@ -1,5 +1,7 @@
 """Builder classes for easy ANFIS model construction."""
 
+from collections.abc import Sequence
+
 import numpy as np
 
 from .clustering import FuzzyCMeans
@@ -28,6 +30,7 @@ class ANFISBuilder:
         """Initialize the ANFIS builder."""
         self.input_mfs = {}
         self.input_ranges = {}
+        self._rules: list[tuple[int, ...]] | None = None
         # Centralized dispatch for MF creators (supports aliases)
         self._dispatch = {
             # Canonical
@@ -241,6 +244,29 @@ class ANFISBuilder:
 
         self.input_ranges[name] = (low, high)
         self.input_mfs[name] = mfs
+        return self
+
+    def set_rules(self, rules: Sequence[Sequence[int]] | None) -> "ANFISBuilder":
+        """Define an explicit set of fuzzy rules to use when building the model.
+
+        Parameters:
+            rules: Iterable of rules where each rule lists the membership index per input.
+                ``None`` removes any previously configured custom rules and restores the
+                default Cartesian-product behaviour.
+
+        Returns:
+            Self for method chaining.
+        """
+        if rules is None:
+            self._rules = None
+            return self
+
+        normalized: list[tuple[int, ...]] = []
+        for rule in rules:
+            normalized.append(tuple(int(idx) for idx in rule))
+        if not normalized:
+            raise ValueError("Rules sequence cannot be empty; pass None to restore defaults.")
+        self._rules = normalized
         return self
 
     def _build_mfs_from_layout(
@@ -668,4 +694,4 @@ class ANFISBuilder:
         if not self.input_mfs:
             raise ValueError("No input variables defined. Use add_input() to define inputs.")
 
-        return ANFIS(self.input_mfs)
+        return ANFIS(self.input_mfs, rules=self._rules)

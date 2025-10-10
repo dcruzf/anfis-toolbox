@@ -7,16 +7,26 @@ import pytest
 
 from anfis_toolbox.metrics import (
     ANFISMetrics,
+    MetricReport,
+    _coerce_labels,
+    _ensure_probabilities,
+    _flatten_float,
     accuracy,
+    balanced_accuracy_score,
     classification_entropy,
+    compute_metrics,
     cross_entropy,
+    explained_variance_score,
     log_loss,
     mean_absolute_error,
     mean_absolute_percentage_error,
+    mean_bias_error,
     mean_squared_error,
     mean_squared_logarithmic_error,
+    median_absolute_error,
     partition_coefficient,
     pearson_correlation,
+    precision_recall_f1,
     quick_evaluate,
     r2_score,
     root_mean_squared_error,
@@ -212,6 +222,30 @@ def test_msle_basic_and_lists():
     assert np.isclose(msle2, expected2)
 
 
+def test_flatten_float_handles_nested_sequences():
+    values = [[1, 2], [3, 4]]
+    flattened = _flatten_float(values)
+    assert flattened.shape == (4,)
+    assert np.allclose(flattened, [1.0, 2.0, 3.0, 4.0])
+
+
+def test_coerce_labels_scalar_and_one_hot_inputs():
+    scalar = _coerce_labels(5)
+    assert np.array_equal(scalar, np.array([5]))
+
+    one_hot = np.array([[0, 1, 0], [1, 0, 0]])
+    coerced = _coerce_labels(one_hot)
+    assert np.array_equal(coerced, np.array([1, 0]))
+
+
+def test_ensure_probabilities_validates_input():
+    with pytest.raises(ValueError, match="2D array"):
+        _ensure_probabilities([0.2, 0.8])
+
+    with pytest.raises(ValueError, match="positive sum"):
+        _ensure_probabilities([[0.0, 0.0]])
+
+
 def test_msle_negative_inputs_raise():
     with pytest.raises(ValueError):
         mean_squared_logarithmic_error(np.array([-1.0, 0.0]), np.array([0.0, 0.0]))
@@ -293,18 +327,20 @@ def test_classification_metrics_returns_scores():
         ]
     )
 
-    metrics = ANFISMetrics.classification_metrics(y_true, y_proba)
+    metrics = ANFISMetrics.classification_metrics(y_true, y_proba=y_proba)
 
     assert np.isclose(metrics["accuracy"], accuracy(y_true, y_proba))
     assert np.isclose(metrics["log_loss"], log_loss(y_true, y_proba))
+    assert "confusion_matrix" in metrics and metrics["confusion_matrix"].shape == (2, 2)
+    assert metrics["precision_macro"] == pytest.approx(1.0)
 
 
 def test_classification_metrics_validates_inputs():
-    with pytest.raises(ValueError, match="y_proba must be a 2D array"):
-        ANFISMetrics.classification_metrics(np.array([0, 1]), np.array([0.8, 0.2]))
+    with pytest.raises(ValueError, match="Probabilities must be a 2D array"):
+        ANFISMetrics.classification_metrics(np.array([0, 1]), y_proba=np.array([0.8, 0.2]))
 
     with pytest.raises(ValueError, match="same number of samples"):
-        ANFISMetrics.classification_metrics(np.array([0, 1, 1]), np.full((2, 2), 0.5))
+        ANFISMetrics.classification_metrics(np.array([0, 1, 1]), y_proba=np.full((2, 2), 0.5))
 
 
 def test_model_complexity_metrics_counts_parameters():
@@ -352,14 +388,22 @@ def test_quick_evaluate_prints_full_summary(capsys):
     assert captured[0] == "=" * 50
     assert captured[1] == "ANFIS Model Evaluation Results"
     assert captured[2] == "=" * 50
-    assert captured[3].startswith("Mean Squared Error (MSE):")
-    assert captured[4].startswith("Root Mean Squared Error:")
-    assert captured[5].startswith("Mean Absolute Error (MAE):")
-    assert captured[6].startswith("R-squared (R²):")
-    assert captured[7].startswith("Mean Abs. Percentage Error:")
-    assert captured[8].startswith("Maximum Error:")
-    assert captured[9].startswith("Standard Deviation of Error:")
-    assert captured[10] == "=" * 50
+    metric_prefixes = [
+        "Mean Squared Error (MSE):",
+        "Root Mean Squared Error:",
+        "Mean Absolute Error (MAE):",
+        "Median Absolute Error:",
+        "R-squared (R²):",
+        "Explained Variance:",
+        "Symmetric MAPE:",
+        "Max Error:",
+        "Std. of Error:",
+    ]
+    metric_lines = captured[3:-1]
+    assert len(metric_lines) == len(metric_prefixes)
+    for line, prefix in zip(metric_lines, metric_prefixes, strict=True):
+        assert line.startswith(prefix)
+    assert captured[-1] == "=" * 50
 
 
 def test_quick_evaluate_without_prints_returns_metrics_silently(capsys):
@@ -444,6 +488,36 @@ def test_quick_evaluate_rejects_wrapper_without_predict():
         quick_evaluate(Wrapper(), np.zeros((1, 1)), np.zeros(1))
 
 
+def test_quick_evaluate_classification_uses_predict_proba_and_prints_log_loss(capsys):
+    class DummyClassifier:
+        def __init__(self):
+            self.proba_called = False
+
+        def predict(self, X):
+            return np.array([0, 1, 1])
+
+        def predict_proba(self, X):
+            self.proba_called = True
+            return np.array(
+                [
+                    [0.8, 0.2],
+                    [0.3, 0.7],
+                    [0.4, 0.6],
+                ]
+            )
+
+    X = np.zeros((3, 2))
+    y = np.array([0, 1, 0])
+
+    classifier = DummyClassifier()
+    metrics = quick_evaluate(classifier, X, y, print_results=True, task="classification")
+    output = capsys.readouterr().out
+
+    assert np.isclose(metrics["accuracy"], 2 / 3)
+    assert "Log Loss" in output
+    assert classifier.proba_called is True
+
+
 def test_softmax_rows_sum_to_one_and_invariant_to_shift():
     z = np.array([[1.0, 2.0, 3.0], [-1.0, 0.0, 1.0]])
     p = softmax(z, axis=1)
@@ -507,3 +581,139 @@ def test_accuracy_with_one_hot_y_true():
     y_oh = np.array([[1.0, 0.0], [0.0, 1.0], [0.0, 1.0]])
     preds = np.array([0, 1, 1])
     assert np.isclose(accuracy(y_oh, preds), 1.0)
+
+
+def test_explained_variance_and_bias_functions():
+    y_true = np.array([1.0, 2.0, 3.0, 4.0])
+    y_pred = np.array([1.5, 1.5, 3.5, 3.5])
+    residuals = y_pred - y_true
+    expected_var = 1.0 - np.var(residuals) / np.var(y_true)
+    assert explained_variance_score(y_true, y_pred) == pytest.approx(expected_var)
+    assert median_absolute_error(y_true, y_pred) == pytest.approx(np.median(np.abs(residuals)))
+    assert mean_bias_error(y_true, y_pred) == pytest.approx(np.mean(residuals))
+
+
+def test_balanced_accuracy_and_precision_recall_f1():
+    y_true = np.array([0, 0, 1, 1])
+    y_pred = np.array([0, 1, 1, 1])
+    bal_acc = balanced_accuracy_score(y_true, y_pred)
+    assert bal_acc == pytest.approx(0.75)
+    precision_macro, recall_macro, f1_macro = precision_recall_f1(y_true, y_pred)
+    assert precision_macro == pytest.approx((1.0 + 2 / 3) / 2)
+    assert recall_macro == pytest.approx((0.5 + 1.0) / 2)
+    assert f1_macro == pytest.approx(2 * precision_macro * recall_macro / (precision_macro + recall_macro))
+    precision_micro, recall_micro, f1_micro = precision_recall_f1(y_true, y_pred, average="micro")
+    assert precision_micro == pytest.approx(0.75)
+    assert recall_micro == pytest.approx(0.75)
+    assert f1_micro == pytest.approx(0.75)
+    precision_binary, recall_binary, f1_binary = precision_recall_f1(y_true, y_pred, average="binary")
+    assert precision_binary == pytest.approx(2 / 3)
+    assert recall_binary == pytest.approx(1.0)
+    assert f1_binary == pytest.approx(0.8)
+
+
+def test_balanced_accuracy_length_mismatch_raises():
+    with pytest.raises(ValueError, match="same number of samples"):
+        balanced_accuracy_score([0, 1], [0])
+
+
+def test_precision_recall_length_mismatch_raises():
+    with pytest.raises(ValueError, match="same number of samples"):
+        precision_recall_f1([0, 1], [0])
+
+
+def test_precision_recall_binary_requires_two_classes():
+    with pytest.raises(ValueError, match="average='binary'"):
+        precision_recall_f1([0, 0, 0], [0, 0, 0], average="binary")
+
+
+def test_compute_metrics_regression_report_and_filtering():
+    y_true = np.array([1.0, 2.0, 3.0])
+    y_pred = np.array([1.1, 1.9, 2.8])
+    report = compute_metrics(y_true, y_pred=y_pred, task="auto")
+    assert isinstance(report, MetricReport)
+    assert report.task == "regression"
+    metrics_dict = report.to_dict()
+    for key in ["mse", "rmse", "mae", "explained_variance", "r2"]:
+        assert key in metrics_dict
+    filtered = compute_metrics(y_true, y_pred=y_pred, metrics=["mse", "mae"], task="regression")
+    assert set(filtered.keys()) == {"mse", "mae"}
+
+
+def test_compute_metrics_custom_metric():
+    y_true = np.array([0.0, 1.0])
+    y_pred = np.array([0.2, 0.8])
+
+    def bias_fn(yt: np.ndarray, yp: np.ndarray) -> float:
+        return float(np.mean(yp - yt))
+
+    report = compute_metrics(
+        y_true,
+        y_pred=y_pred,
+        custom_metrics={"bias_custom": bias_fn},
+    )
+    assert report["bias_custom"] == pytest.approx(np.mean(y_pred - y_true))
+
+
+def test_compute_metrics_classification_auto_detection_and_logits():
+    logits = np.array([[2.0, 0.0], [0.0, 1.0]])
+    y_true = np.array([0, 1])
+    report = compute_metrics(y_true, logits=logits)
+    assert report.task == "classification"
+    assert report["accuracy"] == pytest.approx(1.0)
+    assert report["confusion_matrix"].shape == (2, 2)
+    # Explicit labels without probabilities
+    y_pred = np.array([0, 1, 1])
+    y_true_full = np.array([0, 0, 1])
+    report2 = compute_metrics(y_true_full, y_pred=y_pred)
+    assert report2.task == "classification"
+    assert report2["accuracy"] == pytest.approx(2 / 3)
+
+
+def test_metric_report_attribute_access_and_missing_key():
+    report = MetricReport(task="regression", _values={"mse": 0.5})
+    assert report.mse == pytest.approx(0.5)
+    with pytest.raises(AttributeError):
+        _ = report.rmse
+
+
+def test_compute_metrics_regression_requires_predictions():
+    with pytest.raises(ValueError, match="require 'y_pred'"):
+        compute_metrics([0, 1], task="regression")
+
+
+def test_compute_metrics_classification_requires_inputs():
+    with pytest.raises(ValueError, match="require 'y_pred', 'y_proba', or 'logits'"):
+        compute_metrics([0, 1], task="classification")
+
+
+def test_compute_metrics_classification_custom_metric_and_filtering():
+    y_true = np.array([0, 1, 1])
+    y_pred = np.array([0, 0, 1])
+
+    def custom_metric(labels_true, labels_pred):
+        return float(np.mean(labels_true == labels_pred))
+
+    report = compute_metrics(
+        y_true,
+        y_pred=y_pred,
+        task="classification",
+        custom_metrics={"custom_acc": custom_metric},
+    )
+    metrics = report.to_dict()
+    assert np.isclose(metrics["custom_acc"], 2 / 3)
+
+    with pytest.raises(KeyError, match="Requested metric"):
+        compute_metrics(
+            y_true,
+            y_pred=y_pred,
+            task="classification",
+            metrics=["does_not_exist"],
+        )
+
+
+def test_classification_metrics_log_loss_nan_without_probabilities():
+    y_true = np.array([0, 1, 1])
+    y_pred = np.array([0, 1, 0])
+    metrics = ANFISMetrics.classification_metrics(y_true, y_pred=y_pred)
+    assert np.isnan(metrics["log_loss"])

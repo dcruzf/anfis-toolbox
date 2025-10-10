@@ -85,80 +85,26 @@ class PSOTrainer(BaseTrainer):
     clamp_velocity: None | tuple[float, float] = None
     clamp_position: None | tuple[float, float] = None
     random_state: None | int = None
-    verbose: bool = True
+    verbose: bool = False
     loss: LossFunction | str | None = None
     _loss_fn: LossFunction = field(init=False, repr=False)
 
-    def fit(self, model, X: np.ndarray, y: np.ndarray) -> list[float]:
-        """Run PSO for a number of iterations and return per-epoch best loss.
-
-        The configured loss controls the objective; 1D targets are reshaped according to
-        the loss' ``prepare_targets`` implementation.
-        """
+    def _prepare_training_data(self, model, X: np.ndarray, y: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         self._loss_fn = resolve_loss(self.loss)
-        X, y = self._prepare_batch(X, y, model)
-        rng = np.random.default_rng(self.random_state)
+        return self._prepare_batch(X, y, model)
 
-        # Flatten current model parameters
-        base_params = model.get_parameters()
-        theta0, meta = _flatten_params(base_params)
-        D = theta0.size
-
-        # Initialize swarm around current parameters
-        positions = theta0[None, :] + self.init_sigma * rng.normal(size=(self.swarm_size, D))
-        velocities = np.zeros((self.swarm_size, D), dtype=float)
-
-        # Evaluate initial swarm
-        personal_best_pos = positions.copy()
-        personal_best_val = np.empty(self.swarm_size, dtype=float)
-        for i in range(self.swarm_size):
-            params_i = _unflatten_params(positions[i], meta, base_params)
-            with self._temporary_parameters(model, params_i):
-                personal_best_val[i] = self._evaluate_loss(model, X, y)
-        g_idx = int(np.argmin(personal_best_val))
-        global_best_pos = personal_best_pos[g_idx].copy()
-        global_best_val = float(personal_best_val[g_idx])
-
-        losses: list[float] = []
-        for _ in range(self.epochs):
-            # Update velocities and positions
-            r1 = rng.random(size=(self.swarm_size, D))
-            r2 = rng.random(size=(self.swarm_size, D))
-            cognitive_term = self.cognitive * r1 * (personal_best_pos - positions)
-            social_term = self.social * r2 * (global_best_pos[None, :] - positions)
-            velocities = self.inertia * velocities + cognitive_term + social_term
-            if self.clamp_velocity is not None:
-                vmin, vmax = self.clamp_velocity
-                velocities = np.clip(velocities, vmin, vmax)
-            positions = positions + velocities
-            if self.clamp_position is not None:
-                pmin, pmax = self.clamp_position
-                positions = np.clip(positions, pmin, pmax)
-
-            # Evaluate and update personal/global bests
-            for i in range(self.swarm_size):
-                params_i = _unflatten_params(positions[i], meta, base_params)
-                with self._temporary_parameters(model, params_i):
-                    val = self._evaluate_loss(model, X, y)
-                if val < personal_best_val[i]:
-                    personal_best_val[i] = val
-                    personal_best_pos[i] = positions[i].copy()
-                    if val < global_best_val:
-                        global_best_val = float(val)
-                        global_best_pos = positions[i].copy()
-
-            # Set model to global best and record loss
-            best_params = _unflatten_params(global_best_pos, meta, base_params)
-            model.set_parameters(best_params)
-            losses.append(global_best_val)
-
-        return losses
+    def _prepare_validation_data(
+        self,
+        model,
+        X_val: np.ndarray,
+        y_val: np.ndarray,
+    ) -> tuple[np.ndarray, np.ndarray]:
+        return self._prepare_batch(X_val, y_val, model)
 
     def init_state(self, model, X: np.ndarray, y: np.ndarray):
         """Initialize PSO swarm state and return as a dict."""
-        loss_fn = self._ensure_loss_fn()
         X = np.asarray(X, dtype=float)
-        y = loss_fn.prepare_targets(y, model=model)
+        y = np.asarray(y, dtype=float)
         rng = np.random.default_rng(self.random_state)
         base_params = model.get_parameters()
         theta0, meta = _flatten_params(base_params)
@@ -189,7 +135,6 @@ class PSOTrainer(BaseTrainer):
 
     def train_step(self, model, Xb: np.ndarray, yb: np.ndarray, state):
         """Perform one PSO iteration over the swarm on a batch and return (best_loss, state)."""
-        Xb, yb = self._prepare_batch(Xb, yb, model)
         positions = state["positions"]
         velocities = state["velocities"]
         personal_best_pos = state["pbest_pos"]
@@ -261,6 +206,10 @@ class PSOTrainer(BaseTrainer):
     def _evaluate_loss(self, model, X: np.ndarray, y: np.ndarray) -> float:
         preds = model.forward(X)
         return float(self._loss_fn.loss(y, preds))
+
+    def compute_loss(self, model, X: np.ndarray, y: np.ndarray) -> float:
+        """Evaluate the swarm's current parameters on ``(X, y)`` without mutation."""
+        return self._evaluate_loss(model, X, y)
 
     def _ensure_loss_fn(self) -> LossFunction:
         if not hasattr(self, "_loss_fn"):

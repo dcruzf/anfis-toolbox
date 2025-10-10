@@ -114,6 +114,37 @@ def test_rule_layer_forward(simple_rule_layer):
     np.testing.assert_allclose(rule_strengths[0], expected_strengths, rtol=1e-5)
 
 
+def test_rule_layer_with_custom_rules_subset():
+    """Ensure RuleLayer restricts to explicitly provided rules."""
+    layer = RuleLayer(input_names=["x1", "x2"], mf_per_input=[2, 2], rules=[(0, 1), (1, 0)])
+
+    membership_outputs = {
+        "x1": np.array([[0.8, 0.2]]),
+        "x2": np.array([[0.6, 0.4]]),
+    }
+
+    strengths = layer.forward(membership_outputs)
+
+    assert layer.n_rules == 2
+    assert layer.rules == [(0, 1), (1, 0)]
+    np.testing.assert_allclose(strengths, np.array([[0.8 * 0.4, 0.2 * 0.6]]), rtol=1e-6)
+
+
+def test_rule_layer_rejects_rule_length_mismatch():
+    with pytest.raises(ValueError, match="Each rule must specify exactly one membership index per input"):
+        RuleLayer(input_names=["x1", "x2"], mf_per_input=[2, 2], rules=[(0, 1, 2)])
+
+
+def test_rule_layer_rejects_index_out_of_range():
+    with pytest.raises(ValueError, match="Rule membership index out of range"):
+        RuleLayer(input_names=["x1", "x2"], mf_per_input=[2, 2], rules=[(0, 2)])
+
+
+def test_rule_layer_requires_at_least_one_rule():
+    with pytest.raises(ValueError, match="At least one rule must be provided"):
+        RuleLayer(input_names=["x1", "x2"], mf_per_input=[2, 2], rules=[])
+
+
 def test_rule_layer_backward(simple_rule_layer):
     """Test RuleLayer backward pass with new interface."""
     # Create sample membership outputs

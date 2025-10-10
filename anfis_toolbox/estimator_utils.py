@@ -21,6 +21,7 @@ __all__ = [
     "RegressorMixinLike",
     "ClassifierMixinLike",
     "FittedMixin",
+    "RuleInspectorMixin",
     "NotFittedError",
     "check_is_fitted",
     "infer_feature_names",
@@ -84,6 +85,74 @@ class FittedMixin:
 def check_is_fitted(estimator: FittedMixin, attributes: Iterable[str] | None = None):
     """Check if the estimator is fitted by verifying `is_fitted_` and optional attributes."""
     estimator._require_is_fitted(attributes)
+
+
+class RuleInspectorMixin:
+    """Mixin that exposes ANFIS rule descriptors for fitted estimators."""
+
+    def get_rules(self, *, include_membership_functions: bool = False):
+        """Return the fuzzy rules learned by the estimator.
+
+        Parameters
+        ----------
+        include_membership_functions : bool, default=False
+            When ``False`` (default), return a list of tuples with the membership-function
+            indices per input. When ``True``, return a list of dictionaries describing each
+            rule with input names, membership-function indices, and their corresponding
+            membership function instances (when available).
+
+        Returns:
+        -------
+        list
+            Rule definitions either as tuples of integers (default) or as dictionaries with a
+            rich description if ``include_membership_functions`` is ``True``.
+        """
+        check_is_fitted(self, attributes=["rules_"])
+
+        raw_rules = getattr(self, "rules_", None) or []
+        rule_tuples = [tuple(rule) for rule in raw_rules]
+
+        if not include_membership_functions:
+            return rule_tuples
+
+        model = getattr(self, "model_", None)
+        if model is None:
+            raise NotFittedError(f"{type(self).__name__} instance is not fitted yet.")
+
+        membership_map = getattr(model, "membership_functions", {})
+        feature_names = list(getattr(self, "feature_names_in_", []) or membership_map.keys())
+
+        descriptors: list[dict[str, Any]] = []
+        for rule_index, rule in enumerate(rule_tuples):
+            antecedents: list[dict[str, Any]] = []
+            for input_index, mf_index in enumerate(rule):
+                if input_index < len(feature_names):
+                    input_name = feature_names[input_index]
+                else:  # Fallback to positional naming
+                    input_name = f"x{input_index + 1}"
+
+                mf_list = membership_map.get(input_name, [])
+                membership_fn = None
+                if 0 <= mf_index < len(mf_list):
+                    membership_fn = mf_list[mf_index]
+
+                antecedents.append(
+                    {
+                        "input": input_name,
+                        "mf_index": int(mf_index),
+                        "membership_function": membership_fn,
+                    }
+                )
+
+            descriptors.append(
+                {
+                    "index": rule_index,
+                    "rule": rule,
+                    "antecedents": antecedents,
+                }
+            )
+
+        return descriptors
 
 
 class RegressorMixinLike:

@@ -26,7 +26,7 @@ class TestANFISConfig:
         assert config.config["training"]["method"] == "hybrid"
         assert config.config["training"]["epochs"] == 50
         assert config.config["training"]["learning_rate"] == 0.01
-        assert config.config["training"]["verbose"] is True
+        assert config.config["training"]["verbose"] is False
 
     def test_add_input_config(self):
         """Test adding input configuration."""

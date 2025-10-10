@@ -5,6 +5,7 @@ model that combines all the individual layers into a unified architecture.
 """
 
 import logging
+from collections.abc import Sequence
 
 import numpy as np
 
@@ -12,6 +13,7 @@ from .layers import ClassificationConsequentLayer, ConsequentLayer, MembershipLa
 from .losses import LossFunction, resolve_loss
 from .membership import MembershipFunction
 from .metrics import softmax
+from .optim.base import TrainingHistory
 
 # Setup logger for ANFIS
 logger = logging.getLogger(__name__)
@@ -39,16 +41,22 @@ class TSKANFIS:
         consequent_layer (ConsequentLayer): Layer 4 — final TSK output.
         input_names (list[str]): Ordered list of input variable names.
         n_inputs (int): Number of input variables (features).
-        n_rules (int): Number of fuzzy rules (Cartesian product of MFs per input).
+        n_rules (int): Number of fuzzy rules used by the system.
     """
 
-    def __init__(self, input_mfs: dict[str, list[MembershipFunction]]):
+    def __init__(
+        self,
+        input_mfs: dict[str, list[MembershipFunction]],
+        rules: Sequence[Sequence[int]] | None = None,
+    ):
         """Initialize the ANFIS model.
 
         Args:
             input_mfs (dict[str, list[MembershipFunction]]): Mapping from input
                 name to a list of membership functions. Example:
                 ``{"x1": [GaussianMF(0,1), ...], "x2": [...]}``.
+            rules: Optional explicit set of rules, each specifying one membership index per
+                input. When ``None``, the Cartesian product of all membership functions is used.
 
         Examples:
             >>> from anfis_toolbox.membership import GaussianMF
@@ -65,12 +73,10 @@ class TSKANFIS:
         # Calculate number of membership functions per input
         mf_per_input = [len(mfs) for mfs in input_mfs.values()]
 
-        # Calculate total number of rules (Cartesian product)
-        self.n_rules = np.prod(mf_per_input)
-
         # Initialize all layers
         self.membership_layer = MembershipLayer(input_mfs)
-        self.rule_layer = RuleLayer(self.input_names, mf_per_input)
+        self.rule_layer = RuleLayer(self.input_names, mf_per_input, rules=rules)
+        self.n_rules = self.rule_layer.n_rules
         self.normalization_layer = NormalizationLayer()
         self.consequent_layer = ConsequentLayer(self.n_rules, self.n_inputs)
 
@@ -83,6 +89,11 @@ class TSKANFIS:
             its list of membership functions.
         """
         return self.input_mfs
+
+    @property
+    def rules(self) -> list[tuple[int, ...]]:
+        """Return the fuzzy rule definitions used by the model."""
+        return list(self.rule_layer.rules)
 
     def forward(self, x: np.ndarray) -> np.ndarray:
         """Run a forward pass through the model.
@@ -271,9 +282,12 @@ class TSKANFIS:
         y: np.ndarray,
         epochs: int = 100,
         learning_rate: float = 0.01,
-        verbose: bool = True,
+        verbose: bool = False,
         trainer: None | object = None,
-    ) -> list[float]:
+        *,
+        validation_data: tuple[np.ndarray, np.ndarray] | None = None,
+        validation_frequency: int = 1,
+    ) -> TrainingHistory:
         """Train the ANFIS model.
 
         If a trainer is provided (see ``anfis_toolbox.optim``), delegate training
@@ -287,12 +301,15 @@ class TSKANFIS:
                 regression.
             epochs (int, optional): Number of epochs. Defaults to ``100``.
             learning_rate (float, optional): Learning rate. Defaults to ``0.01``.
-            verbose (bool, optional): Whether to log progress. Defaults to ``True``.
+            verbose (bool, optional): Whether to log progress. Defaults to ``False``.
             trainer (object | None, optional): External trainer implementing
                 ``fit(model, X, y)``. Defaults to ``None``.
+            validation_data (tuple[np.ndarray, np.ndarray] | None, optional): Optional
+                validation inputs and targets evaluated according to ``validation_frequency``.
+            validation_frequency (int, optional): Evaluate validation loss every N epochs.
 
         Returns:
-            list[float]: Per-epoch loss values.
+            TrainingHistory: Dictionary with ``"train"`` losses and optional ``"val"`` losses.
         """
         if trainer is None:
             # Lazy import to avoid unnecessary dependency at module import time
@@ -301,7 +318,16 @@ class TSKANFIS:
             trainer = HybridTrainer(learning_rate=learning_rate, epochs=epochs, verbose=verbose)
 
         # Delegate training to the provided or default trainer
-        return trainer.fit(self, x, y)
+        fit_kwargs: dict[str, object] = {}
+        if validation_data is not None:
+            fit_kwargs["validation_data"] = validation_data
+        if validation_frequency != 1 or validation_data is not None:
+            fit_kwargs["validation_frequency"] = validation_frequency
+
+        history = trainer.fit(self, x, y, **fit_kwargs)
+        if not isinstance(history, dict):
+            raise TypeError("Trainer.fit must return a TrainingHistory dictionary")
+        return history
 
     def __str__(self) -> str:
         """Returns string representation of the ANFIS model."""
@@ -326,7 +352,13 @@ class TSKANFISClassifier:
     with cross-entropy loss.
     """
 
-    def __init__(self, input_mfs: dict[str, list[MembershipFunction]], n_classes: int, random_state: int | None = None):
+    def __init__(
+        self,
+        input_mfs: dict[str, list[MembershipFunction]],
+        n_classes: int,
+        random_state: int | None = None,
+        rules: Sequence[Sequence[int]] | None = None,
+    ):
         """Initialize the ANFIS model for classification.
 
         Args:
@@ -334,6 +366,9 @@ class TSKANFISClassifier:
                 variable name to its list of membership functions.
             n_classes (int): Number of output classes (>= 2).
             random_state (int | None): Optional random seed for parameter init.
+            rules (Sequence[Sequence[int]] | None): Optional explicit rule definitions
+                where each inner sequence lists the membership-function index per input.
+                When ``None``, all combinations are used.
 
         Raises:
             ValueError: If ``n_classes < 2``.
@@ -356,9 +391,9 @@ class TSKANFISClassifier:
         self.n_inputs = len(input_mfs)
         self.n_classes = int(n_classes)
         mf_per_input = [len(mfs) for mfs in input_mfs.values()]
-        self.n_rules = int(np.prod(mf_per_input))
         self.membership_layer = MembershipLayer(input_mfs)
-        self.rule_layer = RuleLayer(self.input_names, mf_per_input)
+        self.rule_layer = RuleLayer(self.input_names, mf_per_input, rules=rules)
+        self.n_rules = self.rule_layer.n_rules
         self.normalization_layer = NormalizationLayer()
         self.consequent_layer = ClassificationConsequentLayer(
             self.n_rules, self.n_inputs, self.n_classes, random_state=random_state
@@ -462,6 +497,11 @@ class TSKANFISClassifier:
                 params["membership"][name].append(mf.parameters.copy())
         return params
 
+    @property
+    def rules(self) -> list[tuple[int, ...]]:
+        """Return the fuzzy rule definitions used by the classifier."""
+        return list(self.rule_layer.rules)
+
     def set_parameters(self, parameters: dict[str, np.ndarray]):
         """Load parameters into the classifier.
 
@@ -533,10 +573,13 @@ class TSKANFISClassifier:
         y: np.ndarray,
         epochs: int = 100,
         learning_rate: float = 0.01,
-        verbose: bool = True,
+        verbose: bool = False,
         trainer: None | object = None,
         loss: LossFunction | str | None = None,
-    ) -> list[float]:
+        *,
+        validation_data: tuple[np.ndarray, np.ndarray] | None = None,
+        validation_frequency: int = 1,
+    ) -> TrainingHistory:
         """Fits the ANFIS model to the provided training data using the specified optimization strategy.
 
         Parameters:
@@ -544,13 +587,15 @@ class TSKANFISClassifier:
             y (np.ndarray): Target values for training.
             epochs (int, optional): Number of training epochs. Defaults to 100.
             learning_rate (float, optional): Learning rate for the optimizer. Defaults to 0.01.
-            verbose (bool, optional): If True, prints training progress. Defaults to True.
+            verbose (bool, optional): If True, prints training progress. Defaults to False.
             trainer (object or None, optional): Custom trainer object. If None, uses AdamTrainer. Defaults to None.
             loss (LossFunction, str, or None, optional): Loss function to use.
                 If None, defaults to cross-entropy for classification.
+            validation_data (tuple[np.ndarray, np.ndarray] | None, optional): Optional validation dataset.
+            validation_frequency (int, optional): Evaluate validation metrics every N epochs.
 
         Returns:
-            list[float]: List of loss values recorded during training.
+            TrainingHistory: Dictionary containing ``"train"`` and optionally ``"val"`` loss curves.
         """
         # Resolve loss: default to cross-entropy for classification when unspecified
         if loss is None:
@@ -570,7 +615,16 @@ class TSKANFISClassifier:
         elif hasattr(trainer, "loss"):
             trainer.loss = resolved_loss
 
-        return trainer.fit(self, X, y)
+        fit_kwargs: dict[str, object] = {}
+        if validation_data is not None:
+            fit_kwargs["validation_data"] = validation_data
+        if validation_frequency != 1 or validation_data is not None:
+            fit_kwargs["validation_frequency"] = validation_frequency
+
+        history = trainer.fit(self, X, y, **fit_kwargs)
+        if not isinstance(history, dict):
+            raise TypeError("Trainer.fit must return a TrainingHistory dictionary")
+        return history
 
     def __repr__(self) -> str:
         """Return a string representation of the ANFISClassifier.

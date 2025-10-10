@@ -117,6 +117,19 @@ class TestANFISBuilder:
         assert model.n_inputs == 2
         assert model.n_rules == 2 * 3  # Product of MFs per input
 
+    def test_build_model_with_explicit_rules(self):
+        builder = ANFISBuilder()
+        builder.add_input("x1", -1.0, 1.0, n_mfs=2)
+        builder.add_input("x2", -2.0, 2.0, n_mfs=2)
+
+        explicit_rules = [(0, 0), (0, 1), (1, 1)]
+        builder.set_rules(explicit_rules)
+
+        model = builder.build()
+
+        assert model.n_rules == len(explicit_rules)
+        assert model.rules == explicit_rules
+
     def test_method_chaining(self):
         """Test that methods can be chained."""
         builder = ANFISBuilder()
