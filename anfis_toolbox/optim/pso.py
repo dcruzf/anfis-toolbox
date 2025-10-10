@@ -85,7 +85,7 @@ class PSOTrainer(BaseTrainer):
     clamp_velocity: None | tuple[float, float] = None
     clamp_position: None | tuple[float, float] = None
     random_state: None | int = None
-    verbose: bool = True
+    verbose: bool = False
     loss: LossFunction | str | None = None
     _loss_fn: LossFunction = field(init=False, repr=False)
 

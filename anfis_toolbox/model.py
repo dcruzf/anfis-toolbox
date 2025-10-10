@@ -282,7 +282,7 @@ class TSKANFIS:
         y: np.ndarray,
         epochs: int = 100,
         learning_rate: float = 0.01,
-        verbose: bool = True,
+        verbose: bool = False,
         trainer: None | object = None,
         *,
         validation_data: tuple[np.ndarray, np.ndarray] | None = None,
@@ -301,7 +301,7 @@ class TSKANFIS:
                 regression.
             epochs (int, optional): Number of epochs. Defaults to ``100``.
             learning_rate (float, optional): Learning rate. Defaults to ``0.01``.
-            verbose (bool, optional): Whether to log progress. Defaults to ``True``.
+            verbose (bool, optional): Whether to log progress. Defaults to ``False``.
             trainer (object | None, optional): External trainer implementing
                 ``fit(model, X, y)``. Defaults to ``None``.
             validation_data (tuple[np.ndarray, np.ndarray] | None, optional): Optional
@@ -573,7 +573,7 @@ class TSKANFISClassifier:
         y: np.ndarray,
         epochs: int = 100,
         learning_rate: float = 0.01,
-        verbose: bool = True,
+        verbose: bool = False,
         trainer: None | object = None,
         loss: LossFunction | str | None = None,
         *,
@@ -587,7 +587,7 @@ class TSKANFISClassifier:
             y (np.ndarray): Target values for training.
             epochs (int, optional): Number of training epochs. Defaults to 100.
             learning_rate (float, optional): Learning rate for the optimizer. Defaults to 0.01.
-            verbose (bool, optional): If True, prints training progress. Defaults to True.
+            verbose (bool, optional): If True, prints training progress. Defaults to False.
             trainer (object or None, optional): Custom trainer object. If None, uses AdamTrainer. Defaults to None.
             loss (LossFunction, str, or None, optional): Loss function to use.
                 If None, defaults to cross-entropy for classification.

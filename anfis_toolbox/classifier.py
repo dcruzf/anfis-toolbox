@@ -125,7 +125,7 @@ class ANFISClassifier(BaseEstimatorLike, FittedMixin, ClassifierMixinLike):
         epochs: int | None = None,
         batch_size: int | None = None,
         shuffle: bool | None = None,
-        verbose: bool = True,
+        verbose: bool = False,
         loss: LossFunction | str | None = None,
         rules: Sequence[Sequence[int]] | None = None,
     ) -> None:

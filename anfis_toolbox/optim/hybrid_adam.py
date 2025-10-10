@@ -26,7 +26,7 @@ class HybridAdamTrainer(BaseTrainer):
     beta2: float = 0.999
     epsilon: float = 1e-8
     epochs: int = 100
-    verbose: bool = True
+    verbose: bool = False
 
     def init_state(self, model, X: np.ndarray, y: np.ndarray):
         """Initialize Adam moment tensors for membership parameters."""

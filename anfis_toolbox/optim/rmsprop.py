@@ -48,7 +48,7 @@ class RMSPropTrainer(BaseTrainer):
     epochs: int = 100
     batch_size: None | int = None
     shuffle: bool = True
-    verbose: bool = True
+    verbose: bool = False
     loss: LossFunction | str | None = None
     _loss_fn: LossFunction = field(init=False, repr=False)
 

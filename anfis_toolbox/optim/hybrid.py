@@ -21,7 +21,7 @@ class HybridTrainer(BaseTrainer):
 
     learning_rate: float = 0.01
     epochs: int = 100
-    verbose: bool = True
+    verbose: bool = False
 
     def _prepare_training_data(self, model, X: np.ndarray, y: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         return self._prepare_data(X, y)
