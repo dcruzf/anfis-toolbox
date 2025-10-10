@@ -71,8 +71,9 @@ nav:
     - S-Shaped: membership_functions/sshaped.ipynb
     - Linear S-Shaped: membership_functions/sshaped-linear.ipynb
   - Examples:
-    - Basic: examples/basic_example.ipynb
+    - Basic: examples/regression_basic.ipynb
     - Intermediate: examples/modeling.ipynb
+    - Classifier: examples/classifier_basic.ipynb
   - API Reference:
     - index: api/index.md
     - Membership Functions: api/membership-functions.md
