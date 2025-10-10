@@ -1,4 +1,6 @@
 import inspect
+import logging
+from types import SimpleNamespace
 from typing import Any
 
 import numpy as np
@@ -6,6 +8,7 @@ import pytest
 
 from anfis_toolbox import ANFISClassifier, TSKANFISClassifier, accuracy
 from anfis_toolbox.builders import ANFISBuilder
+from anfis_toolbox.classifier import _ensure_training_logging
 from anfis_toolbox.estimator_utils import NotFittedError
 from anfis_toolbox.losses import LossFunction
 from anfis_toolbox.losses import resolve_loss as _resolve_loss
@@ -90,6 +93,35 @@ def test_classifier_forward_and_predict_shapes():
     assert preds.shape == (2,)
 
 
+def test_ensure_training_logging_behaviour(monkeypatch):
+    calls: list[str] = []
+
+    def fake_enable():
+        calls.append("enabled")
+
+    dummy_logger = SimpleNamespace(handlers=[])
+    monkeypatch.setattr("anfis_toolbox.classifier.enable_training_logs", fake_enable)
+
+    real_get_logger = logging.getLogger
+
+    def fake_get_logger(name: str | None = None):
+        if name == "anfis_toolbox":
+            return dummy_logger
+        return real_get_logger(name)
+
+    monkeypatch.setattr("anfis_toolbox.classifier.logging.getLogger", fake_get_logger)
+
+    _ensure_training_logging(False)
+    assert not calls
+
+    _ensure_training_logging(True)
+    assert calls == ["enabled"]
+
+    dummy_logger.handlers = [object()]
+    _ensure_training_logging(True)
+    assert calls == ["enabled"]
+
+
 def test_classifier_predict_proba_accepts_1d_input_and_repr_and_property():
     mfs = make_simple_input_mfs(n_features=1, n_mfs=2)
     clf = LowLevelClassifier(mfs, n_classes=2)
@@ -118,6 +150,45 @@ def test_classifier_fit_binary_toy():
     proba = model.predict_proba(X)
     acc = accuracy(y, proba)
     assert acc >= 0.8
+
+
+def test_classifier_fit_raises_when_trainer_history_invalid():
+    class DummyTrainer(BaseTrainer):
+        def fit(self, model, X_fit, y_fit, **kwargs):  # noqa: D401 - simple stub
+            return []  # Not a dict, should trigger TypeError
+
+        def init_state(self, model, X_fit, y_fit):  # pragma: no cover - not used
+            return None
+
+        def train_step(self, model, X_batch, y_batch, state):  # pragma: no cover - not used
+            return 0.0, state
+
+        def compute_loss(self, model, X_eval, y_eval):  # pragma: no cover - not used
+            return 0.0
+
+    clf = ANFISClassifier(n_classes=2, n_mfs=2, optimizer="sgd", random_state=0, verbose=False)
+
+    dummy_model = SimpleNamespace(
+        rules=[],
+        predict=lambda X: np.zeros(X.shape[0]),
+        predict_proba=lambda X: np.full((X.shape[0], clf.n_classes), 1.0 / clf.n_classes),
+    )
+
+    clf._build_model = lambda X, feature_names: dummy_model  # type: ignore[assignment]
+    clf._instantiate_trainer = lambda: DummyTrainer()  # type: ignore[assignment]
+
+    X = np.array([[0.0, 0.0], [1.0, 1.0]])
+    y = np.array([0, 1])
+
+    with pytest.raises(TypeError, match="TrainingHistory"):
+        clf.fit(X, y)
+
+
+def test_get_rules_returns_empty_tuple_when_rules_missing():
+    clf = ANFISClassifier(n_classes=2, verbose=False)
+    clf._mark_fitted()
+    clf.rules_ = []
+    assert clf.get_rules() == ()
 
 
 def test_classifier_fit_with_one_hot_and_invalid_shapes():
