@@ -377,7 +377,8 @@ class ANFISClassifier(BaseEstimatorLike, FittedMixin, ClassifierMixinLike):
         Returns:
         -------
         dict[str, float] | None
-            Dictionary containing ``accuracy`` and ``log_loss`` when
+            Dictionary containing accuracy, balanced accuracy, macro/micro
+            precision/recall/F1 scores, and the confusion matrix when
             ``return_dict`` is ``True``; otherwise ``None``.
 
         Raises:
@@ -393,10 +394,10 @@ class ANFISClassifier(BaseEstimatorLike, FittedMixin, ClassifierMixinLike):
         encoded_targets, _ = self._encode_targets(y, X_arr.shape[0], allow_partial_classes=True)
         proba = self.predict_proba(X_arr)
         metrics = ANFISMetrics.classification_metrics(encoded_targets, proba)
+        metrics.pop("log_loss", None)
         if print_results:
             quick = [
                 ("Accuracy", metrics["accuracy"]),
-                ("LogLoss", metrics["log_loss"]),
             ]
             print("ANFISClassifier evaluation:")  # noqa: T201
             for name, value in quick:
