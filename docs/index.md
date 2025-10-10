@@ -111,6 +111,20 @@ metrics = quick_evaluate(model, X, y)
 predictions = model.predict([[1.0, -0.5], [0.5, 1.2]])
 
 print(f"R² Score: {metrics['r2']:.4f}")
+print(f"RMSE: {metrics['rmse']:.4f}")
+```
+
+### Metrics & Evaluation
+
+Want a structured report instead of a plain dictionary? Use `compute_metrics` to detect the task type automatically and access every score via the `MetricReport` helper:
+
+```python
+from anfis_toolbox.metrics import compute_metrics
+
+report = compute_metrics(y, y_pred=model.predict(X))
+print(report.task)          # "regression"
+print(report["mae"])       # individual metric access
+print(report.to_dict())     # convert to a plain dict when needed
 ```
 
 That's it! 🎉 You just created and trained a neuro-fuzzy system!

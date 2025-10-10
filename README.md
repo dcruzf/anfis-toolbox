@@ -6,6 +6,9 @@
 </div>
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![coverage](https://img.shields.io/badge/dynamic/regex?url=https%3A%2F%2Fdcruzf.github.io%2Fanfis-toolbox%2Fassets%2Fcov%2Findex.html&search=%3Cspan%20class%3D%22pc_cov%22%3E(%3F%3Ccov%3E%5Cd%2B%25)%3C%2Fspan%3E&replace=%24%3Ccov%3E&style=flat&logo=pytest&logoColor=white&label=coverage&color=green)](https://dcruzf.github.io/anfis-toolbox/assets/cov/)
+
+
 
 A batteries-included Adaptive Neuro-Fuzzy Inference System (ANFIS) toolkit built in pure Python. It exposes high-level regression and classification APIs, modern trainers, and a rich catalog of membership functions.
 
@@ -52,6 +55,18 @@ reg = ANFISRegressor(
 reg.fit(X, y)
 prediction = reg.predict([[0.2, -1.5]])
 metrics = reg.evaluate(X, y)
+
+# Use a custom subset of fuzzy rules (optional)
+explicit_rules = [(0, 0), (1, 1), (2, 2)]
+reg_subset = ANFISRegressor(
+  optimizer="adam",
+  epochs=40,
+  learning_rate=0.01,
+  rules=explicit_rules,
+)
+reg_subset.fit(X, y)
+# Fitted estimators expose their final rule list via the ``rules_`` attribute.
+assert reg_subset.rules_ == [tuple(rule) for rule in explicit_rules]
 ```
 
 ### Classification
@@ -76,6 +91,18 @@ clf.fit(X, y)
 preds = clf.predict([[0.4, -0.2]])
 proba = clf.predict_proba([[0.4, -0.2]])
 report = clf.evaluate(X, y)
+
+# Explicit rules also work for classifiers
+clf_subset = ANFISClassifier(
+  n_classes=2,
+  optimizer="sgd",
+  epochs=25,
+  learning_rate=0.05,
+  random_state=0,
+  rules=[(0, 0), (1, 1)],
+)
+clf_subset.fit(X, y)
+assert clf_subset.rules_ == [(0, 0), (1, 1)]
 ```
 
 ## 🧩 Membership functions at a glance

@@ -30,6 +30,7 @@ Task compatibility and guidance:
 from .adam import AdamTrainer
 from .base import BaseTrainer
 from .hybrid import HybridTrainer
+from .hybrid_adam import HybridAdamTrainer
 from .pso import PSOTrainer
 from .rmsprop import RMSPropTrainer
 from .sgd import SGDTrainer
@@ -39,6 +40,7 @@ __all__ = [
     "SGDTrainer",
     "HybridTrainer",
     "AdamTrainer",
+    "HybridAdamTrainer",
     "RMSPropTrainer",
     "PSOTrainer",
 ]

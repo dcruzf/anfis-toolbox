@@ -30,47 +30,29 @@ class SGDTrainer(BaseTrainer):
     epochs: int = 100
     batch_size: None | int = None
     shuffle: bool = True
-    verbose: bool = True
+    verbose: bool = False
     loss: LossFunction | str | None = None
     _loss_fn: LossFunction = field(init=False, repr=False)
 
-    def fit(self, model, X: np.ndarray, y: np.ndarray) -> list[float]:
-        """Train the model using pure backpropagation.
-
-        Uses the model's forward/backward/update APIs directly, without requiring
-        a model.train_step method. Returns a list of loss values per epoch.
-        Loss is MSE, computed as ``mean((y_pred - y)**2)``; 1D ``y`` is reshaped
-        to ``(n,1)`` for convenience.
-        """
+    def _prepare_training_data(self, model, X: np.ndarray, y: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         self._loss_fn = resolve_loss(self.loss)
-        X = np.asarray(X, dtype=float)
-        y_prepared = self._loss_fn.prepare_targets(y, model=model)
-        if y_prepared.shape[0] != X.shape[0]:
+        X_arr = np.asarray(X, dtype=float)
+        y_arr = self._loss_fn.prepare_targets(y, model=model)
+        if y_arr.shape[0] != X_arr.shape[0]:
             raise ValueError("Target array must have same number of rows as X")
+        return X_arr, y_arr
 
-        n_samples = X.shape[0]
-        losses: list[float] = []
-
-        for _ in range(self.epochs):
-            if self.batch_size is None:
-                # Full-batch gradient descent
-                loss = self._compute_loss_backward_and_update(model, X, y_prepared)
-                losses.append(loss)
-            else:
-                # Mini-batch SGD
-                indices = np.arange(n_samples)
-                if self.shuffle:
-                    np.random.shuffle(indices)
-                batch_losses: list[float] = []
-                for start in range(0, n_samples, self.batch_size):
-                    end = start + self.batch_size
-                    batch_idx = indices[start:end]
-                    batch_loss = self._compute_loss_backward_and_update(model, X[batch_idx], y_prepared[batch_idx])
-                    batch_losses.append(batch_loss)
-                # For compatibility, record epoch loss as mean of batch losses
-                losses.append(float(np.mean(batch_losses)))
-
-        return losses
+    def _prepare_validation_data(
+        self,
+        model,
+        X_val: np.ndarray,
+        y_val: np.ndarray,
+    ) -> tuple[np.ndarray, np.ndarray]:
+        X_arr = np.asarray(X_val, dtype=float)
+        y_arr = self._loss_fn.prepare_targets(y_val, model=model)
+        if y_arr.shape[0] != X_arr.shape[0]:
+            raise ValueError("Validation targets must match input rows")
+        return X_arr, y_arr
 
     def init_state(self, model, X: np.ndarray, y: np.ndarray):
         """SGD has no persistent optimizer state; returns None."""
@@ -78,9 +60,7 @@ class SGDTrainer(BaseTrainer):
 
     def train_step(self, model, Xb: np.ndarray, yb: np.ndarray, state):
         """Perform one SGD step on a batch and return (loss, state)."""
-        loss_fn = self._ensure_loss_fn()
-        yb_prepared = loss_fn.prepare_targets(yb, model=model)
-        loss = self._compute_loss_backward_and_update(model, Xb, yb_prepared)
+        loss = self._compute_loss_backward_and_update(model, Xb, yb)
         return loss, state
 
     def _compute_loss_backward_and_update(self, model, Xb: np.ndarray, yb: np.ndarray) -> float:
@@ -93,7 +73,7 @@ class SGDTrainer(BaseTrainer):
         model.update_parameters(self.learning_rate)
         return loss
 
-    def _ensure_loss_fn(self) -> LossFunction:
-        if not hasattr(self, "_loss_fn"):
-            self._loss_fn = resolve_loss(self.loss)
-        return self._loss_fn
+    def compute_loss(self, model, X: np.ndarray, y: np.ndarray) -> float:
+        """Return the loss for ``(X, y)`` without mutating ``model``."""
+        preds = model.forward(X)
+        return float(self._loss_fn.loss(y, preds))

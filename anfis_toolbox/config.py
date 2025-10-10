@@ -18,7 +18,7 @@ class ANFISConfig:
         """Initialize configuration manager."""
         self.config = {
             "inputs": {},
-            "training": {"method": "hybrid", "epochs": 50, "learning_rate": 0.01, "verbose": True},
+            "training": {"method": "hybrid", "epochs": 50, "learning_rate": 0.01, "verbose": False},
             "model_params": {},
         }
 
@@ -54,7 +54,7 @@ class ANFISConfig:
         return self
 
     def set_training_config(
-        self, method: str = "hybrid", epochs: int = 50, learning_rate: float = 0.01, verbose: bool = True
+        self, method: str = "hybrid", epochs: int = 50, learning_rate: float = 0.01, verbose: bool = False
     ) -> "ANFISConfig":
         """Set training configuration.
 
