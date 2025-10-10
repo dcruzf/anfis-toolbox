@@ -10,7 +10,7 @@ from anfis_toolbox.estimator_utils import NotFittedError
 from anfis_toolbox.losses import LossFunction
 from anfis_toolbox.losses import resolve_loss as _resolve_loss
 from anfis_toolbox.membership import GaussianMF, MembershipFunction
-from anfis_toolbox.optim import BaseTrainer, SGDTrainer
+from anfis_toolbox.optim import BaseTrainer, HybridAdamTrainer, HybridTrainer, SGDTrainer
 
 LowLevelClassifier = TSKANFISClassifier
 
@@ -558,6 +558,25 @@ def test_anfis_classifier_invalid_optimizer_string():
         clf.fit(X, y)
 
 
+@pytest.mark.parametrize("optimizer", ["hybrid", "hybrid_adam"])
+def test_anfis_classifier_rejects_hybrid_aliases(optimizer):
+    X, y = _generate_classification_data(seed=5)
+    clf = ANFISClassifier(n_classes=2, optimizer=optimizer, epochs=1, verbose=False)
+    with pytest.raises(ValueError, match="Hybrid-style"):
+        clf.fit(X, y)
+
+
+@pytest.mark.parametrize(
+    "optimizer",
+    [HybridTrainer, HybridAdamTrainer, HybridTrainer(), HybridAdamTrainer()],
+)
+def test_anfis_classifier_rejects_hybrid_objects(optimizer):
+    X, y = _generate_classification_data(seed=6)
+    clf = ANFISClassifier(n_classes=2, optimizer=optimizer, epochs=1, verbose=False)
+    with pytest.raises(ValueError, match="Hybrid-style"):
+        clf.fit(X, y)
+
+
 def test_anfis_classifier_predict_requires_fit():
     clf = ANFISClassifier(n_classes=2)
     with pytest.raises(NotFittedError):
@@ -913,3 +932,36 @@ def test_classifier_fit_raises_for_non_dict_history():
     classifier = LowLevelClassifier(make_simple_input_mfs(n_features=2, n_mfs=2), n_classes=2)
     with pytest.raises(TypeError, match="Trainer.fit must return a TrainingHistory dictionary"):
         classifier.fit(X, y, trainer=BadTrainer())
+
+
+@pytest.mark.parametrize("optimizer", ["sgd", "adam", "pso", "rmsprop"])
+def test_moon(optimizer):
+    X = np.array(
+        [
+            [1.73501091, -0.10605525],
+            [0.64901897, 0.6545898],
+            [-0.05713802, 0.40759172],
+            [0.7387451, 0.09503697],
+            [1.08164451, -0.6523876],
+            [-0.04280461, 0.92575932],
+            [1.92966562, 0.28603793],
+            [-1.0629475, 0.05977205],
+            [-0.45115798, 0.74653008],
+            [0.30511514, -0.25865035],
+        ]
+    )
+    y = np.array([1, 0, 1, 0, 1, 0, 1, 0, 0, 1])
+
+    clf = ANFISClassifier(
+        n_classes=2,
+        n_mfs=2,
+        optimizer=optimizer,
+        epochs=5,
+        learning_rate=0.1,
+        verbose=False,
+        random_state=0,
+    )
+    clf.fit(X, y)
+    proba = clf.predict_proba(X)
+    acc = accuracy(y, proba)
+    assert acc >= 0.7

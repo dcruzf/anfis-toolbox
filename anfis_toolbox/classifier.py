@@ -32,20 +32,26 @@ from .model import TSKANFISClassifier as LowLevelANFISClassifier
 from .optim import (
     AdamTrainer,
     BaseTrainer,
-    HybridTrainer,
     PSOTrainer,
     RMSPropTrainer,
     SGDTrainer,
 )
+from .optim import (
+    HybridAdamTrainer as _HybridAdamTrainer,
+)
+from .optim import (
+    HybridTrainer as _HybridTrainer,
+)
 from .optim.base import TrainingHistory
 
 TRAINER_REGISTRY: dict[str, type[BaseTrainer]] = {
-    "hybrid": HybridTrainer,
     "sgd": SGDTrainer,
     "adam": AdamTrainer,
     "rmsprop": RMSPropTrainer,
     "pso": PSOTrainer,
 }
+
+_UNSUPPORTED_TRAINERS: tuple[type[BaseTrainer], ...] = (_HybridTrainer, _HybridAdamTrainer)
 
 
 def _ensure_training_logging(verbose: bool) -> None:
@@ -156,6 +162,9 @@ class ANFISClassifier(BaseEstimatorLike, FittedMixin, ClassifierMixinLike):
         optimizer : str | BaseTrainer | type[BaseTrainer] | None, default="adam"
             Training algorithm identifier or instance. String aliases are looked
             up in :data:`TRAINER_REGISTRY`. ``None`` defaults to ``"adam"``.
+            ``HybridTrainer`` and ``HybridAdamTrainer`` (least-squares hybrid variants)
+            are restricted to regression and will raise a ``ValueError`` when
+            supplied here.
         optimizer_params : Mapping, optional
             Additional keyword arguments provided to the trainer constructor
             when a string alias or trainer class is supplied.
@@ -515,14 +524,32 @@ class ANFISClassifier(BaseEstimatorLike, FittedMixin, ClassifierMixinLike):
     def _instantiate_trainer(self) -> BaseTrainer:
         optimizer = self.optimizer if self.optimizer is not None else "adam"
         if isinstance(optimizer, BaseTrainer):
+            if isinstance(optimizer, _UNSUPPORTED_TRAINERS):
+                raise ValueError(
+                    "Hybrid-style trainers that rely on least-squares updates are not supported by ANFISClassifier. "
+                    "Choose among: "
+                    f"{', '.join(sorted(TRAINER_REGISTRY.keys()))}."
+                )
             trainer = deepcopy(optimizer)
             self._apply_runtime_overrides(trainer)
             return trainer
         if inspect.isclass(optimizer) and issubclass(optimizer, BaseTrainer):
+            if issubclass(optimizer, _UNSUPPORTED_TRAINERS):
+                raise ValueError(
+                    "Hybrid-style trainers that rely on least-squares updates are not supported by ANFISClassifier. "
+                    "Choose among: "
+                    f"{', '.join(sorted(TRAINER_REGISTRY.keys()))}."
+                )
             params = self._collect_trainer_params(optimizer)
             return optimizer(**params)
         if isinstance(optimizer, str):
             key = optimizer.lower()
+            if key in {"hybrid", "hybrid_adam"}:
+                raise ValueError(
+                    "Hybrid-style optimizers that combine least-squares with gradient descent are only available "
+                    "for regression. Supported classifier optimizers: "
+                    f"{', '.join(sorted(TRAINER_REGISTRY.keys()))}."
+                )
             if key not in TRAINER_REGISTRY:
                 supported = ", ".join(sorted(TRAINER_REGISTRY.keys()))
                 raise ValueError(f"Unknown optimizer '{optimizer}'. Supported: {supported}")

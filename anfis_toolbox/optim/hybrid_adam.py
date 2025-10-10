@@ -13,7 +13,13 @@ from .base import BaseTrainer
 
 @dataclass
 class HybridAdamTrainer(BaseTrainer):
-    """Hybrid training: LSM for consequents + Adam for antecedents."""
+    """Hybrid training: LSM for consequents + Adam for antecedents.
+
+    Notes:
+        This variant also targets the regression ANFIS. It is not compatible with the
+        classification head (:class:`~anfis_toolbox.model.TSKANFISClassifier`) or
+        :class:`~anfis_toolbox.classifier.ANFISClassifier`.
+    """
 
     learning_rate: float = 0.001
     beta1: float = 0.9

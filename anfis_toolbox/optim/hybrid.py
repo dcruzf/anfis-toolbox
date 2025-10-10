@@ -11,7 +11,13 @@ from .base import BaseTrainer
 
 @dataclass
 class HybridTrainer(BaseTrainer):
-    """Original Jang (1993) hybrid training: LSM for consequents + GD for antecedents."""
+    """Original Jang (1993) hybrid training: LSM for consequents + GD for antecedents.
+
+    Notes:
+        This trainer assumes a single-output regression head. It is not compatible with
+        :class:`~anfis_toolbox.model.TSKANFISClassifier` or the high-level
+        :class:`~anfis_toolbox.classifier.ANFISClassifier` facade.
+    """
 
     learning_rate: float = 0.01
     epochs: int = 100
