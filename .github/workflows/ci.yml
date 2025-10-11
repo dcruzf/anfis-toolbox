@@ -29,14 +29,8 @@ jobs:
       - name: Run tests
         run: make test-all
 
-      - name: Publish docs (main)
-        if: github.event.action == 'closed' && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main'
-        run: |
-          make cov-report
-          make docs-gh-deploy
-
       - name: Publish docs (dev)
         if: github.event.action == 'closed' && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'dev'
         run: |
           make cov-report
-          make docs-gh-deploy-dev
+          make docs-gh-deploy
