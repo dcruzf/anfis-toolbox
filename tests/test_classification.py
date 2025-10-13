@@ -184,6 +184,90 @@ def test_classifier_fit_raises_when_trainer_history_invalid():
         clf.fit(X, y)
 
 
+def test_classifier_infers_n_classes_from_targets(monkeypatch):
+    class DummyTrainer(BaseTrainer):
+        def fit(self, model, X_fit, y_fit, **kwargs):
+            self.X_shape = X_fit.shape
+            self.y_shape = y_fit.shape
+            return {"train": [0.0]}
+
+        def init_state(self, model, X_fit, y_fit):  # pragma: no cover - unused stub
+            return None
+
+        def train_step(self, model, X_batch, y_batch, state):  # pragma: no cover - unused stub
+            return 0.0, state
+
+        def compute_loss(self, model, X_eval, y_eval):  # pragma: no cover - unused stub
+            return 0.0
+
+    clf = ANFISClassifier(n_mfs=2, optimizer="sgd", random_state=0, verbose=False)
+
+    def fake_build_model(X, feature_names):
+        assert clf.n_classes == 2
+        return SimpleNamespace(
+            rules=[],
+            predict=lambda X_pred: np.zeros(X_pred.shape[0], dtype=int),
+            predict_proba=lambda X_pred: np.full((X_pred.shape[0], clf.n_classes or 1), 1.0),
+        )
+
+    monkeypatch.setattr(clf, "_build_model", fake_build_model)
+    monkeypatch.setattr(clf, "_instantiate_trainer", lambda: DummyTrainer())
+
+    X = np.array([[0.0], [1.0], [0.5], [1.5]])
+    y = np.array([0, 1, 0, 1])
+
+    clf.fit(X, y)
+
+    assert clf.n_classes == 2
+    np.testing.assert_array_equal(clf.classes_, np.array([0, 1], dtype=object))
+
+
+def test_classifier_infers_n_classes_from_one_hot(monkeypatch):
+    class DummyTrainer(BaseTrainer):
+        def fit(self, model, X_fit, y_fit, **kwargs):
+            return {"train": [0.0]}
+
+        def init_state(self, model, X_fit, y_fit):  # pragma: no cover - unused stub
+            return None
+
+        def train_step(self, model, X_batch, y_batch, state):  # pragma: no cover - unused stub
+            return 0.0, state
+
+        def compute_loss(self, model, X_eval, y_eval):  # pragma: no cover - unused stub
+            return 0.0
+
+    clf = ANFISClassifier(n_mfs=2, optimizer="sgd", random_state=0, verbose=False)
+
+    def fake_build_model(X, feature_names):
+        assert clf.n_classes == 3
+        return SimpleNamespace(
+            rules=[],
+            predict=lambda X_pred: np.zeros(X_pred.shape[0], dtype=int),
+            predict_proba=lambda X_pred: np.full((X_pred.shape[0], clf.n_classes or 1), 1.0 / (clf.n_classes or 1)),
+        )
+
+    monkeypatch.setattr(clf, "_build_model", fake_build_model)
+    monkeypatch.setattr(clf, "_instantiate_trainer", lambda: DummyTrainer())
+
+    X = np.array([[0.0], [1.0], [0.5]])
+    y = np.zeros((X.shape[0], 3), dtype=float)
+    y[np.arange(X.shape[0]), [0, 1, 2]] = 1.0
+
+    clf.fit(X, y)
+
+    assert clf.n_classes == 3
+    np.testing.assert_array_equal(clf.classes_, np.array([0, 1, 2]))
+
+
+def test_classifier_inferred_classes_require_multiple_labels():
+    clf = ANFISClassifier(n_mfs=2, optimizer="sgd", random_state=0, verbose=False)
+    X = np.array([[0.0], [1.0], [0.5]])
+    y = np.zeros(X.shape[0], dtype=int)
+
+    with pytest.raises(ValueError, match="at least two distinct classes"):
+        clf.fit(X, y)
+
+
 def test_get_rules_returns_empty_tuple_when_rules_missing():
     clf = ANFISClassifier(n_classes=2, verbose=False)
     clf._mark_fitted()

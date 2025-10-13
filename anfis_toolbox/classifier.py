@@ -68,8 +68,9 @@ class ANFISClassifier(BaseEstimatorLike, FittedMixin, ClassifierMixinLike):
 
     Parameters
     ----------
-    n_classes : int
-        Number of target classes. Must be >= 2.
+    n_classes : int, optional
+        Number of target classes. Must be >= 2 when provided. If omitted, the
+        classifier infers the class count during the first call to ``fit``.
     n_mfs : int, default=3
         Default number of membership functions per input.
     mf_type : str, default="gaussian"
@@ -111,7 +112,7 @@ class ANFISClassifier(BaseEstimatorLike, FittedMixin, ClassifierMixinLike):
     def __init__(
         self,
         *,
-        n_classes: int,
+        n_classes: int | None = None,
         n_mfs: int = 3,
         mf_type: str = "gaussian",
         init: str | None = "grid",
@@ -133,8 +134,10 @@ class ANFISClassifier(BaseEstimatorLike, FittedMixin, ClassifierMixinLike):
 
         Parameters
         ----------
-        n_classes : int
-            Number of output classes. Must be at least two.
+        n_classes : int, optional
+            Number of output classes. Must be at least two when provided. If
+            omitted, the value is inferred from the training targets during
+            the first ``fit`` call.
         n_mfs : int, default=3
             Default number of membership functions to allocate per input when
             inferred from data.
@@ -180,9 +183,9 @@ class ANFISClassifier(BaseEstimatorLike, FittedMixin, ClassifierMixinLike):
             membership-function index for each input. ``None`` uses the full
             Cartesian product of configured membership functions.
         """
-        if int(n_classes) < 2:
+        if n_classes is not None and int(n_classes) < 2:
             raise ValueError("n_classes must be >= 2")
-        self.n_classes = int(n_classes)
+        self.n_classes: int | None = int(n_classes) if n_classes is not None else None
         self.n_mfs = int(n_mfs)
         self.mf_type = str(mf_type)
         self.init = None if init is None else str(init)
@@ -270,6 +273,8 @@ class ANFISClassifier(BaseEstimatorLike, FittedMixin, ClassifierMixinLike):
         self.input_specs_ = self._resolve_input_specs(feature_names)
 
         _ensure_training_logging(self.verbose)
+        if self.n_classes is None:
+            raise RuntimeError("n_classes could not be inferred from the provided targets")
         self.model_ = self._build_model(X_arr, feature_names)
         trainer = self._instantiate_trainer()
         self.optimizer_ = trainer
@@ -613,22 +618,36 @@ class ANFISClassifier(BaseEstimatorLike, FittedMixin, ClassifierMixinLike):
         if y_arr.ndim == 2:
             if y_arr.shape[0] != n_samples:
                 raise ValueError("y must contain the same number of samples as X")
-            if y_arr.shape[1] != self.n_classes:
-                raise ValueError(f"One-hot targets must have shape (n_samples, n_classes={self.n_classes}).")
+            n_classes = self.n_classes
+            if n_classes is None:
+                inferred = y_arr.shape[1]
+                if inferred < 2:
+                    raise ValueError("One-hot targets must encode at least two classes for classification.")
+                self.n_classes = inferred
+                n_classes = inferred
+            if y_arr.shape[1] != n_classes:
+                raise ValueError(f"One-hot targets must have shape (n_samples, n_classes={n_classes}).")
             encoded = np.argmax(y_arr, axis=1).astype(int)
-            classes = np.arange(self.n_classes)
+            classes = np.arange(n_classes)
             return encoded, classes
         if y_arr.ndim == 1:
             if y_arr.shape[0] != n_samples:
                 raise ValueError("y must contain the same number of samples as X")
             classes = np.unique(y_arr)
-            if not allow_partial_classes and classes.size != self.n_classes:
+            n_unique = classes.size
+            if n_unique < 2 and not allow_partial_classes:
+                raise ValueError("Classification targets must include at least two distinct classes.")
+            n_classes = self.n_classes
+            if n_classes is None:
+                if n_unique < 2:
+                    raise ValueError("Classification targets must include at least two distinct classes.")
+                self.n_classes = n_unique
+                n_classes = n_unique
+            if not allow_partial_classes and n_unique != n_classes:
+                raise ValueError(f"y contains {n_unique} unique classes but estimator was configured for {n_classes}.")
+            if n_unique > n_classes:
                 raise ValueError(
-                    f"y contains {classes.size} unique classes but estimator was configured for {self.n_classes}."
-                )
-            if classes.size > self.n_classes:
-                raise ValueError(
-                    f"y contains {classes.size} unique classes which exceeds configured n_classes={self.n_classes}."
+                    f"y contains {n_unique} unique classes which exceeds configured n_classes={n_classes}."
                 )
             mapping = {self._normalize_class_key(cls): idx for idx, cls in enumerate(classes.tolist())}
             encoded = np.array([mapping[self._normalize_class_key(val)] for val in y_arr], dtype=int)
