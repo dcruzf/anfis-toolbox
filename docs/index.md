@@ -34,24 +34,28 @@ ANFIS Toolbox is a comprehensive Python library for creating, training, and depl
         Get started with just 3 lines of code
     </div>
     <div style="flex: 1; min-width: 280px; padding: 1rem; border: 1px solid #ddd; border-radius: 8px;">
+        🤖 <strong>Versatile Modeling</strong><br>
+        Supports both classification and regression tasks
+    </div>
+    <div style="flex: 1; min-width: 280px; padding: 1rem; border: 1px solid #ddd; border-radius: 8px;">
         🏗️ <strong>Flexible Architecture</strong><br>
-        13 membership functions, hybrid learning
+        13 membership functions
     </div>
     <div style="flex: 1; min-width: 280px; padding: 1rem; border: 1px solid #ddd; border-radius: 8px;">
-        📊 <strong>Built-in Visualization</strong><br>
-        Automatic plots for training and results
+        🚀 <strong>Adaptive Initialization</strong><br>
+        Fuzzy c-means, grid, and random initialization strategies
     </div>
     <div style="flex: 1; min-width: 280px; padding: 1rem; border: 1px solid #ddd; border-radius: 8px;">
-        ✅ <strong>Robust Validation</strong><br>
-        Cross-validation, metrics, model comparison
+        📉 <strong>Flexible Optimization</strong><br>
+        Multiple optimization algorithms
+    </div>
+    <div style="flex: 1; min-width: 280px; padding: 1rem; border: 1px solid #ddd; border-radius: 8px;">
+        📐 <strong>Comprehensive Metrics</strong><br>
+        Rich collection of evaluation metrics
     </div>
     <div style="flex: 1; min-width: 280px; padding: 1rem; border: 1px solid #ddd; border-radius: 8px;">
         📚 <strong>Rich Documentation</strong><br>
-        Comprehensive examples and tutorials
-    </div>
-    <div style="flex: 1; min-width: 280px; padding: 1rem; border: 1px solid #ddd; border-radius: 8px;">
-        🔧 <strong>Production Ready</strong><br>
-        Model persistence and configuration management
+        Comprehensive examples
     </div>
 </div>
 
@@ -61,102 +65,83 @@ ANFIS Toolbox is a comprehensive Python library for creating, training, and depl
 
 Most fuzzy logic libraries require extensive boilerplate code. ANFIS Toolbox gets you running in seconds:
 
-```python
-# Traditional approach (10+ lines)
-input_mfs = {
-    'x1': [GaussianMF(-1, 1), GaussianMF(1, 1)],
-    'x2': [GaussianMF(-1, 1), GaussianMF(1, 1)]
-}
-model = ANFIS(input_mfs)
-# ... manual setup ...
+=== "Regression"
 
-# ANFIS Toolbox approach (1 line)
-model = QuickANFIS.for_regression(X)
-```
+    ```python
+    from anfis_toolbox import ANFISRegressor
 
-### ✅ Validation Made Easy (Built-in)
+    model = ANFISRegressor()
+    model.fit(X, y)
+    ```
 
-Comprehensive model evaluation with minimal code:
+=== "Classification"
 
-```python
-from anfis_toolbox import ANFISValidator
+    ```python
+    from anfis_toolbox import ANFISClassifier
 
-validator = ANFISValidator(model)
-
-# Cross-validation
-cv_results = validator.cross_validate(X, y, cv=5)
-print(f"CV R²: {cv_results['r2_mean']:.4f} ± {cv_results['r2_std']:.4f}")
-
-# Learning curves
-learning_data = validator.learning_curve(X, y)
-```
+    model = ANFISClassifier()
+    model.fit(X, y)
+    ```
 
 
 ## Quick Example
 
-```python
-import numpy as np
-from anfis_toolbox import QuickANFIS, quick_evaluate
+=== "Regression"
 
-# 1. Prepare your data
-X = np.random.uniform(-2, 2, (100, 2))  # 2 inputs
-y = X[:, 0]**2 + X[:, 1]**2  # Target: x1² + x2²
+    ```python
+    import numpy as np
+    from anfis_toolbox import ANFISRegressor
 
-# 2. Create and train model (one line!)
-model = QuickANFIS.for_regression(X, n_mfs=3)
-losses = model.fit_hybrid(X, y, epochs=50)
+    X = np.random.uniform(-2, 2, (100, 2))  # 2 inputs
+    y = X[:, 0]**2 + X[:, 1]**2  # Target: x1² + x2²
 
-# 3. Evaluate and use
-metrics = quick_evaluate(model, X, y)
-predictions = model.predict([[1.0, -0.5], [0.5, 1.2]])
+    model = ANFISRegressor()
+    model.fit(X, y)
+    ```
 
-print(f"R² Score: {metrics['r2']:.4f}")
-print(f"RMSE: {metrics['rmse']:.4f}")
-```
+=== "Classification"
+
+    ```python
+    import numpy as np
+    from anfis_toolbox import ANFISClassifier
+
+    X = np.r_[np.random.normal(-1, .3, (50, 2)), np.random.normal(1, .3, (50, 2))]
+    y = np.r_[np.zeros(50, int), np.ones(50, int)]
+
+    model = ANFISClassifier(n_classes=2)
+    model.fit(X, y)
+    ```
 
 ### Metrics & Evaluation
 
-Want a structured report instead of a plain dictionary? Use `compute_metrics` to detect the task type automatically and access every score via the `MetricReport` helper:
+Want a structured report instead of a plain dictionary? Use `evaluate` to detect the task type automatically and access every score.
 
 ```python
-from anfis_toolbox.metrics import compute_metrics
-
-report = compute_metrics(y, y_pred=model.predict(X))
-print(report.task)          # "regression"
-print(report["mae"])       # individual metric access
-print(report.to_dict())     # convert to a plain dict when needed
+metrics = model.evaluate(X, y)
 ```
 
-That's it! 🎉 You just created and trained a neuro-fuzzy system!
+That's it! 🎉 You just created, trained and evaluate a neuro-fuzzy system!
+
 
 ## Installation
 
-=== "Basic Installation"
+Install the core package with minimal dependencies:
 
-    Install the core package with minimal dependencies:
-
-    ```bash
-    pip install anfis-toolbox
-    ```
-
-=== "Full Installation"
-
-    Install with all features (visualization):
-
-    ```bash
-    pip install anfis-toolbox[all]
-    ```
-
+```bash
+pip install anfis-toolbox
+```
 
 ## Use Cases
 
-| Application | Description | Code Example |
-|-------------|-------------|--------------|
-| **Function Approximation** | Learn complex mathematical functions | `QuickANFIS.for_function_approximation([(-π, π)])` |
-| **Regression** | Predict continuous values | `QuickANFIS.for_regression(X)` |
-| **Control Systems** | Design fuzzy controllers | Custom MF setup for error/error-rate |
-| **Time Series** | Forecast future values | Multi-lag input configuration |
-| **Pattern Recognition** | Classify with fuzzy boundaries | Post-process regression outputs |
+| Application                | Description                             |
+| -------------------------- | --------------------------------------- |
+| **Function Approximation** | Learn complex mathematical functions    |
+| **Regression**             | Predict continuous values               |
+| **Classification**         | Predict discrete class labels           |
+| **Pattern Recognition**    | Classify patterns with fuzzy boundaries |
+| **Control Systems**        | Design fuzzy controllers                |
+| **Time Series**            | Forecast future values                  |
+
 
 ## Architecture
 
@@ -241,9 +226,13 @@ flowchart LR
 
 ### Training Methods
 
-- **Hybrid Learning** (recommended) - Combines least squares + backpropagation
-- **Pure Backpropagation** - Full gradient-based training
-- **Analytical Gradients** - Fast and accurate derivative computation
+* **SGD (Stochastic Gradient Descent)** – Classic gradient-based optimization with incremental updates
+* **Adam** – Adaptive learning rates with momentum for faster convergence
+* **RMSProp** – Scales learning rates by recent gradient magnitudes for stable training
+* **PSO (Particle Swarm Optimization)** – Population-based global search strategy
+* **Hybrid SGD + OLS** – Combines gradient descent with least-squares parameter refinement
+* **Hybrid Adam + OLS** – Integrates adaptive optimization with analytical least-squares adjustment
+
 
 ## What's Next?
 
@@ -251,7 +240,6 @@ flowchart LR
 - 🔧 **[API Reference](api/overview.md)** - Complete function documentation
 - 🤖 **[ANFIS Models](models/anfis.md)** - Regression and classification models
 - 📐 **[Membership Functions](membership_functions/01_gaussianmf.ipynb)** - All MF classes
-- 🔍 **[Fuzzy C-Means](models/fuzzy_c-means.md)** - Clustering for MF initialization
 
 ## Community & Support
 
