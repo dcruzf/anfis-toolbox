@@ -53,9 +53,9 @@ theme:
 nav:
   - Home: index.md
   - Models:
-    - regressor: models/anfis.md
-    - classifier: models/anfis-classifier.md
-    - fuzzy c-means: models/fuzzy_c-means.md
+    - Regression: models/anfis.md
+    - Classification: models/anfis-classifier.md
+    - Fuzzy C-Means: models/fuzzy_c-means.md
   - Membership Functions:
     - Gaussian: membership_functions/gaussian.ipynb
     - Two-Sided Gaussian: membership_functions/gaussian-combination.ipynb
@@ -82,6 +82,7 @@ nav:
     - Classifier: api/classifier.md
     - Models: api/models.md
     - Layers: api/layers.md
+    - Losses: api/losses.md
     - Clustering: api/clustering.md
     - Configuration: api/config.md
     - Logging: api/logging.md
@@ -168,8 +169,6 @@ markdown_extensions:
   - pymdownx.tilde
 
 extra:
-  version:
-    provider: mike
   social:
     - icon: fontawesome/brands/github
       link: https://github.com/dcruzf/anfis-toolbox

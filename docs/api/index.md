@@ -4,36 +4,23 @@ Complete reference documentation for all ANFIS Toolbox classes, functions, and m
 
 ## 🏗️ Core Architecture
 
-### Core Model Classes
-
-| Class | Purpose | Module |
-|-------|---------|--------|
-| **`ANFIS`** | Core ANFIS implementation for regression tasks | [models](models) |
-| **`ANFISClassifier`** | ANFIS for multi-class classification | [models](models) |
-
-### High-Level Estimators
+### Estimators
 
 | Estimator | Purpose | Module |
 |-----------|---------|--------|
-| **`ANFISRegressor`** | Scikit-learn style regression interface | [regressor](regressor) |
-| **`ANFISClassifier`** | Scikit-learn style classification interface | [classifier](classifier) |
+| **`ANFISRegressor`** | Scikit-learn style regression interface | [regressor](regressor.md) |
+| **`ANFISClassifier`** | Scikit-learn style classification interface | [classifier](classifier.md) |
 
-### Builder Classes
-
-| Class | Purpose | Module |
-|-------|---------|--------|
-| **`QuickANFIS`** | Simplified API for common use cases | [builders](builders) |
-| **`ANFISBuilder`** | Fluent API for custom model construction | [builders](builders) |
 
 ### Neural Network Layers
 
 | Class | Purpose | Module |
 |-------|---------|--------|
-| **`MembershipLayer`** | Fuzzy membership function layer | [layers](layers) |
-| **`RuleLayer`** | Fuzzy rule firing strength computation | [layers](layers) |
-| **`NormalizationLayer`** | Rule activation normalization | [layers](layers) |
-| **`ConsequentLayer`** | Takagi-Sugeno consequent computation | [layers](layers) |
-| **`ClassificationConsequentLayer`** | Classification-specific consequent layer | [layers](layers) |
+| **`MembershipLayer`** | Fuzzy membership function layer | [layers](layers.md) |
+| **`RuleLayer`** | Fuzzy rule firing strength computation | [layers](layers.md) |
+| **`NormalizationLayer`** | Rule activation normalization | [layers](layers.md) |
+| **`ConsequentLayer`** | Takagi-Sugeno consequent computation | [layers](layers.md) |
+| **`ClassificationConsequentLayer`** | Classification-specific consequent layer | [layers](layers.md) |
 
 ## 🎯 Membership Functions
 
@@ -41,19 +28,19 @@ Complete set of 13 fuzzy membership function implementations:
 
 | Function | Type | Parameters | Module |
 |----------|------|------------|--------|
-| **`GaussianMF`** | Gaussian | `mean`, `sigma` | [membership-functions](membership-functions) |
-| **`Gaussian2MF`** | Two-sided Gaussian | `sigma1`, `c1`, `sigma2`, `c2` | [membership-functions](membership-functions) |
-| **`TriangularMF`** | Triangular | `a`, `b`, `c` | [membership-functions](membership-functions) |
-| **`TrapezoidalMF`** | Trapezoidal | `a`, `b`, `c`, `d` | [membership-functions](membership-functions) |
-| **`BellMF`** | Bell-shaped | `a`, `b`, `c` | [membership-functions](membership-functions) |
-| **`SigmoidalMF`** | Sigmoidal | `a`, `c` | [membership-functions](membership-functions) |
-| **`DiffSigmoidalMF`** | Difference of sigmoids | `a1`, `c1`, `a2`, `c2` | [membership-functions](membership-functions) |
-| **`ProdSigmoidalMF`** | Product of sigmoids | `a1`, `c1`, `a2`, `c2` | [membership-functions](membership-functions) |
-| **`SShapedMF`** | S-shaped | `a`, `b` | [membership-functions](membership-functions) |
-| **`LinSShapedMF`** | Linear S-shaped | `a`, `b` | [membership-functions](membership-functions) |
-| **`ZShapedMF`** | Z-shaped | `a`, `b` | [membership-functions](membership-functions) |
-| **`LinZShapedMF`** | Linear Z-shaped | `a`, `b` | [membership-functions](membership-functions) |
-| **`PiMF`** | Pi-shaped | `a`, `b`, `c`, `d` | [membership-functions](membership-functions) |
+| **`GaussianMF`** | Gaussian | `mean`, `sigma` | [membership-functions](membership-functions.md) |
+| **`Gaussian2MF`** | Two-sided Gaussian | `sigma1`, `c1`, `sigma2`, `c2` | [membership-functions](membership-functions.md) |
+| **`TriangularMF`** | Triangular | `a`, `b`, `c` | [membership-functions](membership-functions.md) |
+| **`TrapezoidalMF`** | Trapezoidal | `a`, `b`, `c`, `d` | [membership-functions](membership-functions.md) |
+| **`BellMF`** | Bell-shaped | `a`, `b`, `c` | [membership-functions](membership-functions.md) |
+| **`SigmoidalMF`** | Sigmoidal | `a`, `c` | [membership-functions](membership-functions.md) |
+| **`DiffSigmoidalMF`** | Difference of sigmoids | `a1`, `c1`, `a2`, `c2` | [membership-functions](membership-functions.md) |
+| **`ProdSigmoidalMF`** | Product of sigmoids | `a1`, `c1`, `a2`, `c2` | [membership-functions](membership-functions.md) |
+| **`SShapedMF`** | S-shaped | `a`, `b` | [membership-functions](membership-functions.md) |
+| **`LinSShapedMF`** | Linear S-shaped | `a`, `b` | [membership-functions](membership-functions.md) |
+| **`ZShapedMF`** | Z-shaped | `a`, `b` | [membership-functions](membership-functions.md) |
+| **`LinZShapedMF`** | Linear Z-shaped | `a`, `b` | [membership-functions](membership-functions.md) |
+| **`PiMF`** | Pi-shaped | `a`, `b`, `c`, `d` | [membership-functions](membership-functions.md) |
 
 ## 🔧 Training & Optimization
 
@@ -61,21 +48,21 @@ Complete set of 13 fuzzy membership function implementations:
 
 | Trainer | Method | Module |
 |---------|--------|--------|
-| **`HybridTrainer`** | Least squares + backpropagation (recommended) | [optim](optim) |
-| **`HybridAdamTrainer`** | Least squares + Adam with adaptive moments | [optim](optim) |
-| **`SGDTrainer`** | Stochastic gradient descent | [optim](optim) |
-| **`AdamTrainer`** | Adaptive moment estimation | [optim](optim) |
-| **`RMSPropTrainer`** | Root mean square propagation | [optim](optim) |
-| **`PSOTrainer`** | Particle swarm optimization | [optim](optim) |
+| **`HybridTrainer`** | Least squares + backpropagation (recommended) | [optim](optim.md) |
+| **`HybridAdamTrainer`** | Least squares + Adam with adaptive moments | [optim](optim.md) |
+| **`SGDTrainer`** | Stochastic gradient descent | [optim](optim.md) |
+| **`AdamTrainer`** | Adaptive moment estimation | [optim](optim.md) |
+| **`RMSPropTrainer`** | Root mean square propagation | [optim](optim.md) |
+| **`PSOTrainer`** | Particle swarm optimization | [optim](optim.md) |
 
 ### Loss Functions
 
 | Function | Purpose | Module |
 |----------|---------|--------|
-| **`mse_loss`** | Mean squared error for regression | [losses](losses) |
-| **`mse_grad`** | MSE gradient computation | [losses](losses) |
-| **`cross_entropy_loss`** | Cross-entropy for classification | [losses](losses) |
-| **`cross_entropy_grad`** | Cross-entropy gradient computation | [losses](losses) |
+| **`mse_loss`** | Mean squared error for regression | [losses](losses.md) |
+| **`mse_grad`** | MSE gradient computation | [losses](losses.md) |
+| **`cross_entropy_loss`** | Cross-entropy for classification | [losses](losses.md) |
+| **`cross_entropy_grad`** | Cross-entropy gradient computation | [losses](losses.md) |
 
 ## 📊 Evaluation & Validation
 
@@ -85,35 +72,34 @@ Comprehensive metrics for model evaluation:
 
 | Category | Functions | Module |
 |----------|-----------|--------|
-| **Regression** | MSE, RMSE, MAE, MAPE, SMAPE, R², explained variance, median AE, bias, Pearson, MSLE | [metrics](metrics) |
-| **Classification** | Accuracy, balanced accuracy, precision/recall/F1, log loss, cross-entropy | [metrics](metrics) |
-| **Clustering** | Partition coefficient, classification entropy, Xie-Beni index | [metrics](metrics) |
+| **Regression** | MSE, RMSE, MAE, MAPE, SMAPE, R², explained variance, median AE, bias, Pearson, MSLE | [metrics](metrics.md) |
+| **Classification** | Accuracy, balanced accuracy, precision/recall/F1, log loss, cross-entropy | [metrics](metrics.md) |
+| **Clustering** | Partition coefficient, classification entropy, Xie-Beni index | [metrics](metrics.md) |
 
-> 💡 Use [`compute_metrics`](metrics/#metric-reports--automation) to auto-detect the task type and retrieve a full [`MetricReport`](metrics/#metric-reports--automation).
 
 ## 🔍 Clustering
 
 | Class | Purpose | Module |
 |-------|---------|--------|
-| **`FuzzyCMeans`** | Fuzzy C-Means clustering algorithm | [clustering](clustering) |
+| **`FuzzyCMeans`** | Fuzzy C-Means clustering algorithm | [clustering](clustering.md) |
 
 ## 📚 Detailed Documentation
 
 ### By Category
 
 - **[ANFIS Models](../models/anfis.md)** - High-level model documentation
-- **[Regressor](regressor)** - High-level regression estimator API
-- **[Classifier](classifier)** - High-level classification estimator API
-- **[Builders](builders)** - Model construction utilities
-- **[Membership Functions](membership-functions)** - All 13 MF implementations
-- **[Models](models)** - Core ANFIS and ANFISClassifier classes
-- **[Layers](layers)** - Neural network layer implementations
-- **[Clustering](clustering)** - FuzzyCMeans clustering
-- **[Losses](losses)** - Training loss functions and gradients
-- **[Metrics](metrics)** - Performance evaluation metrics
-- **[Configuration](config)** - Persisting setups and presets
-- **[Logging](logging)** - Training log helpers
-- **[Optimization](optim)** - Training algorithm implementations
+- **[Regressor](regressor.md)** - High-level regression estimator API
+- **[Classifier](classifier.md)** - High-level classification estimator API
+- **[Builders](builders.md)** - Model construction utilities
+- **[Membership Functions](membership-functions.md)** - All 13 MF implementations
+- **[Models](models.md)** - Core ANFIS and ANFISClassifier classes
+- **[Layers](layers.md)** - Neural network layer implementations
+- **[Clustering](clustering.md)** - FuzzyCMeans clustering
+- **[Losses](losses.md)** - Training loss functions and gradients
+- **[Metrics](metrics.md)** - Performance evaluation metrics
+- **[Configuration](config.md)** - Persisting setups and presets
+- **[Logging](logging.md)** - Training log helpers
+- **[Optimization](optim.md)** - Training algorithm implementations
 
 ## 🔍 Search and Navigation
 
@@ -121,27 +107,23 @@ Comprehensive metrics for model evaluation:
 
 | I want to... | Look at... |
 |-------------|------------|
-| Create a simple model | `QuickANFIS` in [Builders](builders) |
-| Build custom architecture | `ANFISBuilder` in [Builders](builders) |
-| Use a regression estimator | [ANFISRegressor](regressor) |
-| Use a classification estimator | [ANFISClassifier](classifier) |
-| Choose membership functions | [Membership Functions](membership-functions) |
-| Choose loss functions | [Losses](losses) |
-| Train my model | `fit()` method in [Models](models) |
-| Evaluate performance | [Metrics](metrics) |
-| Cluster data | `FuzzyCMeans` in [Clustering](clustering) |
-| Configure training | [Optimization](optim) |
-| Save configs or presets | [Configuration](config) |
-| Enable training logs | [Logging](logging) |
+| Use a regression estimator | [ANFISRegressor](regressor.md) |
+| Use a classification estimator | [ANFISClassifier](classifier.md) |
+| Choose membership functions | [Membership Functions](membership-functions.md) |
+| Train my model | `fit()` method in [Models](models.md) |
+| Evaluate performance | [Metrics](metrics.md) |
+| Configure training | [Optimization](optim.md) |
+| Save configs or presets | [Configuration](config.md) |
+| Enable training logs | [Logging](logging.md) |
 
 ## Navigation
 
 **Start here for specific needs:**
 
 - 🚀 **New user?** → [ANFIS Models](../models/anfis.md)
-- 🏗️ **Building models?** → [Builders](builders)
-- 📊 **Analyzing results?** → [Metrics](metrics)
-- 🔍 **Clustering?** → [Clustering](clustering)
-- ⚙️ **Training?** → [Optimization](optim)
-- 🧪 **Using estimators?** → [Regressor](regressor) / [Classifier](classifier)
-- 📝 **Saving configs or logs?** → [Configuration](config) & [Logging](logging)
+- 🏗️ **Building models?** → [Builders](builders.md)
+- 📊 **Analyzing results?** → [Metrics](metrics.md)
+- 🔍 **Clustering?** → [Clustering](clustering.md)
+- ⚙️ **Training?** → [Optimization](optim.md)
+- 🧪 **Using estimators?** → [Regressor](regressor.md) / [Classifier](classifier.md)
+- 📝 **Saving configs or logs?** → [Configuration](config.md) & [Logging](logging.md)

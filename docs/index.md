@@ -108,7 +108,7 @@ Most fuzzy logic libraries require extensive boilerplate code. ANFIS Toolbox get
     X = np.r_[np.random.normal(-1, .3, (50, 2)), np.random.normal(1, .3, (50, 2))]
     y = np.r_[np.zeros(50, int), np.ones(50, int)]
 
-    model = ANFISClassifier(n_classes=2)
+    model = ANFISClassifier()
     model.fit(X, y)
     ```
 
@@ -236,10 +236,10 @@ flowchart LR
 
 ## What's Next?
 
-- 💡 **[Examples](examples/basic.md)** - Real-world use cases
-- 🔧 **[API Reference](api/overview.md)** - Complete function documentation
+- 💡 **[Examples](examples/regression_basic.ipynb)** - Real-world use cases
+- 🔧 **[API Reference](api/index.md)** - Complete function documentation
 - 🤖 **[ANFIS Models](models/anfis.md)** - Regression and classification models
-- 📐 **[Membership Functions](membership_functions/01_gaussianmf.ipynb)** - All MF classes
+- 📐 **[Membership Functions](membership_functions/gaussian.ipynb)** - All MF classes
 
 ## Community & Support
 
@@ -251,5 +251,5 @@ flowchart LR
 
 <div align="center">
   <strong>Ready to dive into fuzzy neural networks?</strong><br>
-  <a href="getting-started/installation/">Get started now →</a>
+  <a href="#installation">Get started now</a>
 </div>
