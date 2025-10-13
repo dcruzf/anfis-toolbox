@@ -91,10 +91,6 @@
       
     </div>
     
-      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
-        
-      </div>
-    
     
       
 
@@ -481,7 +477,7 @@
   
   
   <span class="md-ellipsis">
-    regressor
+    Regression
     
   </span>
   
@@ -504,7 +500,7 @@
   
   
   <span class="md-ellipsis">
-    classifier
+    Classification
     
   </span>
   
@@ -527,7 +523,7 @@
   
   
   <span class="md-ellipsis">
-    fuzzy c-means
+    Fuzzy C-Means
     
   </span>
   
@@ -1086,6 +1082,8 @@
       
         
       
+        
+      
     
     
     
@@ -1279,6 +1277,29 @@
   
   
     <li class="md-nav__item">
+      <a href="losses/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Losses
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="clustering/" class="md-nav__link">
         
   
@@ -1431,27 +1452,9 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#core-model-classes" class="md-nav__link">
+  <a href="#estimators" class="md-nav__link">
     <span class="md-ellipsis">
-      Core Model Classes
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#high-level-estimators" class="md-nav__link">
-    <span class="md-ellipsis">
-      High-Level Estimators
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#builder-classes" class="md-nav__link">
-    <span class="md-ellipsis">
-      Builder Classes
+      Estimators
     </span>
   </a>
   
@@ -1638,29 +1641,7 @@
 <h1 id="api-reference">API Reference<a class="headerlink" href="#api-reference" title="Permanent link">&para;</a></h1>
 <p>Complete reference documentation for all ANFIS Toolbox classes, functions, and modules.</p>
 <h2 id="core-architecture">🏗️ Core Architecture<a class="headerlink" href="#core-architecture" title="Permanent link">&para;</a></h2>
-<h3 id="core-model-classes">Core Model Classes<a class="headerlink" href="#core-model-classes" title="Permanent link">&para;</a></h3>
-<table>
-<thead>
-<tr>
-<th>Class</th>
-<th>Purpose</th>
-<th>Module</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong><code>ANFIS</code></strong></td>
-<td>Core ANFIS implementation for regression tasks</td>
-<td><a href="models">models</a></td>
-</tr>
-<tr>
-<td><strong><code>ANFISClassifier</code></strong></td>
-<td>ANFIS for multi-class classification</td>
-<td><a href="models">models</a></td>
-</tr>
-</tbody>
-</table>
-<h3 id="high-level-estimators">High-Level Estimators<a class="headerlink" href="#high-level-estimators" title="Permanent link">&para;</a></h3>
+<h3 id="estimators">Estimators<a class="headerlink" href="#estimators" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
 <tr>
@@ -1673,34 +1654,12 @@
 <tr>
 <td><strong><code>ANFISRegressor</code></strong></td>
 <td>Scikit-learn style regression interface</td>
-<td><a href="regressor">regressor</a></td>
+<td><a href="regressor/">regressor</a></td>
 </tr>
 <tr>
 <td><strong><code>ANFISClassifier</code></strong></td>
 <td>Scikit-learn style classification interface</td>
-<td><a href="classifier">classifier</a></td>
-</tr>
-</tbody>
-</table>
-<h3 id="builder-classes">Builder Classes<a class="headerlink" href="#builder-classes" title="Permanent link">&para;</a></h3>
-<table>
-<thead>
-<tr>
-<th>Class</th>
-<th>Purpose</th>
-<th>Module</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong><code>QuickANFIS</code></strong></td>
-<td>Simplified API for common use cases</td>
-<td><a href="builders">builders</a></td>
-</tr>
-<tr>
-<td><strong><code>ANFISBuilder</code></strong></td>
-<td>Fluent API for custom model construction</td>
-<td><a href="builders">builders</a></td>
+<td><a href="classifier/">classifier</a></td>
 </tr>
 </tbody>
 </table>
@@ -1717,27 +1676,27 @@
 <tr>
 <td><strong><code>MembershipLayer</code></strong></td>
 <td>Fuzzy membership function layer</td>
-<td><a href="layers">layers</a></td>
+<td><a href="layers/">layers</a></td>
 </tr>
 <tr>
 <td><strong><code>RuleLayer</code></strong></td>
 <td>Fuzzy rule firing strength computation</td>
-<td><a href="layers">layers</a></td>
+<td><a href="layers/">layers</a></td>
 </tr>
 <tr>
 <td><strong><code>NormalizationLayer</code></strong></td>
 <td>Rule activation normalization</td>
-<td><a href="layers">layers</a></td>
+<td><a href="layers/">layers</a></td>
 </tr>
 <tr>
 <td><strong><code>ConsequentLayer</code></strong></td>
 <td>Takagi-Sugeno consequent computation</td>
-<td><a href="layers">layers</a></td>
+<td><a href="layers/">layers</a></td>
 </tr>
 <tr>
 <td><strong><code>ClassificationConsequentLayer</code></strong></td>
 <td>Classification-specific consequent layer</td>
-<td><a href="layers">layers</a></td>
+<td><a href="layers/">layers</a></td>
 </tr>
 </tbody>
 </table>
@@ -1757,79 +1716,79 @@
 <td><strong><code>GaussianMF</code></strong></td>
 <td>Gaussian</td>
 <td><code>mean</code>, <code>sigma</code></td>
-<td><a href="membership-functions">membership-functions</a></td>
+<td><a href="membership-functions/">membership-functions</a></td>
 </tr>
 <tr>
 <td><strong><code>Gaussian2MF</code></strong></td>
 <td>Two-sided Gaussian</td>
 <td><code>sigma1</code>, <code>c1</code>, <code>sigma2</code>, <code>c2</code></td>
-<td><a href="membership-functions">membership-functions</a></td>
+<td><a href="membership-functions/">membership-functions</a></td>
 </tr>
 <tr>
 <td><strong><code>TriangularMF</code></strong></td>
 <td>Triangular</td>
 <td><code>a</code>, <code>b</code>, <code>c</code></td>
-<td><a href="membership-functions">membership-functions</a></td>
+<td><a href="membership-functions/">membership-functions</a></td>
 </tr>
 <tr>
 <td><strong><code>TrapezoidalMF</code></strong></td>
 <td>Trapezoidal</td>
 <td><code>a</code>, <code>b</code>, <code>c</code>, <code>d</code></td>
-<td><a href="membership-functions">membership-functions</a></td>
+<td><a href="membership-functions/">membership-functions</a></td>
 </tr>
 <tr>
 <td><strong><code>BellMF</code></strong></td>
 <td>Bell-shaped</td>
 <td><code>a</code>, <code>b</code>, <code>c</code></td>
-<td><a href="membership-functions">membership-functions</a></td>
+<td><a href="membership-functions/">membership-functions</a></td>
 </tr>
 <tr>
 <td><strong><code>SigmoidalMF</code></strong></td>
 <td>Sigmoidal</td>
 <td><code>a</code>, <code>c</code></td>
-<td><a href="membership-functions">membership-functions</a></td>
+<td><a href="membership-functions/">membership-functions</a></td>
 </tr>
 <tr>
 <td><strong><code>DiffSigmoidalMF</code></strong></td>
 <td>Difference of sigmoids</td>
 <td><code>a1</code>, <code>c1</code>, <code>a2</code>, <code>c2</code></td>
-<td><a href="membership-functions">membership-functions</a></td>
+<td><a href="membership-functions/">membership-functions</a></td>
 </tr>
 <tr>
 <td><strong><code>ProdSigmoidalMF</code></strong></td>
 <td>Product of sigmoids</td>
 <td><code>a1</code>, <code>c1</code>, <code>a2</code>, <code>c2</code></td>
-<td><a href="membership-functions">membership-functions</a></td>
+<td><a href="membership-functions/">membership-functions</a></td>
 </tr>
 <tr>
 <td><strong><code>SShapedMF</code></strong></td>
 <td>S-shaped</td>
 <td><code>a</code>, <code>b</code></td>
-<td><a href="membership-functions">membership-functions</a></td>
+<td><a href="membership-functions/">membership-functions</a></td>
 </tr>
 <tr>
 <td><strong><code>LinSShapedMF</code></strong></td>
 <td>Linear S-shaped</td>
 <td><code>a</code>, <code>b</code></td>
-<td><a href="membership-functions">membership-functions</a></td>
+<td><a href="membership-functions/">membership-functions</a></td>
 </tr>
 <tr>
 <td><strong><code>ZShapedMF</code></strong></td>
 <td>Z-shaped</td>
 <td><code>a</code>, <code>b</code></td>
-<td><a href="membership-functions">membership-functions</a></td>
+<td><a href="membership-functions/">membership-functions</a></td>
 </tr>
 <tr>
 <td><strong><code>LinZShapedMF</code></strong></td>
 <td>Linear Z-shaped</td>
 <td><code>a</code>, <code>b</code></td>
-<td><a href="membership-functions">membership-functions</a></td>
+<td><a href="membership-functions/">membership-functions</a></td>
 </tr>
 <tr>
 <td><strong><code>PiMF</code></strong></td>
 <td>Pi-shaped</td>
 <td><code>a</code>, <code>b</code>, <code>c</code>, <code>d</code></td>
-<td><a href="membership-functions">membership-functions</a></td>
+<td><a href="membership-functions/">membership-functions</a></td>
 </tr>
 </tbody>
 </table>
@@ -1847,32 +1806,32 @@
 <tr>
 <td><strong><code>HybridTrainer</code></strong></td>
 <td>Least squares + backpropagation (recommended)</td>
-<td><a href="optim">optim</a></td>
+<td><a href="optim/">optim</a></td>
 </tr>
 <tr>
 <td><strong><code>HybridAdamTrainer</code></strong></td>
 <td>Least squares + Adam with adaptive moments</td>
-<td><a href="optim">optim</a></td>
+<td><a href="optim/">optim</a></td>
 </tr>
 <tr>
 <td><strong><code>SGDTrainer</code></strong></td>
 <td>Stochastic gradient descent</td>
-<td><a href="optim">optim</a></td>
+<td><a href="optim/">optim</a></td>
 </tr>
 <tr>
 <td><strong><code>AdamTrainer</code></strong></td>
 <td>Adaptive moment estimation</td>
-<td><a href="optim">optim</a></td>
+<td><a href="optim/">optim</a></td>
 </tr>
 <tr>
 <td><strong><code>RMSPropTrainer</code></strong></td>
 <td>Root mean square propagation</td>
-<td><a href="optim">optim</a></td>
+<td><a href="optim/">optim</a></td>
 </tr>
 <tr>
 <td><strong><code>PSOTrainer</code></strong></td>
 <td>Particle swarm optimization</td>
-<td><a href="optim">optim</a></td>
+<td><a href="optim/">optim</a></td>
 </tr>
 </tbody>
 </table>
@@ -1889,22 +1848,22 @@
 <tr>
 <td><strong><code>mse_loss</code></strong></td>
 <td>Mean squared error for regression</td>
-<td><a href="losses">losses</a></td>
+<td><a href="losses/">losses</a></td>
 </tr>
 <tr>
 <td><strong><code>mse_grad</code></strong></td>
 <td>MSE gradient computation</td>
-<td><a href="losses">losses</a></td>
+<td><a href="losses/">losses</a></td>
 </tr>
 <tr>
 <td><strong><code>cross_entropy_loss</code></strong></td>
 <td>Cross-entropy for classification</td>
-<td><a href="losses">losses</a></td>
+<td><a href="losses/">losses</a></td>
 </tr>
 <tr>
 <td><strong><code>cross_entropy_grad</code></strong></td>
 <td>Cross-entropy gradient computation</td>
-<td><a href="losses">losses</a></td>
+<td><a href="losses/">losses</a></td>
 </tr>
 </tbody>
 </table>
@@ -1923,23 +1882,20 @@
 <tr>
 <td><strong>Regression</strong></td>
 <td>MSE, RMSE, MAE, MAPE, SMAPE, R², explained variance, median AE, bias, Pearson, MSLE</td>
-<td><a href="metrics">metrics</a></td>
+<td><a href="metrics/">metrics</a></td>
 </tr>
 <tr>
 <td><strong>Classification</strong></td>
 <td>Accuracy, balanced accuracy, precision/recall/F1, log loss, cross-entropy</td>
-<td><a href="metrics">metrics</a></td>
+<td><a href="metrics/">metrics</a></td>
 </tr>
 <tr>
 <td><strong>Clustering</strong></td>
 <td>Partition coefficient, classification entropy, Xie-Beni index</td>
-<td><a href="metrics">metrics</a></td>
+<td><a href="metrics/">metrics</a></td>
 </tr>
 </tbody>
 </table>
-<blockquote>
-<p>💡 Use <a href="metrics/#metric-reports--automation"><code>compute_metrics</code></a> to auto-detect the task type and retrieve a full <a href="metrics/#metric-reports--automation"><code>MetricReport</code></a>.</p>
-</blockquote>
 <h2 id="clustering">🔍 Clustering<a class="headerlink" href="#clustering" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -1953,7 +1909,7 @@
 <tr>
 <td><strong><code>FuzzyCMeans</code></strong></td>
 <td>Fuzzy C-Means clustering algorithm</td>
-<td><a href="clustering">clustering</a></td>
+<td><a href="clustering/">clustering</a></td>
 </tr>
 </tbody>
 </table>
@@ -1961,18 +1917,18 @@
 <h3 id="by-category">By Category<a class="headerlink" href="#by-category" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong><a href="../models/anfis/">ANFIS Models</a></strong> - High-level model documentation</li>
-<li><strong><a href="regressor">Regressor</a></strong> - High-level regression estimator API</li>
-<li><strong><a href="classifier">Classifier</a></strong> - High-level classification estimator API</li>
-<li><strong><a href="builders">Builders</a></strong> - Model construction utilities</li>
-<li><strong><a href="membership-functions">Membership Functions</a></strong> - All 13 MF implementations</li>
-<li><strong><a href="models">Models</a></strong> - Core ANFIS and ANFISClassifier classes</li>
-<li><strong><a href="layers">Layers</a></strong> - Neural network layer implementations</li>
-<li><strong><a href="clustering">Clustering</a></strong> - FuzzyCMeans clustering</li>
-<li><strong><a href="losses">Losses</a></strong> - Training loss functions and gradients</li>
-<li><strong><a href="metrics">Metrics</a></strong> - Performance evaluation metrics</li>
-<li><strong><a href="config">Configuration</a></strong> - Persisting setups and presets</li>
-<li><strong><a href="logging">Logging</a></strong> - Training log helpers</li>
-<li><strong><a href="optim">Optimization</a></strong> - Training algorithm implementations</li>
+<li><strong><a href="regressor/">Regressor</a></strong> - High-level regression estimator API</li>
+<li><strong><a href="classifier/">Classifier</a></strong> - High-level classification estimator API</li>
+<li><strong><a href="builders/">Builders</a></strong> - Model construction utilities</li>
+<li><strong><a href="membership-functions/">Membership Functions</a></strong> - All 13 MF implementations</li>
+<li><strong><a href="models/">Models</a></strong> - Core ANFIS and ANFISClassifier classes</li>
+<li><strong><a href="layers/">Layers</a></strong> - Neural network layer implementations</li>
+<li><strong><a href="clustering/">Clustering</a></strong> - FuzzyCMeans clustering</li>
+<li><strong><a href="losses/">Losses</a></strong> - Training loss functions and gradients</li>
+<li><strong><a href="metrics/">Metrics</a></strong> - Performance evaluation metrics</li>
+<li><strong><a href="config/">Configuration</a></strong> - Persisting setups and presets</li>
+<li><strong><a href="logging/">Logging</a></strong> - Training log helpers</li>
+<li><strong><a href="optim/">Optimization</a></strong> - Training algorithm implementations</li>
 </ul>
 <h2 id="search-and-navigation">🔍 Search and Navigation<a class="headerlink" href="#search-and-navigation" title="Permanent link">&para;</a></h2>
 <h3 id="find-by-functionality">Find by Functionality<a class="headerlink" href="#find-by-functionality" title="Permanent link">&para;</a></h3>
@@ -1985,52 +1941,36 @@
 </thead>
 <tbody>
 <tr>
-<td>Create a simple model</td>
-<td><code>QuickANFIS</code> in <a href="builders">Builders</a></td>
-</tr>
-<tr>
-<td>Build custom architecture</td>
-<td><code>ANFISBuilder</code> in <a href="builders">Builders</a></td>
-</tr>
-<tr>
 <td>Use a regression estimator</td>
-<td><a href="regressor">ANFISRegressor</a></td>
+<td><a href="regressor/">ANFISRegressor</a></td>
 </tr>
 <tr>
 <td>Use a classification estimator</td>
-<td><a href="classifier">ANFISClassifier</a></td>
+<td><a href="classifier/">ANFISClassifier</a></td>
 </tr>
 <tr>
 <td>Choose membership functions</td>
-<td><a href="membership-functions">Membership Functions</a></td>
-</tr>
-<tr>
-<td>Choose loss functions</td>
-<td><a href="losses">Losses</a></td>
+<td><a href="membership-functions/">Membership Functions</a></td>
 </tr>
 <tr>
 <td>Train my model</td>
-<td><code>fit()</code> method in <a href="models">Models</a></td>
+<td><code>fit()</code> method in <a href="models/">Models</a></td>
 </tr>
 <tr>
 <td>Evaluate performance</td>
-<td><a href="metrics">Metrics</a></td>
-</tr>
-<tr>
-<td>Cluster data</td>
-<td><code>FuzzyCMeans</code> in <a href="clustering">Clustering</a></td>
+<td><a href="metrics/">Metrics</a></td>
 </tr>
 <tr>
 <td>Configure training</td>
-<td><a href="optim">Optimization</a></td>
+<td><a href="optim/">Optimization</a></td>
 </tr>
 <tr>
 <td>Save configs or presets</td>
-<td><a href="config">Configuration</a></td>
+<td><a href="config/">Configuration</a></td>
 </tr>
 <tr>
 <td>Enable training logs</td>
-<td><a href="logging">Logging</a></td>
+<td><a href="logging/">Logging</a></td>
 </tr>
 </tbody>
 </table>
@@ -2038,12 +1978,12 @@
 <p><strong>Start here for specific needs:</strong></p>
 <ul>
 <li>🚀 <strong>New user?</strong> → <a href="../models/anfis/">ANFIS Models</a></li>
-<li>🏗️ <strong>Building models?</strong> → <a href="builders">Builders</a></li>
-<li>📊 <strong>Analyzing results?</strong> → <a href="metrics">Metrics</a></li>
-<li>🔍 <strong>Clustering?</strong> → <a href="clustering">Clustering</a></li>
-<li>⚙️ <strong>Training?</strong> → <a href="optim">Optimization</a></li>
-<li>🧪 <strong>Using estimators?</strong> → <a href="regressor">Regressor</a> / <a href="classifier">Classifier</a></li>
-<li>📝 <strong>Saving configs or logs?</strong> → <a href="config">Configuration</a> &amp; <a href="logging">Logging</a></li>
+<li>🏗️ <strong>Building models?</strong> → <a href="builders/">Builders</a></li>
+<li>📊 <strong>Analyzing results?</strong> → <a href="metrics/">Metrics</a></li>
+<li>🔍 <strong>Clustering?</strong> → <a href="clustering/">Clustering</a></li>
+<li>⚙️ <strong>Training?</strong> → <a href="optim/">Optimization</a></li>
+<li>🧪 <strong>Using estimators?</strong> → <a href="regressor/">Regressor</a> / <a href="classifier/">Classifier</a></li>
+<li>📝 <strong>Saving configs or logs?</strong> → <a href="config/">Configuration</a> &amp; <a href="logging/">Logging</a></li>
 </ul>
 
 
@@ -2202,7 +2142,7 @@
     
     
       
-      <script id="__config" type="application/json">{"base": "..", "features": ["announce.dismiss", "content.action.edit", "content.action.view", "content.code.annotate", "content.code.copy", "content.tooltips", "navigation.footer", "navigation.indexes", "navigation.sections", "navigation.tabs", "navigation.tabs.sticky", "navigation.top", "search.highlight", "search.share", "search.suggest", "toc.follow"], "search": "../assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+      <script id="__config" type="application/json">{"base": "..", "features": ["announce.dismiss", "content.action.edit", "content.action.view", "content.code.annotate", "content.code.copy", "content.tooltips", "navigation.footer", "navigation.indexes", "navigation.sections", "navigation.tabs", "navigation.tabs.sticky", "navigation.top", "search.highlight", "search.share", "search.suggest", "toc.follow"], "search": "../assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
       <script src="../assets/javascripts/bundle.f55a23d4.min.js"></script>

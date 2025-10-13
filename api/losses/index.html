@@ -13,6 +13,10 @@
         <link rel="canonical" href="https://dcruzf.github.io/anfis-toolbox/api/losses/">
       
       
+        <link rel="prev" href="../layers/">
+      
+      
+        <link rel="next" href="../clustering/">
       
       
       <link rel="icon" href="../../assets/icon.svg">
@@ -20,7 +24,7 @@
     
     
       
-        <title>Losses API - ANFIS Toolbox</title>
+        <title>Losses - ANFIS Toolbox</title>
       
     
     
@@ -87,10 +91,6 @@
       
     </div>
     
-      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
-        
-      </div>
-    
     
       
 
@@ -117,7 +117,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Losses API
+              Losses
             
           </span>
         </div>
@@ -322,10 +322,12 @@
   
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
+      <li class="md-tabs__item md-tabs__item--active">
         <a href="../" class="md-tabs__link">
           
   
@@ -475,7 +477,7 @@
   
   
   <span class="md-ellipsis">
-    regressor
+    Regression
     
   </span>
   
@@ -498,7 +500,7 @@
   
   
   <span class="md-ellipsis">
-    classifier
+    Classification
     
   </span>
   
@@ -521,7 +523,7 @@
   
   
   <span class="md-ellipsis">
-    fuzzy c-means
+    Fuzzy C-Means
     
   </span>
   
@@ -1047,6 +1049,8 @@
       
   
   
+    
+  
   
   
     
@@ -1078,20 +1082,25 @@
       
         
       
+        
+      
     
     
     
+      
+        
+        
       
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
         
           
           <div class="md-nav__link md-nav__container">
@@ -1108,13 +1117,13 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_5" id="__nav_5_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_5" id="__nav_5_label" tabindex="">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_5">
             <span class="md-nav__icon md-icon"></span>
             API Reference
@@ -1256,6 +1265,275 @@
   
 
       </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    Losses
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    Losses
+    
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#anfis_toolbox.losses" class="md-nav__link">
+    <span class="md-ellipsis">
+      losses
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="losses">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#anfis_toolbox.losses.CrossEntropyLoss" class="md-nav__link">
+    <span class="md-ellipsis">
+      CrossEntropyLoss
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="CrossEntropyLoss">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#anfis_toolbox.losses.CrossEntropyLoss.gradient" class="md-nav__link">
+    <span class="md-ellipsis">
+      gradient
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#anfis_toolbox.losses.CrossEntropyLoss.loss" class="md-nav__link">
+    <span class="md-ellipsis">
+      loss
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#anfis_toolbox.losses.CrossEntropyLoss.prepare_targets" class="md-nav__link">
+    <span class="md-ellipsis">
+      prepare_targets
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#anfis_toolbox.losses.LossFunction" class="md-nav__link">
+    <span class="md-ellipsis">
+      LossFunction
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="LossFunction">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#anfis_toolbox.losses.LossFunction.gradient" class="md-nav__link">
+    <span class="md-ellipsis">
+      gradient
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#anfis_toolbox.losses.LossFunction.loss" class="md-nav__link">
+    <span class="md-ellipsis">
+      loss
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#anfis_toolbox.losses.LossFunction.prepare_targets" class="md-nav__link">
+    <span class="md-ellipsis">
+      prepare_targets
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#anfis_toolbox.losses.MSELoss" class="md-nav__link">
+    <span class="md-ellipsis">
+      MSELoss
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="MSELoss">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#anfis_toolbox.losses.MSELoss.gradient" class="md-nav__link">
+    <span class="md-ellipsis">
+      gradient
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#anfis_toolbox.losses.MSELoss.loss" class="md-nav__link">
+    <span class="md-ellipsis">
+      loss
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#anfis_toolbox.losses.MSELoss.prepare_targets" class="md-nav__link">
+    <span class="md-ellipsis">
+      prepare_targets
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#anfis_toolbox.losses.cross_entropy_grad" class="md-nav__link">
+    <span class="md-ellipsis">
+      cross_entropy_grad
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#anfis_toolbox.losses.cross_entropy_loss" class="md-nav__link">
+    <span class="md-ellipsis">
+      cross_entropy_loss
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#anfis_toolbox.losses.mse_grad" class="md-nav__link">
+    <span class="md-ellipsis">
+      mse_grad
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#anfis_toolbox.losses.mse_loss" class="md-nav__link">
+    <span class="md-ellipsis">
+      mse_loss
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#anfis_toolbox.losses.resolve_loss" class="md-nav__link">
+    <span class="md-ellipsis">
+      resolve_loss
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#regression-losses" class="md-nav__link">
+    <span class="md-ellipsis">
+      Regression Losses
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#classification-losses" class="md-nav__link">
+    <span class="md-ellipsis">
+      Classification Losses
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -2272,6 +2550,44 @@ same shape as logits: (n,k).</p>
         <footer class="md-footer">
   
     
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../layers/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Layers">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                Layers
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../clustering/" class="md-footer__link md-footer__link--next" aria-label="Next: Clustering">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                Clustering
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
   
   <div class="md-footer-meta md-typeset">
     <div class="md-footer-meta__inner md-grid">
@@ -2328,7 +2644,7 @@ same shape as logits: (n,k).</p>
     
     
       
-      <script id="__config" type="application/json">{"base": "../..", "features": ["announce.dismiss", "content.action.edit", "content.action.view", "content.code.annotate", "content.code.copy", "content.tooltips", "navigation.footer", "navigation.indexes", "navigation.sections", "navigation.tabs", "navigation.tabs.sticky", "navigation.top", "search.highlight", "search.share", "search.suggest", "toc.follow"], "search": "../../assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+      <script id="__config" type="application/json">{"base": "../..", "features": ["announce.dismiss", "content.action.edit", "content.action.view", "content.code.annotate", "content.code.copy", "content.tooltips", "navigation.footer", "navigation.indexes", "navigation.sections", "navigation.tabs", "navigation.tabs.sticky", "navigation.top", "search.highlight", "search.share", "search.suggest", "toc.follow"], "search": "../../assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
       <script src="../../assets/javascripts/bundle.f55a23d4.min.js"></script>

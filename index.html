@@ -89,10 +89,6 @@
       
     </div>
     
-      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
-        
-      </div>
-    
     
       
 
@@ -476,15 +472,6 @@
   
 </li>
         
-          <li class="md-nav__item">
-  <a href="#validation-made-easy-built-in" class="md-nav__link">
-    <span class="md-ellipsis">
-      ✅ Validation Made Easy (Built-in)
-    </span>
-  </a>
-  
-</li>
-        
       </ul>
     </nav>
   
@@ -654,7 +641,7 @@
   
   
   <span class="md-ellipsis">
-    regressor
+    Regression
     
   </span>
   
@@ -677,7 +664,7 @@
   
   
   <span class="md-ellipsis">
-    classifier
+    Classification
     
   </span>
   
@@ -700,7 +687,7 @@
   
   
   <span class="md-ellipsis">
-    fuzzy c-means
+    Fuzzy C-Means
     
   </span>
   
@@ -1257,6 +1244,8 @@
       
         
       
+        
+      
     
     
     
@@ -1447,6 +1436,29 @@
   
   
     <li class="md-nav__item">
+      <a href="api/losses/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Losses
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="api/clustering/" class="md-nav__link">
         
   
@@ -1616,15 +1628,6 @@
   
 </li>
         
-          <li class="md-nav__item">
-  <a href="#validation-made-easy-built-in" class="md-nav__link">
-    <span class="md-ellipsis">
-      ✅ Validation Made Easy (Built-in)
-    </span>
-  </a>
-  
-</li>
-        
       </ul>
     </nav>
   
@@ -1782,132 +1785,120 @@
         Get started with just 3 lines of code
     </div>
     <div style="flex: 1; min-width: 280px; padding: 1rem; border: 1px solid #ddd; border-radius: 8px;">
+        🤖 <strong>Versatile Modeling</strong><br>
+        Supports both classification and regression tasks
+    </div>
+    <div style="flex: 1; min-width: 280px; padding: 1rem; border: 1px solid #ddd; border-radius: 8px;">
         🏗️ <strong>Flexible Architecture</strong><br>
-        13 membership functions, hybrid learning
+        13 membership functions
     </div>
     <div style="flex: 1; min-width: 280px; padding: 1rem; border: 1px solid #ddd; border-radius: 8px;">
-        📊 <strong>Built-in Visualization</strong><br>
-        Automatic plots for training and results
+        🚀 <strong>Adaptive Initialization</strong><br>
+        Fuzzy c-means, grid, and random initialization strategies
     </div>
     <div style="flex: 1; min-width: 280px; padding: 1rem; border: 1px solid #ddd; border-radius: 8px;">
-        ✅ <strong>Robust Validation</strong><br>
-        Cross-validation, metrics, model comparison
+        📉 <strong>Flexible Optimization</strong><br>
+        Multiple optimization algorithms
+    </div>
+    <div style="flex: 1; min-width: 280px; padding: 1rem; border: 1px solid #ddd; border-radius: 8px;">
+        📐 <strong>Comprehensive Metrics</strong><br>
+        Rich collection of evaluation metrics
     </div>
     <div style="flex: 1; min-width: 280px; padding: 1rem; border: 1px solid #ddd; border-radius: 8px;">
         📚 <strong>Rich Documentation</strong><br>
-        Comprehensive examples and tutorials
-    </div>
-    <div style="flex: 1; min-width: 280px; padding: 1rem; border: 1px solid #ddd; border-radius: 8px;">
-        🔧 <strong>Production Ready</strong><br>
-        Model persistence and configuration management
+        Comprehensive examples
     </div>
 </div>
 
 <h2 id="why-anfis-toolbox">Why ANFIS Toolbox?<a class="headerlink" href="#why-anfis-toolbox" title="Permanent link">&para;</a></h2>
 <h3 id="simplicity-first">🚀 Simplicity First<a class="headerlink" href="#simplicity-first" title="Permanent link">&para;</a></h3>
 <p>Most fuzzy logic libraries require extensive boilerplate code. ANFIS Toolbox gets you running in seconds:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1"># Traditional approach (10+ lines)</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="n">input_mfs</span> <span class="o">=</span> <span class="p">{</span>
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    <span class="s1">&#39;x1&#39;</span><span class="p">:</span> <span class="p">[</span><span class="n">GaussianMF</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">GaussianMF</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)],</span>
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="s1">&#39;x2&#39;</span><span class="p">:</span> <span class="p">[</span><span class="n">GaussianMF</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">GaussianMF</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)]</span>
-</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="p">}</span>
-</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="n">model</span> <span class="o">=</span> <span class="n">ANFIS</span><span class="p">(</span><span class="n">input_mfs</span><span class="p">)</span>
-</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="c1"># ... manual setup ...</span>
-</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>
-</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="c1"># ANFIS Toolbox approach (1 line)</span>
-</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="n">model</span> <span class="o">=</span> <span class="n">QuickANFIS</span><span class="o">.</span><span class="n">for_regression</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
-</span></code></pre></div>
-<h3 id="validation-made-easy-built-in">✅ Validation Made Easy (Built-in)<a class="headerlink" href="#validation-made-easy-built-in" title="Permanent link">&para;</a></h3>
-<p>Comprehensive model evaluation with minimal code:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">anfis_toolbox</span><span class="w"> </span><span class="kn">import</span> <span class="n">ANFISValidator</span>
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
-</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="n">validator</span> <span class="o">=</span> <span class="n">ANFISValidator</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
-</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>
-</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="c1"># Cross-validation</span>
-</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="n">cv_results</span> <span class="o">=</span> <span class="n">validator</span><span class="o">.</span><span class="n">cross_validate</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">cv</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
-</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;CV R²: </span><span class="si">{</span><span class="n">cv_results</span><span class="p">[</span><span class="s1">&#39;r2_mean&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2"> ± </span><span class="si">{</span><span class="n">cv_results</span><span class="p">[</span><span class="s1">&#39;r2_std&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>
-</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="c1"># Learning curves</span>
-</span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="n">learning_data</span> <span class="o">=</span> <span class="n">validator</span><span class="o">.</span><span class="n">learning_curve</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
-</span></code></pre></div>
-<h2 id="quick-example">Quick Example<a class="headerlink" href="#quick-example" title="Permanent link">&para;</a></h2>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">anfis_toolbox</span><span class="w"> </span><span class="kn">import</span> <span class="n">QuickANFIS</span><span class="p">,</span> <span class="n">quick_evaluate</span>
-</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
-</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="c1"># 1. Prepare your data</span>
-</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="n">X</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>  <span class="c1"># 2 inputs</span>
-</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="n">y</span> <span class="o">=</span> <span class="n">X</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">X</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span><span class="o">**</span><span class="mi">2</span>  <span class="c1"># Target: x1² + x2²</span>
-</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>
-</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="c1"># 2. Create and train model (one line!)</span>
-</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="n">model</span> <span class="o">=</span> <span class="n">QuickANFIS</span><span class="o">.</span><span class="n">for_regression</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">n_mfs</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
-</span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="n">losses</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">fit_hybrid</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">epochs</span><span class="o">=</span><span class="mi">50</span><span class="p">)</span>
-</span><span id="__span-2-11"><a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>
-</span><span id="__span-2-12"><a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="c1"># 3. Evaluate and use</span>
-</span><span id="__span-2-13"><a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a><span class="n">metrics</span> <span class="o">=</span> <span class="n">quick_evaluate</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
-</span><span id="__span-2-14"><a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a><span class="n">predictions</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">predict</span><span class="p">([[</span><span class="mf">1.0</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.5</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">1.2</span><span class="p">]])</span>
-</span><span id="__span-2-15"><a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>
-</span><span id="__span-2-16"><a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;R² Score: </span><span class="si">{</span><span class="n">metrics</span><span class="p">[</span><span class="s1">&#39;r2&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-</span><span id="__span-2-17"><a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;RMSE: </span><span class="si">{</span><span class="n">metrics</span><span class="p">[</span><span class="s1">&#39;rmse&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-</span></code></pre></div>
-<h3 id="metrics-evaluation">Metrics &amp; Evaluation<a class="headerlink" href="#metrics-evaluation" title="Permanent link">&para;</a></h3>
-<p>Want a structured report instead of a plain dictionary? Use <code>compute_metrics</code> to detect the task type automatically and access every score via the <code>MetricReport</code> helper:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">anfis_toolbox.metrics</span><span class="w"> </span><span class="kn">import</span> <span class="n">compute_metrics</span>
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>
-</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="n">report</span> <span class="o">=</span> <span class="n">compute_metrics</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">y_pred</span><span class="o">=</span><span class="n">model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">X</span><span class="p">))</span>
-</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="nb">print</span><span class="p">(</span><span class="n">report</span><span class="o">.</span><span class="n">task</span><span class="p">)</span>          <span class="c1"># &quot;regression&quot;</span>
-</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="nb">print</span><span class="p">(</span><span class="n">report</span><span class="p">[</span><span class="s2">&quot;mae&quot;</span><span class="p">])</span>       <span class="c1"># individual metric access</span>
-</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="nb">print</span><span class="p">(</span><span class="n">report</span><span class="o">.</span><span class="n">to_dict</span><span class="p">())</span>     <span class="c1"># convert to a plain dict when needed</span>
-</span></code></pre></div>
-<p>That's it! 🎉 You just created and trained a neuro-fuzzy system!</p>
-<h2 id="installation">Installation<a class="headerlink" href="#installation" title="Permanent link">&para;</a></h2>
-<div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="installation-basic-installation" name="__tabbed_1" type="radio" /><input id="installation-full-installation" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="installation-basic-installation">Basic Installation</label><label for="installation-full-installation">Full Installation</label></div>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="simplicity-first-regression" name="__tabbed_1" type="radio" /><input id="simplicity-first-classification" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="simplicity-first-regression">Regression</label><label for="simplicity-first-classification">Classification</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
-<p>Install the core package with minimal dependencies:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>pip<span class="w"> </span>install<span class="w"> </span>anfis-toolbox
+<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">anfis_toolbox</span><span class="w"> </span><span class="kn">import</span> <span class="n">ANFISRegressor</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="n">model</span> <span class="o">=</span> <span class="n">ANFISRegressor</span><span class="p">()</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
 </span></code></pre></div>
 </div>
 <div class="tabbed-block">
-<p>Install with all features (visualization):</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>pip<span class="w"> </span>install<span class="w"> </span>anfis-toolbox<span class="o">[</span>all<span class="o">]</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">anfis_toolbox</span><span class="w"> </span><span class="kn">import</span> <span class="n">ANFISClassifier</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="n">model</span> <span class="o">=</span> <span class="n">ANFISClassifier</span><span class="p">()</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
 </span></code></pre></div>
 </div>
 </div>
 </div>
+<h2 id="quick-example">Quick Example<a class="headerlink" href="#quick-example" title="Permanent link">&para;</a></h2>
+<div class="tabbed-set tabbed-alternate" data-tabs="2:2"><input checked="checked" id="quick-example-regression" name="__tabbed_2" type="radio" /><input id="quick-example-classification" name="__tabbed_2" type="radio" /><div class="tabbed-labels"><label for="quick-example-regression">Regression</label><label for="quick-example-classification">Classification</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">anfis_toolbox</span><span class="w"> </span><span class="kn">import</span> <span class="n">ANFISRegressor</span>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="n">X</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>  <span class="c1"># 2 inputs</span>
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="n">y</span> <span class="o">=</span> <span class="n">X</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">X</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span><span class="o">**</span><span class="mi">2</span>  <span class="c1"># Target: x1² + x2²</span>
+</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>
+</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="n">model</span> <span class="o">=</span> <span class="n">ANFISRegressor</span><span class="p">()</span>
+</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+</span></code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">anfis_toolbox</span><span class="w"> </span><span class="kn">import</span> <span class="n">ANFISClassifier</span>
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="n">X</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">r_</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mf">.3</span><span class="p">,</span> <span class="p">(</span><span class="mi">50</span><span class="p">,</span> <span class="mi">2</span><span class="p">)),</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mf">.3</span><span class="p">,</span> <span class="p">(</span><span class="mi">50</span><span class="p">,</span> <span class="mi">2</span><span class="p">))]</span>
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">r_</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">50</span><span class="p">,</span> <span class="nb">int</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="mi">50</span><span class="p">,</span> <span class="nb">int</span><span class="p">)]</span>
+</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>
+</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="n">model</span> <span class="o">=</span> <span class="n">ANFISClassifier</span><span class="p">()</span>
+</span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+</span></code></pre></div>
+</div>
+</div>
+</div>
+<h3 id="metrics-evaluation">Metrics &amp; Evaluation<a class="headerlink" href="#metrics-evaluation" title="Permanent link">&para;</a></h3>
+<p>Want a structured report instead of a plain dictionary? Use <code>evaluate</code> to detect the task type automatically and access every score.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">metrics</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">evaluate</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+</span></code></pre></div>
+<p>That's it! 🎉 You just created, trained and evaluate a neuro-fuzzy system!</p>
+<h2 id="installation">Installation<a class="headerlink" href="#installation" title="Permanent link">&para;</a></h2>
+<p>Install the core package with minimal dependencies:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>pip<span class="w"> </span>install<span class="w"> </span>anfis-toolbox
+</span></code></pre></div>
 <h2 id="use-cases">Use Cases<a class="headerlink" href="#use-cases" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
 <th>Application</th>
 <th>Description</th>
-<th>Code Example</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td><strong>Function Approximation</strong></td>
 <td>Learn complex mathematical functions</td>
-<td><code>QuickANFIS.for_function_approximation([(-π, π)])</code></td>
 </tr>
 <tr>
 <td><strong>Regression</strong></td>
 <td>Predict continuous values</td>
-<td><code>QuickANFIS.for_regression(X)</code></td>
+</tr>
+<tr>
+<td><strong>Classification</strong></td>
+<td>Predict discrete class labels</td>
+</tr>
+<tr>
+<td><strong>Pattern Recognition</strong></td>
+<td>Classify patterns with fuzzy boundaries</td>
 </tr>
 <tr>
 <td><strong>Control Systems</strong></td>
 <td>Design fuzzy controllers</td>
-<td>Custom MF setup for error/error-rate</td>
 </tr>
 <tr>
 <td><strong>Time Series</strong></td>
 <td>Forecast future values</td>
-<td>Multi-lag input configuration</td>
-</tr>
-<tr>
-<td><strong>Pattern Recognition</strong></td>
-<td>Classify with fuzzy boundaries</td>
-<td>Post-process regression outputs</td>
 </tr>
 </tbody>
 </table>
@@ -1989,17 +1980,19 @@
 </ul>
 <h3 id="training-methods">Training Methods<a class="headerlink" href="#training-methods" title="Permanent link">&para;</a></h3>
 <ul>
-<li><strong>Hybrid Learning</strong> (recommended) - Combines least squares + backpropagation</li>
-<li><strong>Pure Backpropagation</strong> - Full gradient-based training</li>
-<li><strong>Analytical Gradients</strong> - Fast and accurate derivative computation</li>
+<li><strong>SGD (Stochastic Gradient Descent)</strong> – Classic gradient-based optimization with incremental updates</li>
+<li><strong>Adam</strong> – Adaptive learning rates with momentum for faster convergence</li>
+<li><strong>RMSProp</strong> – Scales learning rates by recent gradient magnitudes for stable training</li>
+<li><strong>PSO (Particle Swarm Optimization)</strong> – Population-based global search strategy</li>
+<li><strong>Hybrid SGD + OLS</strong> – Combines gradient descent with least-squares parameter refinement</li>
+<li><strong>Hybrid Adam + OLS</strong> – Integrates adaptive optimization with analytical least-squares adjustment</li>
 </ul>
 <h2 id="whats-next">What's Next?<a class="headerlink" href="#whats-next" title="Permanent link">&para;</a></h2>
 <ul>
-<li>💡 <strong><a href="examples/basic.md">Examples</a></strong> - Real-world use cases</li>
-<li>🔧 <strong><a href="api/overview.md">API Reference</a></strong> - Complete function documentation</li>
+<li>💡 <strong><a href="examples/regression_basic/">Examples</a></strong> - Real-world use cases</li>
+<li>🔧 <strong><a href="api/">API Reference</a></strong> - Complete function documentation</li>
 <li>🤖 <strong><a href="models/anfis/">ANFIS Models</a></strong> - Regression and classification models</li>
-<li>📐 <strong><a href="membership_functions/01_gaussianmf.ipynb">Membership Functions</a></strong> - All MF classes</li>
-<li>🔍 <strong><a href="models/fuzzy_c-means/">Fuzzy C-Means</a></strong> - Clustering for MF initialization</li>
+<li>📐 <strong><a href="membership_functions/gaussian/">Membership Functions</a></strong> - All MF classes</li>
 </ul>
 <h2 id="community-support">Community &amp; Support<a class="headerlink" href="#community-support" title="Permanent link">&para;</a></h2>
 <ul>
@@ -2010,7 +2003,7 @@
 <hr />
 <div align="center">
   <strong>Ready to dive into fuzzy neural networks?</strong><br>
-  <a href="getting-started/installation/">Get started now →</a>
+  <a href="#installation">Get started now</a>
 </div>
 
 
@@ -2034,7 +2027,7 @@
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-timeago" title="October 6, 2025 21:18:02 UTC"><span class="timeago" datetime="2025-10-06T21:18:02+00:00" locale="en"></span></span><span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="October 6, 2025 21:18:02 UTC">2025-10-06</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-timeago" title="October 13, 2025 18:26:01 UTC"><span class="timeago" datetime="2025-10-13T18:26:01+00:00" locale="en"></span></span><span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="October 13, 2025 18:26:01 UTC">2025-10-13</span>
   </span>
 
     
@@ -2084,13 +2077,13 @@
         
         
           
-          <a href="models/anfis/" class="md-footer__link md-footer__link--next" aria-label="Next: regressor">
+          <a href="models/anfis/" class="md-footer__link md-footer__link--next" aria-label="Next: Regression">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                regressor
+                Regression
               </div>
             </div>
             <div class="md-footer__button md-icon">
@@ -2157,7 +2150,7 @@
     
     
       
-      <script id="__config" type="application/json">{"base": ".", "features": ["announce.dismiss", "content.action.edit", "content.action.view", "content.code.annotate", "content.code.copy", "content.tooltips", "navigation.footer", "navigation.indexes", "navigation.sections", "navigation.tabs", "navigation.tabs.sticky", "navigation.top", "search.highlight", "search.share", "search.suggest", "toc.follow"], "search": "assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+      <script id="__config" type="application/json">{"base": ".", "features": ["announce.dismiss", "content.action.edit", "content.action.view", "content.code.annotate", "content.code.copy", "content.tooltips", "navigation.footer", "navigation.indexes", "navigation.sections", "navigation.tabs", "navigation.tabs.sticky", "navigation.top", "search.highlight", "search.share", "search.suggest", "toc.follow"], "search": "assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
       <script src="assets/javascripts/bundle.f55a23d4.min.js"></script>
