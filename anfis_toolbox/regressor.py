@@ -375,6 +375,12 @@ class ANFISRegressor(BaseEstimatorLike, FittedMixin, RegressorMixinLike):
             return ()
         return tuple(tuple(rule) for rule in self.rules_)
 
+    def _more_tags(self) -> dict[str, Any]:  # pragma: no cover - informational hook
+        return {
+            "estimator_type": "regressor",
+            "requires_y": True,
+        }
+
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------

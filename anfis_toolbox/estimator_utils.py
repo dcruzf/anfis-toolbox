@@ -11,10 +11,18 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from copy import deepcopy
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any
 
 import numpy as np
+
+try:  # pragma: no cover - optional dependency
+    from sklearn.utils._tags import default_tags as _sklearn_default_tags
+
+    _SKLEARN_TAGS_AVAILABLE = True
+except Exception:  # pragma: no cover - sklearn not installed
+    _sklearn_default_tags = None
+    _SKLEARN_TAGS_AVAILABLE = False
 
 __all__ = [
     "BaseEstimatorLike",
@@ -63,6 +71,54 @@ class BaseEstimatorLike:
                 raise ValueError(f"Invalid parameter '{key}' for {type(self).__name__}.")
             setattr(self, key, value)
         return self
+
+    # ------------------------------------------------------------------
+    # scikit-learn compatibility hooks
+    # ------------------------------------------------------------------
+    def __sklearn_tags__(self):
+        """Return estimator capability tags expected by scikit-learn."""
+        merged: dict[str, Any] = {}
+        more_tags = getattr(self, "_more_tags", None)
+        if callable(more_tags):
+            merged.update(more_tags())
+        extra_tags = getattr(self, "_sklearn_tags", None)
+        if isinstance(extra_tags, dict):
+            merged.update(extra_tags)
+
+        if _SKLEARN_TAGS_AVAILABLE:
+            tags = _sklearn_default_tags(self)
+
+            direct_updates = {}
+            if "estimator_type" in merged:
+                direct_updates["estimator_type"] = merged.pop("estimator_type")
+            if "non_deterministic" in merged:
+                direct_updates["non_deterministic"] = merged.pop("non_deterministic")
+            if "requires_fit" in merged:
+                direct_updates["requires_fit"] = merged.pop("requires_fit")
+            if direct_updates:
+                tags = replace(tags, **direct_updates)
+
+            if "requires_y" in merged:
+                required = bool(merged.pop("requires_y"))
+                target_tags = replace(tags.target_tags, required=required)
+                tags = replace(tags, target_tags=target_tags)
+
+            # Remaining keys are not recognised by the public Tags API; ignore gracefully.
+            return tags
+
+        # Fallback lightweight representation when scikit-learn is not available.
+        fallback = {
+            "estimator_type": merged.pop("estimator_type", None),
+            "non_deterministic": merged.pop("non_deterministic", False),
+            "requires_y": merged.pop("requires_y", True),
+            "requires_fit": merged.pop("requires_fit", True),
+        }
+        fallback.update(merged)
+        return fallback
+
+    def __sklearn_is_fitted__(self) -> bool:
+        """Expose estimator fitted state to scikit-learn utilities."""
+        return bool(getattr(self, "is_fitted_", False))
 
 
 class FittedMixin:

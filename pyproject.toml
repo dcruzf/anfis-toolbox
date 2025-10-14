@@ -100,4 +100,5 @@ relative_files = true
 [dependency-groups]
 dev = [
     "pytest>=8.4.1",
+    "scikit-learn>=1.7.2",
 ]

@@ -649,15 +649,22 @@ class ANFISClassifier(BaseEstimatorLike, FittedMixin, ClassifierMixinLike):
                 raise ValueError(
                     f"y contains {n_unique} unique classes which exceeds configured n_classes={n_classes}."
                 )
-            mapping = {self._normalize_class_key(cls): idx for idx, cls in enumerate(classes.tolist())}
+            normalized_classes = [self._normalize_class_key(cls) for cls in classes.tolist()]
+            mapping = {cls: idx for idx, cls in enumerate(normalized_classes)}
             encoded = np.array([mapping[self._normalize_class_key(val)] for val in y_arr], dtype=int)
-            return encoded, classes.astype(object)
+            return encoded, np.asarray(normalized_classes)
         raise ValueError("Target array must be 1-dimensional or a one-hot encoded 2D array.")
 
     def _resolved_loss_spec(self) -> LossFunction | str:
         if self.loss is None:
             return "cross_entropy"
         return self.loss
+
+    def _more_tags(self) -> dict[str, Any]:  # pragma: no cover - informational hook
+        return {
+            "estimator_type": "classifier",
+            "requires_y": True,
+        }
 
     @staticmethod
     def _normalize_class_key(value: Any) -> Any:
