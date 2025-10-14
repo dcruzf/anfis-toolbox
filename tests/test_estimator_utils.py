@@ -1,17 +1,34 @@
+from dataclasses import dataclass, field
+
 import numpy as np
 import pytest
 
+import anfis_toolbox.estimator_utils as estimator_utils
 from anfis_toolbox.estimator_utils import (
     BaseEstimatorLike,
     ClassifierMixinLike,
     FittedMixin,
     NotFittedError,
     RegressorMixinLike,
+    RuleInspectorMixin,
     _ensure_2d_array,
     _ensure_vector,
     check_is_fitted,
     infer_feature_names,
 )
+
+
+@dataclass(frozen=True)
+class DummyTargetTags:
+    required: bool = False
+
+
+@dataclass(frozen=True)
+class DummyTags:
+    estimator_type: str = "regressor"
+    non_deterministic: bool = False
+    requires_fit: bool = True
+    target_tags: DummyTargetTags = field(default_factory=DummyTargetTags)
 
 
 class CustomObject:
@@ -166,3 +183,139 @@ def test_classifier_mixin_score_validation_behaviour():
     matched_clf = DummyClassifier([0, 1])
     matched_clf._mark_fitted()
     assert matched_clf.score([[0], [1]], np.array([0, 1])) == 1.0
+
+
+def test_base_estimator_sklearn_tags_with_tags_api(monkeypatch):
+    monkeypatch.setattr(estimator_utils, "_SKLEARN_TAGS_AVAILABLE", True, raising=False)
+
+    def dummy_default_tags(_self: BaseEstimatorLike) -> DummyTags:
+        return DummyTags()
+
+    monkeypatch.setattr(estimator_utils, "_sklearn_default_tags", dummy_default_tags, raising=False)
+
+    class TaggedEstimator(BaseEstimatorLike):
+        def _more_tags(self):
+            return {
+                "estimator_type": "classifier",
+                "requires_y": True,
+                "non_deterministic": True,
+            }
+
+    est = TaggedEstimator()
+    est._sklearn_tags = {"requires_fit": False, "custom_flag": "ignored"}
+
+    tags = est.__sklearn_tags__()
+
+    assert isinstance(tags, DummyTags)
+    assert tags.estimator_type == "classifier"
+    assert tags.non_deterministic is True
+    assert tags.requires_fit is False
+    assert tags.target_tags.required is True
+
+
+def test_base_estimator_sklearn_tags_with_tags_api_no_overrides(monkeypatch):
+    monkeypatch.setattr(estimator_utils, "_SKLEARN_TAGS_AVAILABLE", True, raising=False)
+
+    def dummy_default_tags(_self: BaseEstimatorLike) -> DummyTags:
+        return DummyTags()
+
+    monkeypatch.setattr(estimator_utils, "_sklearn_default_tags", dummy_default_tags, raising=False)
+
+    class PlainEstimator(BaseEstimatorLike):
+        pass
+
+    est = PlainEstimator()
+
+    tags = est.__sklearn_tags__()
+
+    assert isinstance(tags, DummyTags)
+    assert tags == DummyTags()
+
+
+def test_base_estimator_sklearn_tags_without_sklearn(monkeypatch):
+    class TaggedEstimator(BaseEstimatorLike):
+        def _more_tags(self):
+            return {
+                "estimator_type": "regressor",
+                "requires_y": False,
+                "custom_flag": "ok",
+            }
+
+    monkeypatch.setattr(estimator_utils, "_SKLEARN_TAGS_AVAILABLE", False, raising=False)
+    monkeypatch.setattr(estimator_utils, "_sklearn_default_tags", None, raising=False)
+
+    est = TaggedEstimator()
+    est._sklearn_tags = {"requires_fit": False, "non_deterministic": True}
+
+    tags = est.__sklearn_tags__()
+
+    assert isinstance(tags, dict)
+    assert tags["estimator_type"] == "regressor"
+    assert tags["requires_y"] is False
+    assert tags["requires_fit"] is False
+    assert tags["non_deterministic"] is True
+    assert tags["custom_flag"] == "ok"
+
+
+def test_base_estimator_sklearn_is_fitted_flag():
+    est = DummyEstimator()
+    assert est.__sklearn_is_fitted__() is False
+    est.fit()
+    assert est.__sklearn_is_fitted__() is True
+
+
+class Inspector(RuleInspectorMixin, FittedMixin):
+    def __init__(self):
+        self.rules_: list[tuple[int, ...]] | None = None
+        self.model_ = None
+        self.feature_names_in_: list[str] | None = None
+
+
+def test_rule_inspector_requires_fit_before_access():
+    inspector = Inspector()
+    with pytest.raises(NotFittedError):
+        inspector.get_rules()
+
+
+def test_rule_inspector_returns_rules_without_membership_details():
+    inspector = Inspector()
+    inspector.rules_ = [(0, 1), (1, 0)]
+    inspector._mark_fitted()
+    assert inspector.get_rules() == [(0, 1), (1, 0)]
+
+
+def test_rule_inspector_includes_membership_details():
+    inspector = Inspector()
+    inspector.rules_ = [(0, 1)]
+    inspector.feature_names_in_ = ["feat1"]
+
+    class DummyMF:
+        def __init__(self, label: str):
+            self.label = label
+
+    class DummyModel:
+        membership_functions = {
+            "feat1": [DummyMF("a0"), DummyMF("a1")],
+            "x2": [DummyMF("b0"), DummyMF("b1")],
+        }
+
+    inspector.model_ = DummyModel()
+    inspector._mark_fitted()
+
+    enriched = inspector.get_rules(include_membership_functions=True)
+
+    assert len(enriched) == 1
+    rule_info = enriched[0]
+    assert rule_info["rule"] == (0, 1)
+    assert rule_info["antecedents"][0]["input"] == "feat1"
+    assert isinstance(rule_info["antecedents"][0]["membership_function"], DummyMF)
+    assert rule_info["antecedents"][1]["input"] == "x2"
+    assert rule_info["antecedents"][1]["membership_function"].label == "b1"
+
+
+def test_rule_inspector_requires_model_when_membership_requested():
+    inspector = Inspector()
+    inspector.rules_ = [(0,)]
+    inspector._mark_fitted()
+    with pytest.raises(NotFittedError):
+        inspector.get_rules(include_membership_functions=True)
