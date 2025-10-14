@@ -319,3 +319,27 @@ def test_rule_inspector_requires_model_when_membership_requested():
     inspector._mark_fitted()
     with pytest.raises(NotFittedError):
         inspector.get_rules(include_membership_functions=True)
+
+
+def test_rule_inspector_handles_missing_membership_entries():
+    inspector = Inspector()
+    inspector.rules_ = [(0, 2)]
+    inspector.feature_names_in_ = ["feat1"]
+
+    class DummyMF:
+        def __init__(self, label: str):
+            self.label = label
+
+    class DummyModel:
+        membership_functions = {
+            "feat1": [DummyMF("a0")],
+        }
+
+    inspector.model_ = DummyModel()
+    inspector._mark_fitted()
+
+    enriched = inspector.get_rules(include_membership_functions=True)
+
+    assert enriched[0]["antecedents"][0]["membership_function"].label == "a0"
+    assert enriched[0]["antecedents"][1]["input"] == "x2"
+    assert enriched[0]["antecedents"][1]["membership_function"] is None

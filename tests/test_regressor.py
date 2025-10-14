@@ -1,4 +1,6 @@
 import inspect
+import logging
+from types import SimpleNamespace
 from typing import Any
 
 import numpy as np
@@ -9,6 +11,7 @@ from anfis_toolbox.builders import ANFISBuilder
 from anfis_toolbox.estimator_utils import NotFittedError
 from anfis_toolbox.membership import GaussianMF
 from anfis_toolbox.optim import BaseTrainer, SGDTrainer
+from anfis_toolbox.regressor import _ensure_training_logging
 
 
 def _generate_dataset(seed: int = 0):
@@ -199,6 +202,70 @@ def test_optimizer_validation_errors():
 
     with pytest.raises(TypeError):
         ANFISRegressor(optimizer=123).fit(X, y)
+
+
+def test_regressor_ensure_training_logging_respects_existing_handlers(monkeypatch):
+    calls: list[str] = []
+
+    def fake_enable():
+        calls.append("enabled")
+
+    monkeypatch.setattr("anfis_toolbox.regressor.enable_training_logs", fake_enable)
+
+    dummy_logger = SimpleNamespace(handlers=[object()])
+    real_get_logger = logging.getLogger
+
+    def fake_get_logger(name: str | None = None):
+        if name == "anfis_toolbox":
+            return dummy_logger
+        return real_get_logger(name)
+
+    monkeypatch.setattr("anfis_toolbox.regressor.logging.getLogger", fake_get_logger)
+
+    _ensure_training_logging(True)
+    assert calls == []
+
+    dummy_logger.handlers = []
+    _ensure_training_logging(True)
+    assert calls == ["enabled"]
+
+
+def test_regressor_fit_raises_when_trainer_history_invalid():
+    class DummyTrainer(BaseTrainer):
+        def fit(self, model, X_fit, y_fit, **kwargs):
+            return []
+
+        def init_state(self, model, X_fit, y_fit):  # pragma: no cover - not used
+            return None
+
+        def train_step(self, model, X_batch, y_batch, state):  # pragma: no cover - not used
+            return 0.0, state
+
+        def compute_loss(self, model, X_eval, y_eval):  # pragma: no cover - not used
+            return 0.0
+
+    reg = ANFISRegressor(n_mfs=2, optimizer="sgd", random_state=0, verbose=False)
+
+    dummy_model = SimpleNamespace(
+        rules=[],
+        predict=lambda X_pred: np.zeros(X_pred.shape[0], dtype=float),
+    )
+
+    reg._build_model = lambda X, feature_names: dummy_model  # type: ignore[assignment]
+    reg._instantiate_trainer = lambda: DummyTrainer()  # type: ignore[assignment]
+
+    X = np.array([[0.0], [1.0]])
+    y = np.array([0.0, 1.0])
+
+    with pytest.raises(TypeError, match="TrainingHistory"):
+        reg.fit(X, y)
+
+
+def test_regressor_get_rules_returns_empty_when_unset():
+    reg = ANFISRegressor()
+    reg.rules_ = []
+    reg._mark_fitted()
+    assert reg.get_rules() == ()
 
 
 def test_optimizer_params_forwarded():

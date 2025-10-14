@@ -130,6 +130,14 @@ class TestANFISBuilder:
         assert model.n_rules == len(explicit_rules)
         assert model.rules == explicit_rules
 
+    def test_set_rules_rejects_empty_sequence(self):
+        builder = ANFISBuilder()
+        builder.add_input("x1", -1.0, 1.0, n_mfs=2)
+        builder.add_input("x2", -1.0, 1.0, n_mfs=2)
+
+        with pytest.raises(ValueError, match="cannot be empty"):
+            builder.set_rules([])
+
     def test_method_chaining(self):
         """Test that methods can be chained."""
         builder = ANFISBuilder()

@@ -1,6 +1,6 @@
 import inspect
 import logging
-from types import SimpleNamespace
+from types import MethodType, SimpleNamespace
 from typing import Any
 
 import numpy as np
@@ -181,6 +181,21 @@ def test_classifier_fit_raises_when_trainer_history_invalid():
     y = np.array([0, 1])
 
     with pytest.raises(TypeError, match="TrainingHistory"):
+        clf.fit(X, y)
+
+
+def test_classifier_fit_raises_when_n_classes_not_inferred(monkeypatch):
+    clf = ANFISClassifier(n_mfs=2, optimizer="sgd", random_state=0, verbose=False)
+
+    X = np.array([[0.0], [1.0]])
+    y = np.array([0, 1])
+
+    def fake_encode(self, targets, n_samples, *, allow_partial_classes=False):
+        return np.zeros(n_samples, dtype=int), np.array([0, 1])
+
+    monkeypatch.setattr(clf, "_encode_targets", MethodType(fake_encode, clf))
+
+    with pytest.raises(RuntimeError, match="n_classes could not be inferred"):
         clf.fit(X, y)
 
 
@@ -798,6 +813,16 @@ def test_anfis_classifier_encode_targets_validation():
 
     with pytest.raises(ValueError, match="must be 1-dimensional or a one-hot encoded 2D"):
         clf._encode_targets(np.zeros((2, 2, 1)), n_samples=2)
+
+    clf_no_n = ANFISClassifier()
+    y_single_hot = np.ones((4, 1), dtype=float)
+    with pytest.raises(ValueError, match="One-hot targets must encode at least two classes"):
+        clf_no_n._encode_targets(y_single_hot, n_samples=4)
+
+    clf_partial = ANFISClassifier()
+    y_constant = np.zeros(4, dtype=int)
+    with pytest.raises(ValueError, match="at least two distinct classes"):
+        clf_partial._encode_targets(y_constant, n_samples=4, allow_partial_classes=True)
 
 
 def test_anfis_classifier_encode_targets_one_hot_success():
