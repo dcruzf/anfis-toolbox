@@ -1,12 +1,13 @@
 import inspect
 import logging
+import pickle
 from types import MethodType, SimpleNamespace
 from typing import Any
 
 import numpy as np
 import pytest
 
-from anfis_toolbox import ANFISClassifier, TSKANFISClassifier, accuracy
+from anfis_toolbox import ANFISClassifier, ANFISRegressor, TSKANFISClassifier, accuracy
 from anfis_toolbox.builders import ANFISBuilder
 from anfis_toolbox.classifier import _ensure_training_logging
 from anfis_toolbox.estimator_utils import NotFittedError
@@ -1249,3 +1250,206 @@ def test_moon(optimizer):
     proba = clf.predict_proba(X)
     acc = accuracy(y, proba)
     assert acc >= 0.7
+
+
+def test_classifier_repr_pre_and_post_fit():
+    clf = ANFISClassifier(
+        n_classes=3,
+        n_mfs=2,
+        mf_type="gaussian",
+        init="grid",
+        optimizer="sgd",
+        shuffle=True,
+    )
+
+    prefit = repr(clf)
+    assert prefit.startswith("ANFISClassifier(")
+    assert "n_classes=3" in prefit
+    assert "optimizer='sgd'" in prefit
+    assert "model_" not in prefit
+
+    class DummyModel:
+        n_inputs = 2
+        n_rules = 4
+        n_classes = 3
+        input_names = ["x1", "x2"]
+        membership_functions = {
+            "x1": [object(), object()],
+            "x2": [object(), object(), object()],
+        }
+
+    clf.model_ = DummyModel()
+    clf.optimizer_ = SimpleNamespace(learning_rate=0.01, epochs=5, batch_size=4)
+    clf.training_history_ = {"train": [1.0, 0.3], "val": [0.5, 0.2]}
+    clf.rules_ = [(0, 0), (1, 1), (2, 2)]
+    clf.feature_names_in_ = ["x1", "x2"]
+    clf.classes_ = np.arange(8)
+    clf._mark_fitted()
+
+    fitted = repr(clf)
+    assert "model_" in fitted
+    assert "optimizer_" in fitted
+    assert "training_history_" in fitted
+    assert "classes_" in fitted
+    assert "rules_" in fitted
+    assert "feature_names_in_" in fitted
+    assert "DummyModel" in fitted
+    assert "SimpleNamespace" in fitted
+    assert "classes_: 0, 1, 2, 3, 4, ..." in fitted
+    assert "├─" in fitted or "|--" in fitted
+
+
+def test_classifier_save_and_load_roundtrip(tmp_path):
+    X, y = _generate_classification_data()
+    clf = ANFISClassifier(
+        n_classes=2,
+        n_mfs=2,
+        mf_type="gaussian",
+        optimizer="sgd",
+        learning_rate=0.05,
+        epochs=5,
+        random_state=0,
+        shuffle=False,
+    )
+    clf.fit(X, y)
+    baseline = clf.predict_proba(X[:5])
+
+    path = tmp_path / "nested" / "classifier.pkl"
+    clf.save(path)
+
+    loaded = ANFISClassifier.load(path)
+    assert isinstance(loaded, ANFISClassifier)
+    assert loaded.is_fitted_
+    assert np.array_equal(loaded.classes_, clf.classes_)
+    np.testing.assert_allclose(loaded.predict_proba(X[:5]), baseline, atol=1e-6)
+
+
+def test_classifier_load_rejects_wrong_type(tmp_path):
+    path = tmp_path / "wrong.pkl"
+    with path.open("wb") as stream:
+        pickle.dump(ANFISRegressor(), stream)
+
+    with pytest.raises(TypeError, match="Expected pickled ANFISClassifier"):
+        ANFISClassifier.load(path)
+
+
+def test_classifier_repr_config_pairs_optional_sections():
+    clf = ANFISClassifier(
+        n_classes=3,
+        rules=[(0, 1)],
+        optimizer=SGDTrainer,
+        optimizer_params={"momentum": 0.9},
+    )
+    pairs = clf._repr_config_pairs()
+    assert ("optimizer", "SGDTrainer") in pairs
+    assert ("rules", "preset:1") in pairs
+    assert ("optimizer_params", {"momentum": 0.9}) in pairs
+
+    instance_label = ANFISClassifier._describe_optimizer_config(SGDTrainer())
+    assert instance_label == "SGDTrainer"
+
+    generic_label = ANFISClassifier._describe_optimizer_config(object())
+    assert generic_label.startswith("<")
+
+
+def test_classifier_summarize_optimizer_history_and_classes_preview():
+    class BareTrainer(BaseTrainer):
+        def fit(self, model, X_fit, y_fit, **kwargs):  # pragma: no cover - dummy
+            return {}
+
+        def init_state(self, model, X_fit, y_fit):  # pragma: no cover - dummy
+            return None
+
+        def train_step(self, model, X_batch, y_batch, state):  # pragma: no cover - dummy
+            return 0.0, state
+
+        def compute_loss(self, model, X_eval, y_eval):  # pragma: no cover - dummy
+            return 0.0
+
+        def __repr__(self) -> str:  # pragma: no cover - simple repr
+            return "BareTrainer(classifier=True)"
+
+    class NoneTrainer(BaseTrainer):
+        learning_rate = None
+        epochs = None
+
+        def fit(self, model, X_fit, y_fit, **kwargs):  # pragma: no cover - dummy
+            return {}
+
+        def init_state(self, model, X_fit, y_fit):  # pragma: no cover - dummy
+            return None
+
+        def train_step(self, model, X_batch, y_batch, state):  # pragma: no cover - dummy
+            return 0.0, state
+
+        def compute_loss(self, model, X_eval, y_eval):  # pragma: no cover - dummy
+            return 0.0
+
+    clf = ANFISClassifier(n_classes=2)
+    optimizer_summary = clf._summarize_optimizer(BareTrainer())
+    assert optimizer_summary == "BareTrainer(classifier=True)"
+
+    none_summary = clf._summarize_optimizer(NoneTrainer())
+    assert "NoneTrainer" in none_summary
+
+    history_zero = ANFISClassifier._summarize_history({"metrics": []})
+    assert "metrics=0" in history_zero
+
+    history_unknown = ANFISClassifier._summarize_history({"foo": 1})
+    assert history_unknown == "{}"
+
+    clf.classes_ = np.array(["a", "b", "c"])
+    clf._mark_fitted()
+    children = dict(clf._repr_children_entries())
+    assert children["classes_"] == "a, b, c"
+
+
+def test_classifier_normalize_input_spec_variants():
+    clf = ANFISClassifier(n_classes=2)
+    gaussian = GaussianMF(mean=0.0, sigma=1.0)
+
+    from_none = clf._normalize_input_spec(None)
+    assert from_none["n_mfs"] == clf.n_mfs
+
+    from_list = clf._normalize_input_spec([gaussian])
+    assert from_list["membership_functions"] == [gaussian]
+
+    from_str = clf._normalize_input_spec("triangular")
+    assert from_str["mf_type"] == "triangular"
+
+    from_int = clf._normalize_input_spec(6)
+    assert from_int["n_mfs"] == 6
+
+    from_dict = clf._normalize_input_spec({"mfs": [gaussian], "range": (-1, 1)})
+    assert from_dict["membership_functions"] == [gaussian]
+    assert from_dict["range"] == (-1, 1)
+
+    with pytest.raises(TypeError):
+        clf._normalize_input_spec(1.5)
+
+
+def test_classifier_repr_children_handles_missing_artifacts():
+    clf = ANFISClassifier(n_classes=2)
+    clf._mark_fitted()
+    clf.model_ = None
+    clf.optimizer_ = None
+    clf.training_history_ = {}
+    clf.classes_ = None
+    clf.rules_ = None
+    clf.feature_names_in_ = None
+    assert clf._repr_children_entries() == []
+
+
+def test_classifier_summarize_model_and_history_non_numeric_tail():
+    clf = ANFISClassifier(n_classes=2)
+
+    class MinimalModel:
+        membership_functions: dict[str, list[object]] = {}
+
+    summary = clf._summarize_model(MinimalModel())
+    assert summary == "MinimalModel"
+
+    history = ANFISClassifier._summarize_history({"val": [{"loss": 1.0}]})
+    assert "val=1" in history
+
+    assert ANFISClassifier._describe_optimizer_config(None) is None

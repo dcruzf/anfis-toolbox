@@ -72,6 +72,20 @@ def test_get_set_params_roundtrip_and_check_is_fitted():
     check_is_fitted(est2)
 
 
+def test_format_estimator_repr_ascii_multiline_children():
+    config_pairs = [("alpha", 1), ("beta", None), ("gamma", "value")]
+    children = [
+        ("child", "first line\nsecond line"),
+        ("last", "tail"),
+    ]
+    rendered = estimator_utils.format_estimator_repr("Dummy", config_pairs, children, ascii_only=True)
+    lines = rendered.splitlines()
+    assert lines[0] == "Dummy(alpha=1, gamma='value')"
+    assert lines[1] == "|-- child: first line"
+    assert lines[2] == "|      second line"
+    assert lines[3] == "\\-- last: tail"
+
+
 def test_check_is_fitted_missing_attributes():
     class PartialEstimator(FittedMixin):
         pass

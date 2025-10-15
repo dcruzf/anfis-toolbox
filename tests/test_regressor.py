@@ -1,12 +1,13 @@
 import inspect
 import logging
+import pickle
 from types import SimpleNamespace
 from typing import Any
 
 import numpy as np
 import pytest
 
-from anfis_toolbox import ANFISRegressor
+from anfis_toolbox import ANFISClassifier, ANFISRegressor
 from anfis_toolbox.builders import ANFISBuilder
 from anfis_toolbox.estimator_utils import NotFittedError
 from anfis_toolbox.membership import GaussianMF
@@ -351,6 +352,197 @@ def test_regressor_fit_accepts_verbose_override(monkeypatch):
 
     assert calls == [True]
     assert reg.verbose is True
+
+
+def test_regressor_repr_pre_and_post_fit():
+    reg = ANFISRegressor(
+        n_mfs=4,
+        mf_type="gaussian",
+        init="grid",
+        optimizer="adam",
+        learning_rate=0.02,
+        epochs=10,
+        random_state=7,
+    )
+
+    text = repr(reg)
+    assert text.startswith("ANFISRegressor(")
+    assert "n_mfs=4" in text
+    assert "optimizer='adam'" in text
+    assert "model_" not in text
+
+    class DummyModel:
+        n_inputs = 2
+        n_rules = 5
+        input_names = ["x1", "x2"]
+        membership_functions = {
+            "x1": [object(), object(), object()],
+            "x2": [object(), object()],
+        }
+
+    reg.model_ = DummyModel()
+    reg.optimizer_ = SimpleNamespace(learning_rate=0.05, epochs=3, batch_size=8)
+    reg.training_history_ = {"train": [1.0, 0.5], "val": [0.8]}
+    reg.rules_ = [(0, 0), (1, 1)]
+    reg.feature_names_in_ = ["x1", "x2"]
+    reg._mark_fitted()
+
+    fitted_repr = repr(reg)
+    assert "model_" in fitted_repr
+    assert "optimizer_" in fitted_repr
+    assert "training_history_" in fitted_repr
+    assert "rules_" in fitted_repr
+    assert "feature_names_in_" in fitted_repr
+    assert "DummyModel" in fitted_repr
+    assert "SimpleNamespace" in fitted_repr
+    assert "├─" in fitted_repr or "|--" in fitted_repr
+
+
+def test_regressor_save_and_load_roundtrip(tmp_path):
+    X, y = _generate_dataset()
+    reg = ANFISRegressor(
+        n_mfs=2,
+        mf_type="gaussian",
+        optimizer="sgd",
+        learning_rate=0.05,
+        epochs=5,
+        random_state=0,
+    )
+    reg.fit(X, y)
+    baseline = reg.predict(X[:5])
+
+    path = tmp_path / "nested" / "regressor.pkl"
+    reg.save(path)
+
+    loaded = ANFISRegressor.load(path)
+    assert isinstance(loaded, ANFISRegressor)
+    assert loaded.is_fitted_
+    assert loaded.feature_names_in_ == reg.feature_names_in_
+    np.testing.assert_allclose(loaded.predict(X[:5]), baseline, atol=1e-6)
+
+
+def test_regressor_load_rejects_wrong_type(tmp_path):
+    path = tmp_path / "wrong.pkl"
+    with path.open("wb") as stream:
+        pickle.dump(ANFISClassifier(n_classes=2), stream)
+
+    with pytest.raises(TypeError, match="Expected pickled ANFISRegressor"):
+        ANFISRegressor.load(path)
+
+
+def test_regressor_repr_config_pairs_optional_sections():
+    reg = ANFISRegressor(
+        rules=[(0, 1)],
+        optimizer=SGDTrainer,
+        optimizer_params={"momentum": 0.9},
+    )
+    pairs = reg._repr_config_pairs()
+    assert ("optimizer", "SGDTrainer") in pairs
+    assert ("rules", "preset:1") in pairs
+    assert ("optimizer_params", {"momentum": 0.9}) in pairs
+
+    instance_label = ANFISRegressor._describe_optimizer_config(SGDTrainer())
+    assert instance_label == "SGDTrainer"
+
+    generic_label = ANFISRegressor._describe_optimizer_config(object())
+    assert generic_label.startswith("<")
+
+
+def test_regressor_summarize_optimizer_and_history_edge_cases():
+    class BareTrainer(BaseTrainer):
+        def fit(self, model, X_fit, y_fit, **kwargs):  # pragma: no cover - dummy
+            return {}
+
+        def init_state(self, model, X_fit, y_fit):  # pragma: no cover - dummy
+            return None
+
+        def train_step(self, model, X_batch, y_batch, state):  # pragma: no cover - dummy
+            return 0.0, state
+
+        def compute_loss(self, model, X_eval, y_eval):  # pragma: no cover - dummy
+            return 0.0
+
+        def __repr__(self) -> str:  # pragma: no cover - simple repr
+            return "BareTrainer(custom=True)"
+
+    class NoneTrainer(BaseTrainer):
+        learning_rate = None
+        epochs = None
+
+        def fit(self, model, X_fit, y_fit, **kwargs):  # pragma: no cover - dummy
+            return {}
+
+        def init_state(self, model, X_fit, y_fit):  # pragma: no cover - dummy
+            return None
+
+        def train_step(self, model, X_batch, y_batch, state):  # pragma: no cover - dummy
+            return 0.0, state
+
+        def compute_loss(self, model, X_eval, y_eval):  # pragma: no cover - dummy
+            return 0.0
+
+    reg = ANFISRegressor()
+    summary = reg._summarize_optimizer(BareTrainer())
+    assert summary == "BareTrainer(custom=True)"
+
+    none_summary = reg._summarize_optimizer(NoneTrainer())
+    assert "NoneTrainer" in none_summary
+
+    history_zero = ANFISRegressor._summarize_history({"train": []})
+    assert "train=0" in history_zero
+
+    history_unknown = ANFISRegressor._summarize_history({"foo": 1})
+    assert history_unknown == "{}"
+
+
+def test_regressor_normalize_input_spec_variants():
+    reg = ANFISRegressor()
+    gaussian = GaussianMF(mean=0.0, sigma=1.0)
+
+    from_none = reg._normalize_input_spec(None)
+    assert from_none["n_mfs"] == reg.n_mfs
+
+    from_list = reg._normalize_input_spec([gaussian])
+    assert from_list["membership_functions"] == [gaussian]
+
+    from_str = reg._normalize_input_spec("triangular")
+    assert from_str["mf_type"] == "triangular"
+
+    from_int = reg._normalize_input_spec(5)
+    assert from_int["n_mfs"] == 5
+
+    from_dict = reg._normalize_input_spec({"mfs": [gaussian], "range": (-1, 1)})
+    assert from_dict["membership_functions"] == [gaussian]
+    assert from_dict["range"] == (-1, 1)
+
+    with pytest.raises(TypeError):
+        reg._normalize_input_spec(1.5)
+
+
+def test_regressor_repr_children_handles_missing_artifacts():
+    reg = ANFISRegressor()
+    reg._mark_fitted()
+    reg.model_ = None
+    reg.optimizer_ = None
+    reg.training_history_ = {}
+    reg.rules_ = None
+    reg.feature_names_in_ = None
+    assert reg._repr_children_entries() == []
+
+
+def test_regressor_summarize_model_and_history_non_numeric_tail():
+    reg = ANFISRegressor()
+
+    class MinimalModel:
+        membership_functions: dict[str, list[object]] = {}
+
+    summary = reg._summarize_model(MinimalModel())
+    assert summary == "MinimalModel"
+
+    history = ANFISRegressor._summarize_history({"train": [{"loss": 1.0}]})
+    assert "train=1" in history
+
+    assert ANFISRegressor._describe_optimizer_config(None) is None
 
 
 def test_regressor_get_rules_returns_empty_when_unset():
