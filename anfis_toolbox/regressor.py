@@ -208,6 +208,7 @@ class ANFISRegressor(BaseEstimatorLike, FittedMixin, RegressorMixinLike):
         *,
         validation_data: tuple[np.ndarray, np.ndarray] | None = None,
         validation_frequency: int = 1,
+        verbose: bool | None = None,
         **fit_params: Any,
     ):
         """Fit the ANFIS regressor on labelled data.
@@ -225,6 +226,10 @@ class ANFISRegressor(BaseEstimatorLike, FittedMixin, RegressorMixinLike):
         validation_frequency : int, default=1
             Frequency (in epochs) at which validation loss is evaluated when
             ``validation_data`` is provided.
+        verbose : bool, optional
+            Override the estimator's ``verbose`` flag for this fit call. When
+            supplied, the value is stored on the estimator and forwarded to the
+            trainer configuration.
         **fit_params : Any
             Arbitrary keyword arguments forwarded to the trainer ``fit``
             method.
@@ -252,6 +257,9 @@ class ANFISRegressor(BaseEstimatorLike, FittedMixin, RegressorMixinLike):
         self.feature_names_in_ = feature_names
         self.n_features_in_ = X_arr.shape[1]
         self.input_specs_ = self._resolve_input_specs(feature_names)
+
+        if verbose is not None:
+            self.verbose = bool(verbose)
 
         _ensure_training_logging(self.verbose)
         self.model_ = self._build_model(X_arr, feature_names)
@@ -309,7 +317,7 @@ class ANFISRegressor(BaseEstimatorLike, FittedMixin, RegressorMixinLike):
         preds = self.model_.predict(X_arr)  # type: ignore[operator]
         return np.asarray(preds, dtype=float).reshape(-1)
 
-    def evaluate(self, X, y, *, return_dict: bool = True, print_results: bool = False):
+    def evaluate(self, X, y, *, return_dict: bool = True, print_results: bool = True):
         """Evaluate predictive performance on a dataset.
 
         Parameters
@@ -322,8 +330,9 @@ class ANFISRegressor(BaseEstimatorLike, FittedMixin, RegressorMixinLike):
             When ``True``, return the computed metric dictionary. When
             ``False``, only perform side effects (such as printing) and return
             ``None``.
-        print_results : bool, default=False
-            If ``True``, log a small human-readable summary to stdout.
+        print_results : bool, default=True
+            Log a human-readable summary to stdout. Set to ``False`` to
+            suppress printing.
 
         Returns:
         -------
@@ -345,15 +354,40 @@ class ANFISRegressor(BaseEstimatorLike, FittedMixin, RegressorMixinLike):
         preds = self.predict(X_arr)
         metrics = ANFISMetrics.regression_metrics(y_vec, preds)
         if print_results:
-            quick = [
-                ("MSE", metrics["mse"]),
-                ("RMSE", metrics["rmse"]),
-                ("MAE", metrics["mae"]),
-                ("R2", metrics["r2"]),
-            ]
+
+            def _is_effectively_nan(value: Any) -> bool:
+                if value is None:
+                    return True
+                if isinstance(value, (float, np.floating)):
+                    return bool(np.isnan(value))
+                if isinstance(value, (int, np.integer)):
+                    return False
+                if isinstance(value, np.ndarray):
+                    if value.size == 0:
+                        return False
+                    if np.issubdtype(value.dtype, np.number):
+                        return bool(np.isnan(value.astype(float)).all())
+                    return False
+                return False
+
             print("ANFISRegressor evaluation:")  # noqa: T201
-            for name, value in quick:
-                print(f"  {name:>6}: {value:.6f}")  # noqa: T201
+            for key, value in metrics.items():
+                if _is_effectively_nan(value):
+                    continue
+                if isinstance(value, (float, np.floating)):
+                    display_value = f"{float(value):.6f}"
+                    print(f"  {key}: {display_value}")  # noqa: T201
+                elif isinstance(value, (int, np.integer)):
+                    print(f"  {key}: {int(value)}")  # noqa: T201
+                elif isinstance(value, np.ndarray):
+                    array_repr = np.array2string(value, precision=6, suppress_small=True)
+                    if "\n" in array_repr:
+                        indented = "\n    ".join(array_repr.splitlines())
+                        print(f"  {key}:\n    {indented}")  # noqa: T201
+                    else:
+                        print(f"  {key}: {array_repr}")  # noqa: T201
+                else:
+                    print(f"  {key}: {value}")  # noqa: T201
         return metrics if return_dict else None
 
     def get_rules(self) -> tuple[tuple[int, ...], ...]:
