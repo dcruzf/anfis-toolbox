@@ -10,6 +10,7 @@ from anfis_toolbox import ANFISRegressor
 from anfis_toolbox.builders import ANFISBuilder
 from anfis_toolbox.estimator_utils import NotFittedError
 from anfis_toolbox.membership import GaussianMF
+from anfis_toolbox.metrics import ANFISMetrics
 from anfis_toolbox.optim import BaseTrainer, SGDTrainer
 from anfis_toolbox.regressor import _ensure_training_logging
 
@@ -141,9 +142,59 @@ def test_membership_list_configuration_and_predict_guard(capsys):
     assert reg.model_ is not None
     assert reg.model_.membership_functions["x1"][0] is mfs[0]
 
-    reg.evaluate(X, y, print_results=True)
+    reg.evaluate(X, y)
     output = capsys.readouterr().out
     assert "ANFISRegressor evaluation" in output
+    assert "mse" in output
+    assert "rmse" in output
+
+    reg.evaluate(X, y, print_results=False)
+    suppressed = capsys.readouterr().out
+    assert suppressed == ""
+
+
+def test_regressor_evaluate_filters_nan_metrics_and_formats_output(monkeypatch, capsys):
+    reg = ANFISRegressor()
+    reg.model_ = SimpleNamespace(predict=lambda arr: np.zeros(arr.shape[0], dtype=float))
+    reg.n_features_in_ = 2
+    reg.feature_names_in_ = ["x1", "x2"]
+    reg.rules_ = []
+    reg._mark_fitted()
+
+    X = np.zeros((3, 2), dtype=float)
+    y = np.zeros(3, dtype=float)
+
+    metrics_dict = {
+        "mse": 0.123456789,
+        "count": 5,
+        "vector": np.array([1.0, 2.0]),
+        "matrix": np.arange(4, dtype=float).reshape(2, 2),
+        "empty": np.array([], dtype=float),
+        "object_array": np.array(["a", "b"], dtype=object),
+        "skip_nan": float("nan"),
+        "nan_array": np.array([np.nan, np.nan]),
+        "none_val": None,
+        "info": "extra",
+    }
+
+    monkeypatch.setattr(ANFISMetrics, "regression_metrics", lambda y_true, y_pred: metrics_dict)
+
+    result = reg.evaluate(X, y, return_dict=True, print_results=True)
+    out = capsys.readouterr().out
+
+    assert "ANFISRegressor evaluation:" in out
+    assert "  mse: 0.123457" in out
+    assert "  count: 5" in out
+    assert "  vector: [1. 2.]" in out
+    assert "  matrix:\n    [[0. 1.]\n     [2. 3.]]" in out
+    assert "  empty: []" in out
+    assert "  object_array: ['a' 'b']" in out
+    assert "  info: extra" in out
+    assert "skip_nan" not in out
+    assert "nan_array" not in out
+    assert "none_val" not in out
+
+    assert result is metrics_dict
 
 
 def test_fit_validates_sample_alignment():
@@ -259,6 +310,47 @@ def test_regressor_fit_raises_when_trainer_history_invalid():
 
     with pytest.raises(TypeError, match="TrainingHistory"):
         reg.fit(X, y)
+
+
+def test_regressor_fit_accepts_verbose_override(monkeypatch):
+    calls: list[bool] = []
+
+    def fake_logging(flag: bool):
+        calls.append(flag)
+
+    monkeypatch.setattr("anfis_toolbox.regressor._ensure_training_logging", fake_logging)
+
+    class DummyTrainer(BaseTrainer):
+        def fit(self, model, X_fit, y_fit, **kwargs):
+            assert reg.verbose is True
+            return {"train": [0.0]}
+
+        def init_state(self, model, X_fit, y_fit):  # pragma: no cover - unused
+            return None
+
+        def train_step(self, model, X_batch, y_batch, state):  # pragma: no cover - unused
+            return 0.0, state
+
+        def compute_loss(self, model, X_eval, y_eval):  # pragma: no cover - unused
+            return 0.0
+
+    reg = ANFISRegressor(n_mfs=2, optimizer="sgd", random_state=0, verbose=False)
+
+    dummy_model = SimpleNamespace(
+        rules=[],
+        predict=lambda X_pred: np.zeros(X_pred.shape[0], dtype=float),
+    )
+
+    monkeypatch.setattr(reg, "_build_model", lambda X, feature_names: dummy_model)
+    monkeypatch.setattr(reg, "_instantiate_trainer", lambda: DummyTrainer())
+
+    X = np.array([[0.0], [1.0]])
+    y = np.array([0.0, 1.0])
+
+    reg.fit(X, y, verbose=True)
+
+    assert calls == [True]
+    assert reg.verbose is True
 
 
 def test_regressor_get_rules_returns_empty_when_unset():

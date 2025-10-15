@@ -13,6 +13,7 @@ from anfis_toolbox.estimator_utils import NotFittedError
 from anfis_toolbox.losses import LossFunction
 from anfis_toolbox.losses import resolve_loss as _resolve_loss
 from anfis_toolbox.membership import GaussianMF, MembershipFunction
+from anfis_toolbox.metrics import ANFISMetrics
 from anfis_toolbox.optim import BaseTrainer, HybridAdamTrainer, HybridTrainer, SGDTrainer
 
 LowLevelClassifier = TSKANFISClassifier
@@ -197,6 +198,48 @@ def test_classifier_fit_raises_when_n_classes_not_inferred(monkeypatch):
 
     with pytest.raises(RuntimeError, match="n_classes could not be inferred"):
         clf.fit(X, y)
+
+
+def test_classifier_fit_accepts_verbose_override(monkeypatch):
+    calls: list[bool] = []
+
+    def fake_logging(flag: bool):
+        calls.append(flag)
+
+    monkeypatch.setattr("anfis_toolbox.classifier._ensure_training_logging", fake_logging)
+
+    class DummyTrainer(BaseTrainer):
+        def fit(self, model, X_fit, y_fit, **kwargs):
+            assert clf.verbose is True
+            return {"train": [0.0]}
+
+        def init_state(self, model, X_fit, y_fit):  # pragma: no cover - unused
+            return None
+
+        def train_step(self, model, X_batch, y_batch, state):  # pragma: no cover - unused
+            return 0.0, state
+
+        def compute_loss(self, model, X_eval, y_eval):  # pragma: no cover - unused
+            return 0.0
+
+    clf = ANFISClassifier(n_classes=2, n_mfs=2, optimizer="sgd", random_state=0, verbose=False)
+
+    dummy_model = SimpleNamespace(
+        rules=[],
+        predict=lambda X_pred: np.zeros(X_pred.shape[0], dtype=int),
+        predict_proba=lambda X_pred: np.full((X_pred.shape[0], clf.n_classes or 1), 1.0),
+    )
+
+    monkeypatch.setattr(clf, "_build_model", lambda X, feature_names: dummy_model)
+    monkeypatch.setattr(clf, "_instantiate_trainer", lambda: DummyTrainer())
+
+    X = np.array([[0.0], [1.0]])
+    y = np.array([0, 1])
+
+    clf.fit(X, y, verbose=True)
+
+    assert calls == [True]
+    assert clf.verbose is True
 
 
 def test_classifier_infers_n_classes_from_targets(monkeypatch):
@@ -898,11 +941,74 @@ def test_anfis_classifier_evaluate_prints_results(capsys):
     clf = ANFISClassifier(n_classes=2, n_mfs=2, optimizer="sgd", epochs=2, verbose=False, random_state=0)
     clf.fit(X, y)
 
-    metrics = clf.evaluate(X[:4], y[:4], print_results=True)
+    metrics = clf.evaluate(X[:4], y[:4])
     captured = capsys.readouterr().out
     assert "ANFISClassifier evaluation:" in captured
-    assert "Accuracy" in captured
+    assert "accuracy" in captured
+    assert "confusion_matrix" in captured
+    assert "log_loss" not in captured
     assert "accuracy" in metrics
+    assert np.isnan(metrics.get("log_loss", np.nan))
+
+
+def test_anfis_classifier_evaluate_filters_nan_metrics(monkeypatch, capsys):
+    clf = ANFISClassifier(n_classes=3)
+    clf.n_classes = 3
+    clf.classes_ = np.array([0, 1, 2])
+    clf.n_features_in_ = 2
+    clf.feature_names_in_ = ["x1", "x2"]
+    clf.rules_ = []
+
+    class DummyModel:
+        def predict_proba(self, X):
+            probs = np.array([0.6, 0.3, 0.1], dtype=float)
+            return np.tile(probs, (X.shape[0], 1))
+
+    clf.model_ = DummyModel()
+    clf._mark_fitted()
+
+    X = np.zeros((3, 2), dtype=float)
+    y = np.array([0, 1, 2], dtype=int)
+
+    metrics_template = {
+        "accuracy": 0.75,
+        "support": 5,
+        "vector": np.array([0.1, 0.9]),
+        "matrix": np.arange(4, dtype=float).reshape(2, 2),
+        "empty": np.array([], dtype=float),
+        "object_array": np.array(["a", "b"], dtype=object),
+        "skip_nan": float("nan"),
+        "nan_array": np.array([[np.nan, np.nan]]),
+        "none_val": None,
+        "info": "note",
+        "log_loss": float("nan"),
+    }
+
+    monkeypatch.setattr(
+        ANFISMetrics,
+        "classification_metrics",
+        lambda y_true, proba: dict(metrics_template),
+    )
+
+    result = clf.evaluate(X, y, return_dict=True, print_results=True)
+    out = capsys.readouterr().out
+
+    assert "ANFISClassifier evaluation:" in out
+    assert "  accuracy: 0.750000" in out
+    assert "  support: 5" in out
+    assert "  vector: [0.1 0.9]" in out
+    assert "  matrix:\n    [[0. 1.]\n     [2. 3.]]" in out
+    assert "  empty: []" in out
+    assert "  object_array: ['a' 'b']" in out
+    assert "  info: note" in out
+    assert "skip_nan" not in out
+    assert "nan_array" not in out
+    assert "none_val" not in out
+    assert "log_loss" not in result
+
+    clf.evaluate(X, y, print_results=False)
+    suppressed = capsys.readouterr().out
+    assert suppressed == ""
 
 
 def test_anfis_classifier_build_model_respects_range_overrides(monkeypatch):
