@@ -10,8 +10,10 @@ from __future__ import annotations
 
 import inspect
 import logging
+import pickle
 from collections.abc import Mapping, Sequence
 from copy import deepcopy
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -24,6 +26,7 @@ from .estimator_utils import (
     _ensure_2d_array,
     _ensure_vector,
     check_is_fitted,
+    format_estimator_repr,
 )
 from .logging_config import enable_training_logs
 from .losses import LossFunction
@@ -409,6 +412,31 @@ class ANFISRegressor(BaseEstimatorLike, FittedMixin, RegressorMixinLike):
             return ()
         return tuple(tuple(rule) for rule in self.rules_)
 
+    def save(self, filepath: str | Path) -> None:
+        """Serialize this estimator (and its fitted state) using ``pickle``."""
+        path = Path(filepath)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("wb") as stream:
+            pickle.dump(self, stream)
+
+    @classmethod
+    def load(cls, filepath: str | Path) -> ANFISRegressor:
+        """Load a pickled estimator from ``filepath`` and validate its type."""
+        path = Path(filepath)
+        with path.open("rb") as stream:
+            estimator = pickle.load(stream)
+        if not isinstance(estimator, cls):
+            raise TypeError(f"Expected pickled {cls.__name__} instance, got {type(estimator).__name__}.")
+        return estimator
+
+    def __repr__(self) -> str:
+        """Return a formatted representation summarising configuration and fitted artefacts."""
+        return format_estimator_repr(
+            type(self).__name__,
+            self._repr_config_pairs(),
+            self._repr_children_entries(),
+        )
+
     def _more_tags(self) -> dict[str, Any]:  # pragma: no cover - informational hook
         return {
             "estimator_type": "regressor",
@@ -424,6 +452,118 @@ class ANFISRegressor(BaseEstimatorLike, FittedMixin, RegressorMixinLike):
             spec = self._fetch_input_config(name, idx)
             resolved.append(self._normalize_input_spec(spec))
         return resolved
+
+    # ------------------------------------------------------------------
+    # Representation helpers
+    # ------------------------------------------------------------------
+    def _repr_config_pairs(self) -> list[tuple[str, Any]]:
+        optimizer_label = self._describe_optimizer_config(self.optimizer)
+        pairs: list[tuple[str, Any]] = [
+            ("n_mfs", self.n_mfs),
+            ("mf_type", self.mf_type),
+            ("init", self.init),
+            ("overlap", self.overlap),
+            ("margin", self.margin),
+            ("random_state", self.random_state),
+            ("optimizer", optimizer_label),
+            ("learning_rate", self.learning_rate),
+            ("epochs", self.epochs),
+            ("batch_size", self.batch_size),
+            ("shuffle", self.shuffle),
+            ("loss", self.loss),
+        ]
+        if self.rules is not None:
+            pairs.append(("rules", f"preset:{len(self.rules)}"))
+        if self.optimizer_params:
+            pairs.append(("optimizer_params", self.optimizer_params))
+        return pairs
+
+    def _repr_children_entries(self) -> list[tuple[str, str]]:
+        if not getattr(self, "is_fitted_", False):
+            return []
+
+        children: list[tuple[str, str]] = []
+        model = getattr(self, "model_", None)
+        if model is not None:
+            children.append(("model_", self._summarize_model(model)))
+
+        optimizer = getattr(self, "optimizer_", None)
+        if optimizer is not None:
+            children.append(("optimizer_", self._summarize_optimizer(optimizer)))
+
+        history = getattr(self, "training_history_", None)
+        if isinstance(history, Mapping) and history:
+            children.append(("training_history_", self._summarize_history(history)))
+
+        learned_rules = getattr(self, "rules_", None)
+        if learned_rules is not None:
+            children.append(("rules_", f"{len(learned_rules)} learned"))
+
+        feature_names = getattr(self, "feature_names_in_", None)
+        if feature_names is not None:
+            children.append(("feature_names_in_", ", ".join(feature_names)))
+
+        return children
+
+    @staticmethod
+    def _describe_optimizer_config(optimizer: Any) -> Any:
+        if optimizer is None:
+            return None
+        if isinstance(optimizer, str):
+            return optimizer
+        if inspect.isclass(optimizer):
+            return optimizer.__name__
+        if isinstance(optimizer, BaseTrainer):
+            return type(optimizer).__name__
+        return repr(optimizer)
+
+    def _summarize_model(self, model: Any) -> str:
+        name = type(model).__name__
+        parts = [name]
+        n_inputs = getattr(model, "n_inputs", None)
+        n_rules = getattr(model, "n_rules", None)
+        if n_inputs is not None:
+            parts.append(f"n_inputs={n_inputs}")
+        if n_rules is not None:
+            parts.append(f"n_rules={n_rules}")
+        input_names = getattr(model, "input_names", None)
+        if input_names:
+            parts.append(f"inputs={list(input_names)}")
+        mf_map = getattr(model, "membership_functions", None)
+        if isinstance(mf_map, Mapping) and mf_map:
+            counts = [len(mf_map[name]) for name in getattr(model, "input_names", mf_map.keys())]
+            parts.append(f"mfs_per_input={counts}")
+        return ", ".join(parts)
+
+    def _summarize_optimizer(self, optimizer: BaseTrainer) -> str:
+        name = type(optimizer).__name__
+        fields = []
+        for attr in ("learning_rate", "epochs", "batch_size", "shuffle", "verbose", "loss"):
+            if hasattr(optimizer, attr):
+                value = getattr(optimizer, attr)
+                if value is not None:
+                    fields.append(f"{attr}={value!r}")
+        if hasattr(optimizer, "__dict__") and not fields:
+            # Fall back to repr if no recognised fields were populated
+            return repr(optimizer)
+        return f"{name}({', '.join(fields)})" if fields else name
+
+    @staticmethod
+    def _summarize_history(history: Mapping[str, Any]) -> str:
+        segments = []
+        for key in ("train", "val", "validation", "metrics"):
+            if key in history and isinstance(history[key], Sequence):
+                series = history[key]
+                length = len(series)
+                if length == 0:
+                    segments.append(f"{key}=0")
+                else:
+                    tail = series[-1]
+                    if isinstance(tail, (float, np.floating)):
+                        segments.append(f"{key}={length} (last={float(tail):.4f})")
+                    else:
+                        segments.append(f"{key}={length}")
+        return ", ".join(segments) if segments else "{}"
 
     def _fetch_input_config(self, name: str, index: int):
         if self.inputs_config is None:

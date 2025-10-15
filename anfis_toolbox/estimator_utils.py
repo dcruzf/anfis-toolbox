@@ -33,6 +33,7 @@ __all__ = [
     "NotFittedError",
     "check_is_fitted",
     "infer_feature_names",
+    "format_estimator_repr",
 ]
 
 
@@ -141,6 +142,65 @@ class FittedMixin:
 def check_is_fitted(estimator: FittedMixin, attributes: Iterable[str] | None = None):
     """Check if the estimator is fitted by verifying `is_fitted_` and optional attributes."""
     estimator._require_is_fitted(attributes)
+
+
+def format_estimator_repr(
+    name: str,
+    config_pairs: Iterable[tuple[str, Any]],
+    children: Iterable[tuple[str, str]],
+    *,
+    ascii_only: bool = False,
+) -> str:
+    r"""Compose a tree-style ``__repr__`` string for estimators.
+
+    Parameters
+    ----------
+    name : str
+        The display name for the estimator (typically ``type(self).__name__``).
+    config_pairs : Iterable[tuple[str, Any]]
+        Sequence of ``(key, value)`` pairs describing configuration values. ``None``
+        values are omitted automatically. The values are rendered with ``repr`` to
+        preserve type information (strings quoted, etc.).
+    children : Iterable[tuple[str, str]]
+        Sequence of ``(label, description)`` items describing child artefacts, such as
+        fitted submodels or optimizers. Descriptions may contain newlines; they will
+        be indented appropriately beneath the child label.
+    ascii_only : bool, default=False
+        When ``True`` use ASCII connectors (``|--``/``\--``) instead of box drawing
+        characters. Automatically useful for environments that do not render Unicode
+        well.
+
+    Returns:
+    -------
+    str
+        Multi-line string representation combining the header and child sections.
+    """
+    config_fragments = [f"{key}={value!r}" for key, value in config_pairs if value is not None]
+    header = f"{name}({', '.join(config_fragments)})" if config_fragments else f"{name}()"
+
+    child_list = list(children)
+    if not child_list:
+        return header
+
+    branch_mid, branch_last, pad_mid, pad_last = (
+        ("|--", "\\--", "|  ", "   ") if ascii_only else ("├─", "└─", "│ ", "  ")
+    )
+
+    lines = [header]
+    total = len(child_list)
+    for index, (label, description) in enumerate(child_list):
+        is_last = index == total - 1
+        branch = branch_last if is_last else branch_mid
+        pad = pad_last if is_last else pad_mid
+        desc_lines = str(description).splitlines() or [""]
+        first = desc_lines[0]
+        lines.append(f"{branch} {label}: {first}")
+        if len(desc_lines) > 1:
+            padding = f"{pad}    "
+            for extra in desc_lines[1:]:
+                lines.append(f"{padding}{extra}")
+
+    return "\n".join(lines)
 
 
 class RuleInspectorMixin:
