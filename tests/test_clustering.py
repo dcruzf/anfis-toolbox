@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from anfis_toolbox import FuzzyCMeans
+from anfis_toolbox.clustering import FuzzyCMeans
 
 
 def make_two_blobs(n_per=30, d=2, locs=(-3.0, 3.0), scale=0.2, seed=0):

@@ -1,7 +1,7 @@
 import numpy as np
 
-from anfis_toolbox import ANFIS
 from anfis_toolbox.membership import GaussianMF
+from anfis_toolbox.model import ANFIS
 from anfis_toolbox.optim import HybridAdamTrainer, HybridTrainer
 
 

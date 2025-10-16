@@ -7,14 +7,15 @@ from typing import Any
 import numpy as np
 import pytest
 
-from anfis_toolbox import ANFISClassifier, ANFISRegressor, TSKANFISClassifier, accuracy
+from anfis_toolbox import ANFISClassifier, ANFISRegressor
 from anfis_toolbox.builders import ANFISBuilder
 from anfis_toolbox.classifier import _ensure_training_logging
 from anfis_toolbox.estimator_utils import NotFittedError
 from anfis_toolbox.losses import LossFunction
 from anfis_toolbox.losses import resolve_loss as _resolve_loss
 from anfis_toolbox.membership import GaussianMF, MembershipFunction
-from anfis_toolbox.metrics import ANFISMetrics
+from anfis_toolbox.metrics import ANFISMetrics, accuracy
+from anfis_toolbox.model import TSKANFISClassifier
 from anfis_toolbox.optim import BaseTrainer, HybridAdamTrainer, HybridTrainer, SGDTrainer
 
 LowLevelClassifier = TSKANFISClassifier

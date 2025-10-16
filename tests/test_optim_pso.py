@@ -1,8 +1,8 @@
 import numpy as np
 import pytest
 
-from anfis_toolbox import ANFIS, TSKANFISClassifier
 from anfis_toolbox.membership import GaussianMF
+from anfis_toolbox.model import ANFIS, TSKANFISClassifier
 from anfis_toolbox.optim import PSOTrainer
 from anfis_toolbox.optim.pso import _flatten_params, _unflatten_params
 

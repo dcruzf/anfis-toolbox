@@ -1,9 +1,9 @@
 import numpy as np
 import pytest
 
-from anfis_toolbox import ANFIS, TSKANFISClassifier
 from anfis_toolbox.losses import LossFunction
 from anfis_toolbox.membership import GaussianMF
+from anfis_toolbox.model import ANFIS, TSKANFISClassifier
 from anfis_toolbox.optim import AdamTrainer, HybridTrainer, RMSPropTrainer, SGDTrainer
 from anfis_toolbox.optim.base import BaseTrainer
 
