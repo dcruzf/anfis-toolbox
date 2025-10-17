@@ -109,7 +109,7 @@ This project is tested on Python 3.13+ across Linux, Windows and macOS.
 
 ## 🤝 Contributing
 
-Issues and pull requests are welcome! Please open a discussion if you’d like to propose larger changes. See the [docs/guide](docs/guide/) section for architecture notes and examples.
+Issues and pull requests are welcome! Please open a discussion if you’d like to propose larger changes. See the [docs/guide](docs/guide.md) section for architecture notes and examples.
 
 ## 📄 License
 
