@@ -56,17 +56,184 @@ The diagram below illustrates the runtime flow:
 
 ```
 User code -> ANFISRegressor.fit ------------------------------.
-							|                                             |
-							v                                             |
-				Membership config     Optimizer selection           |
-							|                    |                        |
-							v                    v                        |
-				builders.ANFISBuilder  optim.<Trainer>              |
-							|                    |                        |
-							'------> model.ANFIS <------------------------'
-																	 |
-																	 v
+							|                                  |
+							v                                  |
+				Membership config     Optimizer selection      |
+							|                    |             |
+							v                    v             |
+				builders.ANFISBuilder  optim.<Trainer>         |
+							|                    |             |
+							'------> model.ANFIS <-------------'
+                                                               |
+															   v
 														 Training loop
+```
+
+## Implementation and Architecture
+
+ANFIS Toolbox implements the flow above through a set of small, composable modules. The public estimators in
+`anfis_toolbox.regressor` and `anfis_toolbox.classifier` act as façades that translate user-friendly configuration into the
+lower-level computational graph defined in `anfis_toolbox.model` and `anfis_toolbox.layers`. Supporting modules such as
+`builders`, `config`, `membership`, `losses`, and `optim` provide reusable building blocks that keep concerns separated.
+
+### Core execution pipeline (`anfis_toolbox.model` and `anfis_toolbox.layers`)
+
+- **Fuzzification** sits in `MembershipLayer`, which wraps concrete membership-function objects. The layer caches the raw
+	inputs and per-function activations so that the backward pass can recover gradients without re-evaluating membership
+	functions.
+- **Rule evaluation** is performed by `RuleLayer`. It receives the membership lattice, expands (or filters) the Cartesian
+	product of membership indices, and computes rule firing strengths using the configured T-norm (product). The layer also
+	propagates derivatives back to the membership layer by reusing the cached activations.
+- **Normalization** is handled by `NormalizationLayer`, which performs numerically stable weight normalisation and exposes a
+	Jacobian-vector product in its `backward` method so that trainers can work directly with batched gradients.
+- **Consequents** are implemented by `ConsequentLayer` (regression) and `ClassificationConsequentLayer` (classification).
+	Both layers augment the input batch with biases, compute per-rule linear consequents, and aggregate them using the
+	normalised firing strengths. The classification flavour maps the weighted outputs to logits, and integrates with the
+	built-in softmax helper in `metrics.py`.
+- **Model orchestration** happens in `TSKANFIS` and `TSKANFISClassifier`. Each model wires the layers, exposes forward and
+	backward passes, persists gradient buffers, and implements `get_parameters`, `set_parameters`, and `update_parameters` so
+	optimizers can operate without needing to understand layer internals.
+
+### Builder and configuration layer (`builders.py`, `config.py`)
+
+- `ANFISBuilder` encapsulates membership-function synthesis. It centralises creation strategies (grid, FCM, random) and maps
+	human-readable names (``"gaussian"``, ``"bell"``) to concrete membership classes. The builder also normalises explicit rule
+	sets via `set_rules` and exposes a `build()` factory that returns a fully wired `TSKANFIS` instance.
+- `ANFISConfig` provides a serialisable description of inputs and training defaults. It can emit builders, write JSON
+	configurations, and round-trip through `ANFISModelManager` alongside pickled models. This enables reproducible deployments
+	or experiment tracking without shipping raw Python objects.
+- Membership families (e.g. `GaussianMF`, `PiMF`, `DiffSigmoidalMF`) live under `membership.py`. Each object exposes a
+	`parameters`/`gradients` interface so the layers can mutate them generically during backpropagation.
+
+### Estimator orchestration (`regressor.py`, `classifier.py`, `estimator_utils.py`)
+
+- `ANFISRegressor.fit` and `ANFISClassifier.fit` delegate input validation and reshaping to helpers in `estimator_utils`,
+	ensuring NumPy arrays, pandas DataFrames, and Python iterables are handled consistently.
+- During fitting, estimators resolve per-input overrides through `_resolve_input_specs`, instantiate an `ANFISBuilder`,
+	build the low-level model, select a trainer based on string aliases or explicit objects, and finally call
+	`trainer.fit(model, X, y, **kwargs)`. The resulting history dictionary is cached in `training_history_` for downstream
+	inspection.
+- Persistence relies on the estimator mixins: `save`/`load` methods serialise the estimator and underlying model with
+	`pickle`, and `format_estimator_repr` produces concise `__repr__` output that mirrors scikit-learn conventions.
+- Logging hooks are opt-in through `logging_config.enable_training_logs`, so verbose fits emit trainer progress while
+	remaining silent by default.
+
+### Training infrastructure (`optim/`)
+
+- `BaseTrainer` defines the contract (`fit`, `evaluate`, metric tracking) and shared utilities like batching, progress
+	reporting, and validation scheduling.
+- Gradient-based trainers (`HybridTrainer`, `HybridAdamTrainer`, `AdamTrainer`, `RMSPropTrainer`, `SGDTrainer`) call the
+	model's `forward`, `backward`, `update_parameters`, and `reset_gradients` methods directly. Hybrid variants alternate
+	between closed-form least-squares updates for consequents and gradient descent for membership parameters to accelerate
+	convergence on regression tasks.
+- `PSOTrainer` diverges from gradient descent by optimising consequent coefficients with particle swarm optimisation while
+	refreshing membership parameters less aggressively, making it suitable for noisy or non-differentiable objectives.
+- All trainers populate a `TrainingHistory` mapping (defined in `optim.base`) that captures per-epoch losses and optional
+	validation metrics, facilitating visualisation or early-stopping criteria implemented outside the core package.
+
+### Variants and extension points
+
+- **Regression vs. classification**: `ANFISRegressor` wraps `TSKANFIS`, using mean-squared-error-style losses by default and
+	exposing regression metrics. `ANFISClassifier` wraps `TSKANFISClassifier`, instantiates a multi-class consequent layer,
+	and defaults to cross-entropy losses with probability calibration via `predict_proba`.
+- **Membership variants**: Users can mix automatic generation (`n_mfs`, `mf_type`, `init`, `overlap`, `margin`) with explicit
+	`MembershipFunction` instances per feature. Builders preserve the order in which inputs are added so the resulting rule
+	indices remain deterministic.
+- **Rule customisation**: Providing `rules=[(...)]` to estimators or builders prunes the Cartesian-product rule set. The
+	`RuleLayer` validates dimensionality and membership bounds so sparsified rule bases remain consistent.
+- **Custom trainers and losses**: Passing a subclass of `BaseTrainer` or a callable `LossFunction` lets advanced users swap
+	in bespoke optimisation strategies. Trainers may register additional callbacks or hooks (for example, to integrate with
+	`docs/hooks/*` when rendering docs) without patching the core model.
+- **Configuration persistence**: `ANFISModelManager` ties trained models to the serialised configuration extracted from the
+	membership catalogue, enabling reproducible evaluation environments and lightweight deployment artefacts.
+
+### UML overview
+
+```mermaid
+classDiagram
+	direction LR
+	class ANFISRegressor {
+		+fit(X, y)
+		+predict(X)
+		+evaluate(X, y)
+		+save(path)
+		+load(path)
+	}
+	class ANFISClassifier {
+		+fit(X, y)
+		+predict(X)
+		+predict_proba(X)
+		+evaluate(X, y)
+	}
+	class ANFISBuilder {
+		+add_input(name, min, max, n_mfs, mf_type)
+		+add_input_from_data(name, data, ...)
+		+set_rules(rules)
+		+build()
+	}
+	class TSKANFIS {
+		+forward(X)
+		+backward(dL)
+		+fit(X, y, trainer)
+		+get_parameters()
+	}
+	class TSKANFISClassifier {
+		+forward(X)
+		+backward(dL)
+		+predict_logits(X)
+		+get_parameters()
+	}
+	class MembershipLayer {
+		+forward(X)
+		+backward(gradients)
+	}
+	class RuleLayer {
+		+forward(mu)
+		+backward(dL)
+	}
+	class NormalizationLayer {
+		+forward(weights)
+		+backward(dL)
+	}
+	class ConsequentLayer {
+		+forward(X, w)
+		+backward(dL)
+	}
+	class ClassificationConsequentLayer {
+		+forward(X, w)
+		+backward(dL)
+	}
+	class BaseTrainer {
+		<<abstract>>
+		+fit(model, X, y)
+	}
+	class HybridTrainer
+	class HybridAdamTrainer
+	class AdamTrainer
+	class RMSPropTrainer
+	class SGDTrainer
+	class PSOTrainer
+
+	ANFISRegressor --> ANFISBuilder : configures
+	ANFISClassifier --> ANFISBuilder : configures
+	ANFISBuilder --> TSKANFIS : builds
+	ANFISBuilder --> TSKANFISClassifier : builds
+	TSKANFIS --> MembershipLayer : composes
+	TSKANFIS --> RuleLayer
+	TSKANFIS --> NormalizationLayer
+	TSKANFIS --> ConsequentLayer
+	TSKANFISClassifier --> MembershipLayer
+	TSKANFISClassifier --> RuleLayer
+	TSKANFISClassifier --> NormalizationLayer
+	TSKANFISClassifier --> ClassificationConsequentLayer
+	ANFISRegressor --> BaseTrainer : selects
+	ANFISClassifier --> BaseTrainer : selects
+	BaseTrainer <|-- HybridTrainer
+	BaseTrainer <|-- HybridAdamTrainer
+	BaseTrainer <|-- AdamTrainer
+	BaseTrainer <|-- RMSPropTrainer
+	BaseTrainer <|-- SGDTrainer
+	BaseTrainer <|-- PSOTrainer
 ```
 
 ## Working With Estimators
