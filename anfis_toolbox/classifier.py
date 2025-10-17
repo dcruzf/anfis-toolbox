@@ -68,6 +68,19 @@ def _ensure_training_logging(verbose: bool) -> None:
 class ANFISClassifier(BaseEstimatorLike, FittedMixin, ClassifierMixinLike):
     """Adaptive Neuro-Fuzzy classifier with a scikit-learn style API.
 
+    The estimator manages membership-function synthesis, rule construction, and
+    trainer selection so you can focus on calling :meth:`fit`,
+    :meth:`predict`, :meth:`predict_proba`, and :meth:`evaluate` with familiar
+    NumPy-like data structures.
+
+    Examples:
+    --------
+    >>> clf = ANFISClassifier()
+    >>> clf.fit(X, y)
+    ANFISClassifier(...)
+    >>> clf.predict([[0.1, -0.2]])
+    array([...])
+
     Parameters
     ----------
     n_classes : int, optional
