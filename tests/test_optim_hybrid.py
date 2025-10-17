@@ -1,7 +1,7 @@
 import numpy as np
 
-from anfis_toolbox import ANFIS
 from anfis_toolbox.membership import GaussianMF
+from anfis_toolbox.model import ANFIS
 from anfis_toolbox.optim import HybridAdamTrainer, HybridTrainer
 
 
@@ -71,3 +71,39 @@ def test_hybrid_adam_trainer_runs_and_reduces_loss():
         loss, state = trainer.train_step(model, X, y, state)
     final_loss = trainer.compute_loss(model, X, y)
     assert final_loss < initial_loss
+
+
+def test_hybrid_adam_trainer_pseudoinverse_path(monkeypatch):
+    rng = np.random.default_rng(123)
+    X = rng.normal(size=(6, 1))
+    y = (0.4 * X[:, 0]).reshape(-1, 1)
+    model = _make_regression_model(n_inputs=1)
+    trainer = HybridAdamTrainer(learning_rate=0.01, epochs=1, verbose=False)
+    state = trainer.init_state(model, X, y)
+
+    def _raise_lin_alg_error(a, b):
+        raise np.linalg.LinAlgError("singular")
+
+    monkeypatch.setattr(np.linalg, "solve", _raise_lin_alg_error)
+    original_pinv = np.linalg.pinv
+    pinv_calls: list[np.ndarray] = []
+
+    def _track_pinv(matrix):
+        pinv_calls.append(matrix)
+        return original_pinv(matrix)
+
+    monkeypatch.setattr(np.linalg, "pinv", _track_pinv)
+
+    loss, state = trainer.train_step(model, X, y, state)
+    assert np.isfinite(loss)
+    assert state["t"] >= 0
+    assert pinv_calls
+
+
+def test_hybrid_adam_prepare_data_reshapes_1d_targets():
+    trainer = HybridAdamTrainer()
+    X = np.array([[0.0], [1.0]], dtype=float)
+    y = np.array([0.5, -0.2], dtype=float)
+    X_prep, y_prep = trainer._prepare_data(X, y)
+    assert X_prep.shape == (2, 1)
+    assert y_prep.shape == (2, 1)

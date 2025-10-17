@@ -10,8 +10,10 @@ from __future__ import annotations
 
 import inspect
 import logging
+import pickle
 from collections.abc import Mapping, Sequence
 from copy import deepcopy
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -24,6 +26,7 @@ from .estimator_utils import (
     _ensure_2d_array,
     _ensure_vector,
     check_is_fitted,
+    format_estimator_repr,
 )
 from .logging_config import enable_training_logs
 from .losses import LossFunction
@@ -208,6 +211,7 @@ class ANFISRegressor(BaseEstimatorLike, FittedMixin, RegressorMixinLike):
         *,
         validation_data: tuple[np.ndarray, np.ndarray] | None = None,
         validation_frequency: int = 1,
+        verbose: bool | None = None,
         **fit_params: Any,
     ):
         """Fit the ANFIS regressor on labelled data.
@@ -225,6 +229,10 @@ class ANFISRegressor(BaseEstimatorLike, FittedMixin, RegressorMixinLike):
         validation_frequency : int, default=1
             Frequency (in epochs) at which validation loss is evaluated when
             ``validation_data`` is provided.
+        verbose : bool, optional
+            Override the estimator's ``verbose`` flag for this fit call. When
+            supplied, the value is stored on the estimator and forwarded to the
+            trainer configuration.
         **fit_params : Any
             Arbitrary keyword arguments forwarded to the trainer ``fit``
             method.
@@ -252,6 +260,9 @@ class ANFISRegressor(BaseEstimatorLike, FittedMixin, RegressorMixinLike):
         self.feature_names_in_ = feature_names
         self.n_features_in_ = X_arr.shape[1]
         self.input_specs_ = self._resolve_input_specs(feature_names)
+
+        if verbose is not None:
+            self.verbose = bool(verbose)
 
         _ensure_training_logging(self.verbose)
         self.model_ = self._build_model(X_arr, feature_names)
@@ -309,7 +320,7 @@ class ANFISRegressor(BaseEstimatorLike, FittedMixin, RegressorMixinLike):
         preds = self.model_.predict(X_arr)  # type: ignore[operator]
         return np.asarray(preds, dtype=float).reshape(-1)
 
-    def evaluate(self, X, y, *, return_dict: bool = True, print_results: bool = False):
+    def evaluate(self, X, y, *, return_dict: bool = True, print_results: bool = True):
         """Evaluate predictive performance on a dataset.
 
         Parameters
@@ -322,8 +333,9 @@ class ANFISRegressor(BaseEstimatorLike, FittedMixin, RegressorMixinLike):
             When ``True``, return the computed metric dictionary. When
             ``False``, only perform side effects (such as printing) and return
             ``None``.
-        print_results : bool, default=False
-            If ``True``, log a small human-readable summary to stdout.
+        print_results : bool, default=True
+            Log a human-readable summary to stdout. Set to ``False`` to
+            suppress printing.
 
         Returns:
         -------
@@ -345,15 +357,40 @@ class ANFISRegressor(BaseEstimatorLike, FittedMixin, RegressorMixinLike):
         preds = self.predict(X_arr)
         metrics = ANFISMetrics.regression_metrics(y_vec, preds)
         if print_results:
-            quick = [
-                ("MSE", metrics["mse"]),
-                ("RMSE", metrics["rmse"]),
-                ("MAE", metrics["mae"]),
-                ("R2", metrics["r2"]),
-            ]
+
+            def _is_effectively_nan(value: Any) -> bool:
+                if value is None:
+                    return True
+                if isinstance(value, (float, np.floating)):
+                    return bool(np.isnan(value))
+                if isinstance(value, (int, np.integer)):
+                    return False
+                if isinstance(value, np.ndarray):
+                    if value.size == 0:
+                        return False
+                    if np.issubdtype(value.dtype, np.number):
+                        return bool(np.isnan(value.astype(float)).all())
+                    return False
+                return False
+
             print("ANFISRegressor evaluation:")  # noqa: T201
-            for name, value in quick:
-                print(f"  {name:>6}: {value:.6f}")  # noqa: T201
+            for key, value in metrics.items():
+                if _is_effectively_nan(value):
+                    continue
+                if isinstance(value, (float, np.floating)):
+                    display_value = f"{float(value):.6f}"
+                    print(f"  {key}: {display_value}")  # noqa: T201
+                elif isinstance(value, (int, np.integer)):
+                    print(f"  {key}: {int(value)}")  # noqa: T201
+                elif isinstance(value, np.ndarray):
+                    array_repr = np.array2string(value, precision=6, suppress_small=True)
+                    if "\n" in array_repr:
+                        indented = "\n    ".join(array_repr.splitlines())
+                        print(f"  {key}:\n    {indented}")  # noqa: T201
+                    else:
+                        print(f"  {key}: {array_repr}")  # noqa: T201
+                else:
+                    print(f"  {key}: {value}")  # noqa: T201
         return metrics if return_dict else None
 
     def get_rules(self) -> tuple[tuple[int, ...], ...]:
@@ -375,6 +412,37 @@ class ANFISRegressor(BaseEstimatorLike, FittedMixin, RegressorMixinLike):
             return ()
         return tuple(tuple(rule) for rule in self.rules_)
 
+    def save(self, filepath: str | Path) -> None:
+        """Serialize this estimator (and its fitted state) using ``pickle``."""
+        path = Path(filepath)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("wb") as stream:
+            pickle.dump(self, stream)
+
+    @classmethod
+    def load(cls, filepath: str | Path) -> ANFISRegressor:
+        """Load a pickled estimator from ``filepath`` and validate its type."""
+        path = Path(filepath)
+        with path.open("rb") as stream:
+            estimator = pickle.load(stream)
+        if not isinstance(estimator, cls):
+            raise TypeError(f"Expected pickled {cls.__name__} instance, got {type(estimator).__name__}.")
+        return estimator
+
+    def __repr__(self) -> str:
+        """Return a formatted representation summarising configuration and fitted artefacts."""
+        return format_estimator_repr(
+            type(self).__name__,
+            self._repr_config_pairs(),
+            self._repr_children_entries(),
+        )
+
+    def _more_tags(self) -> dict[str, Any]:  # pragma: no cover - informational hook
+        return {
+            "estimator_type": "regressor",
+            "requires_y": True,
+        }
+
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
@@ -384,6 +452,118 @@ class ANFISRegressor(BaseEstimatorLike, FittedMixin, RegressorMixinLike):
             spec = self._fetch_input_config(name, idx)
             resolved.append(self._normalize_input_spec(spec))
         return resolved
+
+    # ------------------------------------------------------------------
+    # Representation helpers
+    # ------------------------------------------------------------------
+    def _repr_config_pairs(self) -> list[tuple[str, Any]]:
+        optimizer_label = self._describe_optimizer_config(self.optimizer)
+        pairs: list[tuple[str, Any]] = [
+            ("n_mfs", self.n_mfs),
+            ("mf_type", self.mf_type),
+            ("init", self.init),
+            ("overlap", self.overlap),
+            ("margin", self.margin),
+            ("random_state", self.random_state),
+            ("optimizer", optimizer_label),
+            ("learning_rate", self.learning_rate),
+            ("epochs", self.epochs),
+            ("batch_size", self.batch_size),
+            ("shuffle", self.shuffle),
+            ("loss", self.loss),
+        ]
+        if self.rules is not None:
+            pairs.append(("rules", f"preset:{len(self.rules)}"))
+        if self.optimizer_params:
+            pairs.append(("optimizer_params", self.optimizer_params))
+        return pairs
+
+    def _repr_children_entries(self) -> list[tuple[str, str]]:
+        if not getattr(self, "is_fitted_", False):
+            return []
+
+        children: list[tuple[str, str]] = []
+        model = getattr(self, "model_", None)
+        if model is not None:
+            children.append(("model_", self._summarize_model(model)))
+
+        optimizer = getattr(self, "optimizer_", None)
+        if optimizer is not None:
+            children.append(("optimizer_", self._summarize_optimizer(optimizer)))
+
+        history = getattr(self, "training_history_", None)
+        if isinstance(history, Mapping) and history:
+            children.append(("training_history_", self._summarize_history(history)))
+
+        learned_rules = getattr(self, "rules_", None)
+        if learned_rules is not None:
+            children.append(("rules_", f"{len(learned_rules)} learned"))
+
+        feature_names = getattr(self, "feature_names_in_", None)
+        if feature_names is not None:
+            children.append(("feature_names_in_", ", ".join(feature_names)))
+
+        return children
+
+    @staticmethod
+    def _describe_optimizer_config(optimizer: Any) -> Any:
+        if optimizer is None:
+            return None
+        if isinstance(optimizer, str):
+            return optimizer
+        if inspect.isclass(optimizer):
+            return optimizer.__name__
+        if isinstance(optimizer, BaseTrainer):
+            return type(optimizer).__name__
+        return repr(optimizer)
+
+    def _summarize_model(self, model: Any) -> str:
+        name = type(model).__name__
+        parts = [name]
+        n_inputs = getattr(model, "n_inputs", None)
+        n_rules = getattr(model, "n_rules", None)
+        if n_inputs is not None:
+            parts.append(f"n_inputs={n_inputs}")
+        if n_rules is not None:
+            parts.append(f"n_rules={n_rules}")
+        input_names = getattr(model, "input_names", None)
+        if input_names:
+            parts.append(f"inputs={list(input_names)}")
+        mf_map = getattr(model, "membership_functions", None)
+        if isinstance(mf_map, Mapping) and mf_map:
+            counts = [len(mf_map[name]) for name in getattr(model, "input_names", mf_map.keys())]
+            parts.append(f"mfs_per_input={counts}")
+        return ", ".join(parts)
+
+    def _summarize_optimizer(self, optimizer: BaseTrainer) -> str:
+        name = type(optimizer).__name__
+        fields = []
+        for attr in ("learning_rate", "epochs", "batch_size", "shuffle", "verbose", "loss"):
+            if hasattr(optimizer, attr):
+                value = getattr(optimizer, attr)
+                if value is not None:
+                    fields.append(f"{attr}={value!r}")
+        if hasattr(optimizer, "__dict__") and not fields:
+            # Fall back to repr if no recognised fields were populated
+            return repr(optimizer)
+        return f"{name}({', '.join(fields)})" if fields else name
+
+    @staticmethod
+    def _summarize_history(history: Mapping[str, Any]) -> str:
+        segments = []
+        for key in ("train", "val", "validation", "metrics"):
+            if key in history and isinstance(history[key], Sequence):
+                series = history[key]
+                length = len(series)
+                if length == 0:
+                    segments.append(f"{key}=0")
+                else:
+                    tail = series[-1]
+                    if isinstance(tail, (float, np.floating)):
+                        segments.append(f"{key}={length} (last={float(tail):.4f})")
+                    else:
+                        segments.append(f"{key}={length}")
+        return ", ".join(segments) if segments else "{}"
 
     def _fetch_input_config(self, name: str, index: int):
         if self.inputs_config is None:

@@ -11,10 +11,18 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from copy import deepcopy
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any
 
 import numpy as np
+
+try:  # pragma: no cover - optional dependency
+    from sklearn.utils._tags import default_tags as _sklearn_default_tags
+
+    _SKLEARN_TAGS_AVAILABLE = True
+except Exception:  # pragma: no cover - sklearn not installed
+    _sklearn_default_tags = None
+    _SKLEARN_TAGS_AVAILABLE = False
 
 __all__ = [
     "BaseEstimatorLike",
@@ -25,6 +33,7 @@ __all__ = [
     "NotFittedError",
     "check_is_fitted",
     "infer_feature_names",
+    "format_estimator_repr",
 ]
 
 
@@ -64,6 +73,54 @@ class BaseEstimatorLike:
             setattr(self, key, value)
         return self
 
+    # ------------------------------------------------------------------
+    # scikit-learn compatibility hooks
+    # ------------------------------------------------------------------
+    def __sklearn_tags__(self):
+        """Return estimator capability tags expected by scikit-learn."""
+        merged: dict[str, Any] = {}
+        more_tags = getattr(self, "_more_tags", None)
+        if callable(more_tags):
+            merged.update(more_tags())
+        extra_tags = getattr(self, "_sklearn_tags", None)
+        if isinstance(extra_tags, dict):
+            merged.update(extra_tags)
+
+        if _SKLEARN_TAGS_AVAILABLE:
+            tags = _sklearn_default_tags(self)
+
+            direct_updates = {}
+            if "estimator_type" in merged:
+                direct_updates["estimator_type"] = merged.pop("estimator_type")
+            if "non_deterministic" in merged:
+                direct_updates["non_deterministic"] = merged.pop("non_deterministic")
+            if "requires_fit" in merged:
+                direct_updates["requires_fit"] = merged.pop("requires_fit")
+            if direct_updates:
+                tags = replace(tags, **direct_updates)
+
+            if "requires_y" in merged:
+                required = bool(merged.pop("requires_y"))
+                target_tags = replace(tags.target_tags, required=required)
+                tags = replace(tags, target_tags=target_tags)
+
+            # Remaining keys are not recognised by the public Tags API; ignore gracefully.
+            return tags
+
+        # Fallback lightweight representation when scikit-learn is not available.
+        fallback = {
+            "estimator_type": merged.pop("estimator_type", None),
+            "non_deterministic": merged.pop("non_deterministic", False),
+            "requires_y": merged.pop("requires_y", True),
+            "requires_fit": merged.pop("requires_fit", True),
+        }
+        fallback.update(merged)
+        return fallback
+
+    def __sklearn_is_fitted__(self) -> bool:
+        """Expose estimator fitted state to scikit-learn utilities."""
+        return bool(getattr(self, "is_fitted_", False))
+
 
 class FittedMixin:
     """Mixin providing utility to guard against using estimators pre-fit."""
@@ -85,6 +142,65 @@ class FittedMixin:
 def check_is_fitted(estimator: FittedMixin, attributes: Iterable[str] | None = None):
     """Check if the estimator is fitted by verifying `is_fitted_` and optional attributes."""
     estimator._require_is_fitted(attributes)
+
+
+def format_estimator_repr(
+    name: str,
+    config_pairs: Iterable[tuple[str, Any]],
+    children: Iterable[tuple[str, str]],
+    *,
+    ascii_only: bool = False,
+) -> str:
+    r"""Compose a tree-style ``__repr__`` string for estimators.
+
+    Parameters
+    ----------
+    name : str
+        The display name for the estimator (typically ``type(self).__name__``).
+    config_pairs : Iterable[tuple[str, Any]]
+        Sequence of ``(key, value)`` pairs describing configuration values. ``None``
+        values are omitted automatically. The values are rendered with ``repr`` to
+        preserve type information (strings quoted, etc.).
+    children : Iterable[tuple[str, str]]
+        Sequence of ``(label, description)`` items describing child artefacts, such as
+        fitted submodels or optimizers. Descriptions may contain newlines; they will
+        be indented appropriately beneath the child label.
+    ascii_only : bool, default=False
+        When ``True`` use ASCII connectors (``|--``/``\--``) instead of box drawing
+        characters. Automatically useful for environments that do not render Unicode
+        well.
+
+    Returns:
+    -------
+    str
+        Multi-line string representation combining the header and child sections.
+    """
+    config_fragments = [f"{key}={value!r}" for key, value in config_pairs if value is not None]
+    header = f"{name}({', '.join(config_fragments)})" if config_fragments else f"{name}()"
+
+    child_list = list(children)
+    if not child_list:
+        return header
+
+    branch_mid, branch_last, pad_mid, pad_last = (
+        ("|--", "\\--", "|  ", "   ") if ascii_only else ("├─", "└─", "│ ", "  ")
+    )
+
+    lines = [header]
+    total = len(child_list)
+    for index, (label, description) in enumerate(child_list):
+        is_last = index == total - 1
+        branch = branch_last if is_last else branch_mid
+        pad = pad_last if is_last else pad_mid
+        desc_lines = str(description).splitlines() or [""]
+        first = desc_lines[0]
+        lines.append(f"{branch} {label}: {first}")
+        if len(desc_lines) > 1:
+            padding = f"{pad}    "
+            for extra in desc_lines[1:]:
+                lines.append(f"{padding}{extra}")
+
+    return "\n".join(lines)
 
 
 class RuleInspectorMixin:

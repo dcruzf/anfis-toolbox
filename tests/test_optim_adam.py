@@ -1,8 +1,8 @@
 import numpy as np
 import pytest
 
-from anfis_toolbox import ANFIS, TSKANFISClassifier
 from anfis_toolbox.membership import GaussianMF
+from anfis_toolbox.model import ANFIS, TSKANFISClassifier
 from anfis_toolbox.optim import AdamTrainer
 
 
@@ -54,7 +54,8 @@ def test_adam_with_classifier_does_not_error_on_forward_backward():
     clf = _make_classifier(n_inputs=1, n_classes=2)
     trainer = AdamTrainer(learning_rate=0.005, epochs=1, batch_size=5, shuffle=False, verbose=False)
     history = trainer.fit(clf, X, y)
-    assert len(history["train"]) == 1 and np.isfinite(history["train"][0])
+    assert len(history["train"]) == 1
+    assert np.isfinite(history["train"][0])
 
 
 def test_adam_accepts_1d_target_and_reshapes():
