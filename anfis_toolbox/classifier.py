@@ -1,9 +1,8 @@
 """High-level classification estimator facade for ANFIS.
 
-The :class:`ANFISClassifier` provides a scikit-learn style API that wires
-membership-function generation, model construction, and optimizer selection at
-instantiation time. It mirrors :class:`~anfis_toolbox.regressor.ANFISRegressor`
-while targeting categorical prediction tasks.
+``ANFISClassifier`` exposes a scikit-learn style API that bundles membership
+function management, model construction, and trainer selection so downstream
+code can focus on providing data and retrieving predictions.
 """
 
 from __future__ import annotations
@@ -77,12 +76,13 @@ class ANFISClassifier(BaseEstimatorLike, FittedMixin, ClassifierMixinLike):
     n_mfs : int, default=3
         Default number of membership functions per input.
     mf_type : str, default="gaussian"
-        Default membership function family (see :class:`ANFISBuilder`).
+        Default membership function family applied when membership functions are
+        inferred from data.
     init : {"grid", "fcm", "random", None}, default="grid"
         Strategy used when inferring membership functions from data. ``None``
         falls back to ``"grid"``.
     overlap : float, default=0.5
-        Controls overlap when generating membership functions via the builder.
+        Controls overlap when generating membership functions automatically.
     margin : float, default=0.10
         Margin added around observed data ranges during grid initialization.
     inputs_config : Mapping, optional
@@ -90,8 +90,8 @@ class ANFISClassifier(BaseEstimatorLike, FittedMixin, ClassifierMixinLike):
         :class:`pandas.DataFrame`) or integer indices. Values may be:
 
         * ``dict`` with keys among ``{"n_mfs", "mf_type", "init", "overlap",
-            "margin", "range", "membership_functions", "mfs"}``.
-        * A list/tuple of :class:`MembershipFunction` instances for full control.
+          "margin", "range", "membership_functions", "mfs"}``.
+        * A list or tuple of membership function objects for full control.
         * ``None`` for defaults.
     random_state : int, optional
         Random state forwarded to initialization routines and stochastic
@@ -146,31 +146,29 @@ class ANFISClassifier(BaseEstimatorLike, FittedMixin, ClassifierMixinLike):
             inferred from data.
         mf_type : str, default="gaussian"
             Membership function family used for automatically generated
-            membership functions. See :class:`ANFISBuilder` for admissible
-            values.
+            membership functions.
         init : {"grid", "fcm", "random", None}, default="grid"
             Initialization strategy applied when synthesizing membership
             functions from the training data. ``None`` falls back to ``"grid"``.
         overlap : float, default=0.5
             Desired overlap between adjacent membership functions during
-            automatic construction.
+            automatic generation.
         margin : float, default=0.10
             Additional range padding applied around observed feature minima
             and maxima for grid initialization.
         inputs_config : Mapping, optional
             Per-feature overrides for the generated membership functions.
             Keys may be feature names (when ``X`` is a :class:`pandas.DataFrame`),
-            integer indices, or ``"x{i}"`` aliases. Values may include builder
-            configuration dictionaries, explicit membership function sequences,
-            or ``None`` to retain defaults.
+            integer indices, or ``"x{i}"`` aliases. Values may include dictionaries
+            with membership-generation arguments, explicit membership function
+            sequences, or ``None`` to retain defaults.
         random_state : int, optional
             Seed forwarded to stochastic initializers and optimizers.
         optimizer : str | BaseTrainer | type[BaseTrainer] | None, default="adam"
             Training algorithm identifier or instance. String aliases are looked
             up in :data:`TRAINER_REGISTRY`. ``None`` defaults to ``"adam"``.
-            ``HybridTrainer`` and ``HybridAdamTrainer`` (least-squares hybrid variants)
-            are restricted to regression and will raise a ``ValueError`` when
-            supplied here.
+            Hybrid variants that depend on least-squares refinements are limited
+            to regression and raise ``ValueError`` when supplied here.
         optimizer_params : Mapping, optional
             Additional keyword arguments provided to the trainer constructor
             when a string alias or trainer class is supplied.
@@ -238,13 +236,12 @@ class ANFISClassifier(BaseEstimatorLike, FittedMixin, ClassifierMixinLike):
         X : array-like
             Training inputs with shape ``(n_samples, n_features)``.
         y : array-like
-            Target labels. Accepts integer/str labels or one-hot matrices with
-        verbose: bool | None = None,
-        **fit_params: Any,
+            Target labels. Accepts integer or string labels as well as one-hot
+            matrices with shape ``(n_samples, n_classes)``.
         validation_data : tuple[np.ndarray, np.ndarray], optional
             Optional validation split supplied to the underlying trainer.
-            Targets may be integer encoded or one-hot encoded consistent with
-            the trainer.
+            Inputs and targets must already be numeric and share the same row
+            count.
         validation_frequency : int, default=1
             Frequency (in epochs) at which validation metrics are computed when
             ``validation_data`` is provided.
@@ -268,7 +265,7 @@ class ANFISClassifier(BaseEstimatorLike, FittedMixin, ClassifierMixinLike):
             encoding is incompatible with the configured ``n_classes``.
         TypeError
             If the trainer ``fit`` implementation does not return a
-            ``TrainingHistory`` dictionary.
+            dictionary-style training history.
         """
         X_arr, feature_names = _ensure_2d_array(X)
         n_samples = X_arr.shape[0]

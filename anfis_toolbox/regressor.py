@@ -66,19 +66,35 @@ def _ensure_training_logging(verbose: bool) -> None:
 class ANFISRegressor(BaseEstimatorLike, FittedMixin, RegressorMixinLike):
     """Adaptive Neuro-Fuzzy regressor with a scikit-learn style API.
 
+    The estimator manages membership-function synthesis, rule construction, and
+    trainer selection so you can focus on calling :meth:`fit`, :meth:`predict`,
+    and :meth:`evaluate` with familiar NumPy-like data structures.
+
+    Examples:
+    --------
+    >>> reg = ANFISRegressor()
+    >>> reg.fit(X, y)
+    ANFISRegressor(...)
+    >>> reg.predict(X[:1])
+    array([...])
+
     Parameters
     ----------
     n_mfs : int, default=3
         Default number of membership functions per input.
     mf_type : str, default="gaussian"
-        Default membership function family (see :class:`ANFISBuilder`).
+        Default membership function family used for automatically generated
+        membership functions. Supported values include ``"gaussian"``,
+        ``"triangular"``, ``"bell"``, and other names exposed by the
+        membership catalogue.
     init : {"grid", "fcm", "random", None}, default="grid"
         Strategy used when inferring membership functions from data. ``None``
         falls back to ``"grid"``.
     overlap : float, default=0.5
-        Controls overlap when generating membership functions via the builder.
+        Controls overlap when generating membership functions automatically.
     margin : float, default=0.10
-        Margin added around observed data ranges during grid initialization.
+        Margin added around observed data ranges during automatic
+        initialization.
     inputs_config : Mapping, optional
         Per-input overrides. Keys may be feature names (when ``X`` is a
         :class:`pandas.DataFrame`) or integer indices. Values may be:
@@ -132,11 +148,12 @@ class ANFISRegressor(BaseEstimatorLike, FittedMixin, RegressorMixinLike):
         ----------
         n_mfs : int, default=3
             Default number of membership functions allocated to each input when
-            the builder infers them from data.
+            they are inferred from data.
         mf_type : str, default="gaussian"
             Membership function family used for automatically generated
-            membership functions. See :class:`ANFISBuilder` for supported
-            values.
+            membership functions. Supported names mirror the ones exported in
+            :mod:`anfis_toolbox.membership` (e.g. ``"gaussian"``,
+            ``"triangular"``, ``"bell"``).
         init : {"grid", "fcm", "random", None}, default="grid"
             Initialization strategy employed when synthesizing membership
             functions from the training data. ``None`` falls back to
@@ -151,8 +168,9 @@ class ANFISRegressor(BaseEstimatorLike, FittedMixin, RegressorMixinLike):
             Per-feature overrides for membership configuration. Keys may be
             feature names (e.g. when ``X`` is a :class:`pandas.DataFrame`),
             integer indices, or ``"x{i}"`` aliases. Values accept dictionaries
-            mirroring builder arguments, explicit membership function lists, or
-            scalars for simple overrides. ``None`` entries keep defaults.
+            with membership keywords (e.g. ``"n_mfs"``, ``"mf_type"``,
+            ``"init"``), explicit membership function lists, or scalars for
+            simple overrides. ``None`` entries keep defaults.
         random_state : int, optional
             Seed propagated to stochastic components such as FCM-based
             initialization and optimizers that rely on randomness.
