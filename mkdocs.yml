@@ -52,10 +52,9 @@ theme:
 
 nav:
   - Home: index.md
-  - Models:
-    - Regression: models/anfis.md
-    - Classification: models/anfis-classifier.md
-    - Fuzzy C-Means: models/fuzzy_c-means.md
+  - Estimators:
+    - Regression: estimators/anfis-regressor.md
+    - Classification: estimators/anfis-classifier.md
   - Membership Functions:
     - Gaussian: membership_functions/gaussian.ipynb
     - Two-Sided Gaussian: membership_functions/gaussian-combination.ipynb
@@ -71,23 +70,29 @@ nav:
     - S-Shaped: membership_functions/sshaped.ipynb
     - Linear S-Shaped: membership_functions/sshaped-linear.ipynb
   - Examples:
-    - Basic: examples/regression_basic.ipynb
-    - Intermediate: examples/modeling.ipynb
-    - Classifier: examples/classifier_basic.ipynb
+    - Regression: examples/regression_basic.ipynb
+    - Classification: examples/classifier_basic.ipynb
+    - Time Series: examples/time_series.ipynb
+    - Function Aproximation: examples/function_approximation.ipynb
   - API Reference:
-    - index: api/index.md
+    - Overview: api/index.md
+    - Estimators:
+        - Regressor: api/regressor.md
+        - Classifier: api/classifier.md
     - Membership Functions: api/membership-functions.md
-    - Builders: api/builders.md
-    - Regressor: api/regressor.md
-    - Classifier: api/classifier.md
-    - Models: api/models.md
-    - Layers: api/layers.md
-    - Losses: api/losses.md
-    - Clustering: api/clustering.md
-    - Configuration: api/config.md
-    - Logging: api/logging.md
-    - Optimization: api/optim.md
+    - Training:
+        - Optimization Trainers: api/optim.md
+        - Losses: api/losses.md
     - Metrics: api/metrics.md
+    - Core:
+        - Models: api/models.md
+        - Layers: api/layers.md
+    - Utilities:
+        - Configuration: api/config.md
+        - Logging: api/logging.md
+    - Advanced:
+        - Builders: api/builders.md
+        - Clustering: api/clustering.md
 
 plugins:
   - search
