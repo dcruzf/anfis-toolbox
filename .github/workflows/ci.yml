@@ -3,15 +3,23 @@ name: CI
 on:
   pull_request:
     branches: [main, dev]
-    types: [opened, synchronize, reopened, closed]
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   tests:
     name: Lint & Test Suite
-    runs-on: ubuntu-latest
+    if: github.event.action != 'closed'
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    defaults:
+      run:
+        shell: bash
 
     steps:
       - name: Checkout repository
@@ -20,23 +28,45 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v6
 
-      - name: Install
-        run: make install-ci
+      - name: Sync project dependencies
+        run: uv sync
+
+      - name: Install hatch
+        run: uv tool install hatch
 
       - name: Run linting
-        run: make lint
+        if: runner.os == 'Linux'
+        run: uvx pre-commit run --all-files
 
       - name: Run tests
-        run: make test-all
+        run: uv tool run hatch test -c
 
-      - name: Publish docs (main)
-        if: github.event.action == 'closed' && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main'
-        run: |
-          make cov-report
-          make docs-gh-deploy
+  publish-docs:
+    name: Publish Docs (dev)
+    runs-on: ubuntu-latest
+    if: github.event.action == 'closed' && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'dev'
+    permissions:
+      contents: write
 
-      - name: Publish docs (dev)
-        if: github.event.action == 'closed' && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'dev'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Sync project dependencies
+        run: uv sync
+
+      - name: Generate coverage report
+        run: uvx coverage html -d docs/assets/cov/
+
+      - name: Deploy documentation
         run: |
-          make cov-report
-          make docs-gh-deploy-dev
+          uvx --with mkdocs-material \
+            --with mkdocstrings --with mkdocstrings-python \
+            --with mkdocs-awesome-pages-plugin \
+            --with mkdocs-git-revision-date-localized-plugin \
+            --with mkdocs-jupyter \
+            --with ruff \
+            mkdocs gh-deploy

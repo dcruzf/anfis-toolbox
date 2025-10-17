@@ -5,8 +5,8 @@ import logging
 import numpy as np
 import pytest
 
-from anfis_toolbox import ANFIS
 from anfis_toolbox.membership import GaussianMF
+from anfis_toolbox.model import ANFIS
 from anfis_toolbox.optim import HybridTrainer, SGDTrainer
 
 # Disable logging during tests to keep output clean
@@ -421,7 +421,7 @@ def test_anfis_hybrid_vs_backprop_comparison():
 
 def test_logging_configuration():
     """Test ANFIS logging configuration."""
-    from anfis_toolbox import disable_training_logs, enable_training_logs, setup_logging
+    from anfis_toolbox.logging_config import disable_training_logs, enable_training_logs, setup_logging
 
     # Test enabling training logs
     enable_training_logs()

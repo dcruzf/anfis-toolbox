@@ -1,8 +1,8 @@
 import numpy as np
 import pytest
 
-from anfis_toolbox import ANFIS, TSKANFISClassifier
 from anfis_toolbox.membership import GaussianMF
+from anfis_toolbox.model import ANFIS, TSKANFISClassifier
 from anfis_toolbox.optim import PSOTrainer
 from anfis_toolbox.optim.pso import _flatten_params, _unflatten_params
 
@@ -173,3 +173,30 @@ def test_pso_fit_raises_when_target_rows_mismatch():
 
     with pytest.raises(ValueError, match="Target array must have same number of rows as X"):
         trainer.fit(model, X, y)
+
+
+def test_pso_prepare_validation_data_matches_training_batch():
+    trainer = PSOTrainer(swarm_size=4, epochs=1, random_state=0, verbose=False)
+    model = _make_regression_model(n_inputs=1)
+    X = np.array([[0.0], [1.0]], dtype=float)
+    y = np.array([0.0, 1.0], dtype=float)
+
+    X_train, y_train = trainer._prepare_training_data(model, X, y)
+    X_val, y_val = trainer._prepare_validation_data(model, X, y)
+
+    np.testing.assert_array_equal(X_val, X_train)
+    np.testing.assert_array_equal(y_val, y_train)
+
+
+def test_pso_compute_loss_and_ensure_loss_fn_initializes():
+    trainer = PSOTrainer(swarm_size=4, epochs=1, random_state=1, verbose=False)
+    model = _make_regression_model(n_inputs=1)
+    X = np.array([[0.5], [-0.5]], dtype=float)
+    y = (0.3 * X[:, 0]).reshape(-1, 1)
+
+    loss_fn = trainer._ensure_loss_fn()
+    assert loss_fn is trainer._loss_fn
+
+    trainer._prepare_training_data(model, X, y)
+    loss = trainer.compute_loss(model, X, y)
+    assert np.isfinite(loss)

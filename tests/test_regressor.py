@@ -1,14 +1,19 @@
 import inspect
+import logging
+import pickle
+from types import SimpleNamespace
 from typing import Any
 
 import numpy as np
 import pytest
 
-from anfis_toolbox import ANFISRegressor
+from anfis_toolbox import ANFISClassifier, ANFISRegressor
 from anfis_toolbox.builders import ANFISBuilder
 from anfis_toolbox.estimator_utils import NotFittedError
 from anfis_toolbox.membership import GaussianMF
+from anfis_toolbox.metrics import ANFISMetrics
 from anfis_toolbox.optim import BaseTrainer, SGDTrainer
+from anfis_toolbox.regressor import _ensure_training_logging
 
 
 def _generate_dataset(seed: int = 0):
@@ -138,9 +143,59 @@ def test_membership_list_configuration_and_predict_guard(capsys):
     assert reg.model_ is not None
     assert reg.model_.membership_functions["x1"][0] is mfs[0]
 
-    reg.evaluate(X, y, print_results=True)
+    reg.evaluate(X, y)
     output = capsys.readouterr().out
     assert "ANFISRegressor evaluation" in output
+    assert "mse" in output
+    assert "rmse" in output
+
+    reg.evaluate(X, y, print_results=False)
+    suppressed = capsys.readouterr().out
+    assert suppressed == ""
+
+
+def test_regressor_evaluate_filters_nan_metrics_and_formats_output(monkeypatch, capsys):
+    reg = ANFISRegressor()
+    reg.model_ = SimpleNamespace(predict=lambda arr: np.zeros(arr.shape[0], dtype=float))
+    reg.n_features_in_ = 2
+    reg.feature_names_in_ = ["x1", "x2"]
+    reg.rules_ = []
+    reg._mark_fitted()
+
+    X = np.zeros((3, 2), dtype=float)
+    y = np.zeros(3, dtype=float)
+
+    metrics_dict = {
+        "mse": 0.123456789,
+        "count": 5,
+        "vector": np.array([1.0, 2.0]),
+        "matrix": np.arange(4, dtype=float).reshape(2, 2),
+        "empty": np.array([], dtype=float),
+        "object_array": np.array(["a", "b"], dtype=object),
+        "skip_nan": float("nan"),
+        "nan_array": np.array([np.nan, np.nan]),
+        "none_val": None,
+        "info": "extra",
+    }
+
+    monkeypatch.setattr(ANFISMetrics, "regression_metrics", lambda y_true, y_pred: metrics_dict)
+
+    result = reg.evaluate(X, y, return_dict=True, print_results=True)
+    out = capsys.readouterr().out
+
+    assert "ANFISRegressor evaluation:" in out
+    assert "  mse: 0.123457" in out
+    assert "  count: 5" in out
+    assert "  vector: [1. 2.]" in out
+    assert "  matrix:\n    [[0. 1.]\n     [2. 3.]]" in out
+    assert "  empty: []" in out
+    assert "  object_array: ['a' 'b']" in out
+    assert "  info: extra" in out
+    assert "skip_nan" not in out
+    assert "nan_array" not in out
+    assert "none_val" not in out
+
+    assert result is metrics_dict
 
 
 def test_fit_validates_sample_alignment():
@@ -199,6 +254,302 @@ def test_optimizer_validation_errors():
 
     with pytest.raises(TypeError):
         ANFISRegressor(optimizer=123).fit(X, y)
+
+
+def test_regressor_ensure_training_logging_respects_existing_handlers(monkeypatch):
+    calls: list[str] = []
+
+    def fake_enable():
+        calls.append("enabled")
+
+    monkeypatch.setattr("anfis_toolbox.regressor.enable_training_logs", fake_enable)
+
+    dummy_logger = SimpleNamespace(handlers=[object()])
+    real_get_logger = logging.getLogger
+
+    def fake_get_logger(name: str | None = None):
+        if name == "anfis_toolbox":
+            return dummy_logger
+        return real_get_logger(name)
+
+    monkeypatch.setattr("anfis_toolbox.regressor.logging.getLogger", fake_get_logger)
+
+    _ensure_training_logging(True)
+    assert calls == []
+
+    dummy_logger.handlers = []
+    _ensure_training_logging(True)
+    assert calls == ["enabled"]
+
+
+def test_regressor_fit_raises_when_trainer_history_invalid():
+    class DummyTrainer(BaseTrainer):
+        def fit(self, model, X_fit, y_fit, **kwargs):
+            return []
+
+        def init_state(self, model, X_fit, y_fit):  # pragma: no cover - not used
+            return None
+
+        def train_step(self, model, X_batch, y_batch, state):  # pragma: no cover - not used
+            return 0.0, state
+
+        def compute_loss(self, model, X_eval, y_eval):  # pragma: no cover - not used
+            return 0.0
+
+    reg = ANFISRegressor(n_mfs=2, optimizer="sgd", random_state=0, verbose=False)
+
+    dummy_model = SimpleNamespace(
+        rules=[],
+        predict=lambda X_pred: np.zeros(X_pred.shape[0], dtype=float),
+    )
+
+    reg._build_model = lambda X, feature_names: dummy_model  # type: ignore[assignment]
+    reg._instantiate_trainer = lambda: DummyTrainer()  # type: ignore[assignment]
+
+    X = np.array([[0.0], [1.0]])
+    y = np.array([0.0, 1.0])
+
+    with pytest.raises(TypeError, match="TrainingHistory"):
+        reg.fit(X, y)
+
+
+def test_regressor_fit_accepts_verbose_override(monkeypatch):
+    calls: list[bool] = []
+
+    def fake_logging(flag: bool):
+        calls.append(flag)
+
+    monkeypatch.setattr("anfis_toolbox.regressor._ensure_training_logging", fake_logging)
+
+    class DummyTrainer(BaseTrainer):
+        def fit(self, model, X_fit, y_fit, **kwargs):
+            assert reg.verbose is True
+            return {"train": [0.0]}
+
+        def init_state(self, model, X_fit, y_fit):  # pragma: no cover - unused
+            return None
+
+        def train_step(self, model, X_batch, y_batch, state):  # pragma: no cover - unused
+            return 0.0, state
+
+        def compute_loss(self, model, X_eval, y_eval):  # pragma: no cover - unused
+            return 0.0
+
+    reg = ANFISRegressor(n_mfs=2, optimizer="sgd", random_state=0, verbose=False)
+
+    dummy_model = SimpleNamespace(
+        rules=[],
+        predict=lambda X_pred: np.zeros(X_pred.shape[0], dtype=float),
+    )
+
+    monkeypatch.setattr(reg, "_build_model", lambda X, feature_names: dummy_model)
+    monkeypatch.setattr(reg, "_instantiate_trainer", lambda: DummyTrainer())
+
+    X = np.array([[0.0], [1.0]])
+    y = np.array([0.0, 1.0])
+
+    reg.fit(X, y, verbose=True)
+
+    assert calls == [True]
+    assert reg.verbose is True
+
+
+def test_regressor_repr_pre_and_post_fit():
+    reg = ANFISRegressor(
+        n_mfs=4,
+        mf_type="gaussian",
+        init="grid",
+        optimizer="adam",
+        learning_rate=0.02,
+        epochs=10,
+        random_state=7,
+    )
+
+    text = repr(reg)
+    assert text.startswith("ANFISRegressor(")
+    assert "n_mfs=4" in text
+    assert "optimizer='adam'" in text
+    assert "model_" not in text
+
+    class DummyModel:
+        n_inputs = 2
+        n_rules = 5
+        input_names = ["x1", "x2"]
+        membership_functions = {
+            "x1": [object(), object(), object()],
+            "x2": [object(), object()],
+        }
+
+    reg.model_ = DummyModel()
+    reg.optimizer_ = SimpleNamespace(learning_rate=0.05, epochs=3, batch_size=8)
+    reg.training_history_ = {"train": [1.0, 0.5], "val": [0.8]}
+    reg.rules_ = [(0, 0), (1, 1)]
+    reg.feature_names_in_ = ["x1", "x2"]
+    reg._mark_fitted()
+
+    fitted_repr = repr(reg)
+    assert "model_" in fitted_repr
+    assert "optimizer_" in fitted_repr
+    assert "training_history_" in fitted_repr
+    assert "rules_" in fitted_repr
+    assert "feature_names_in_" in fitted_repr
+    assert "DummyModel" in fitted_repr
+    assert "SimpleNamespace" in fitted_repr
+    assert "├─" in fitted_repr or "|--" in fitted_repr
+
+
+def test_regressor_save_and_load_roundtrip(tmp_path):
+    X, y = _generate_dataset()
+    reg = ANFISRegressor(
+        n_mfs=2,
+        mf_type="gaussian",
+        optimizer="sgd",
+        learning_rate=0.05,
+        epochs=5,
+        random_state=0,
+    )
+    reg.fit(X, y)
+    baseline = reg.predict(X[:5])
+
+    path = tmp_path / "nested" / "regressor.pkl"
+    reg.save(path)
+
+    loaded = ANFISRegressor.load(path)
+    assert isinstance(loaded, ANFISRegressor)
+    assert loaded.is_fitted_
+    assert loaded.feature_names_in_ == reg.feature_names_in_
+    np.testing.assert_allclose(loaded.predict(X[:5]), baseline, atol=1e-6)
+
+
+def test_regressor_load_rejects_wrong_type(tmp_path):
+    path = tmp_path / "wrong.pkl"
+    with path.open("wb") as stream:
+        pickle.dump(ANFISClassifier(n_classes=2), stream)
+
+    with pytest.raises(TypeError, match="Expected pickled ANFISRegressor"):
+        ANFISRegressor.load(path)
+
+
+def test_regressor_repr_config_pairs_optional_sections():
+    reg = ANFISRegressor(
+        rules=[(0, 1)],
+        optimizer=SGDTrainer,
+        optimizer_params={"momentum": 0.9},
+    )
+    pairs = reg._repr_config_pairs()
+    assert ("optimizer", "SGDTrainer") in pairs
+    assert ("rules", "preset:1") in pairs
+    assert ("optimizer_params", {"momentum": 0.9}) in pairs
+
+    instance_label = ANFISRegressor._describe_optimizer_config(SGDTrainer())
+    assert instance_label == "SGDTrainer"
+
+    generic_label = ANFISRegressor._describe_optimizer_config(object())
+    assert generic_label.startswith("<")
+
+
+def test_regressor_summarize_optimizer_and_history_edge_cases():
+    class BareTrainer(BaseTrainer):
+        def fit(self, model, X_fit, y_fit, **kwargs):  # pragma: no cover - dummy
+            return {}
+
+        def init_state(self, model, X_fit, y_fit):  # pragma: no cover - dummy
+            return None
+
+        def train_step(self, model, X_batch, y_batch, state):  # pragma: no cover - dummy
+            return 0.0, state
+
+        def compute_loss(self, model, X_eval, y_eval):  # pragma: no cover - dummy
+            return 0.0
+
+        def __repr__(self) -> str:  # pragma: no cover - simple repr
+            return "BareTrainer(custom=True)"
+
+    class NoneTrainer(BaseTrainer):
+        learning_rate = None
+        epochs = None
+
+        def fit(self, model, X_fit, y_fit, **kwargs):  # pragma: no cover - dummy
+            return {}
+
+        def init_state(self, model, X_fit, y_fit):  # pragma: no cover - dummy
+            return None
+
+        def train_step(self, model, X_batch, y_batch, state):  # pragma: no cover - dummy
+            return 0.0, state
+
+        def compute_loss(self, model, X_eval, y_eval):  # pragma: no cover - dummy
+            return 0.0
+
+    reg = ANFISRegressor()
+    summary = reg._summarize_optimizer(BareTrainer())
+    assert summary == "BareTrainer(custom=True)"
+
+    none_summary = reg._summarize_optimizer(NoneTrainer())
+    assert "NoneTrainer" in none_summary
+
+    history_zero = ANFISRegressor._summarize_history({"train": []})
+    assert "train=0" in history_zero
+
+    history_unknown = ANFISRegressor._summarize_history({"foo": 1})
+    assert history_unknown == "{}"
+
+
+def test_regressor_normalize_input_spec_variants():
+    reg = ANFISRegressor()
+    gaussian = GaussianMF(mean=0.0, sigma=1.0)
+
+    from_none = reg._normalize_input_spec(None)
+    assert from_none["n_mfs"] == reg.n_mfs
+
+    from_list = reg._normalize_input_spec([gaussian])
+    assert from_list["membership_functions"] == [gaussian]
+
+    from_str = reg._normalize_input_spec("triangular")
+    assert from_str["mf_type"] == "triangular"
+
+    from_int = reg._normalize_input_spec(5)
+    assert from_int["n_mfs"] == 5
+
+    from_dict = reg._normalize_input_spec({"mfs": [gaussian], "range": (-1, 1)})
+    assert from_dict["membership_functions"] == [gaussian]
+    assert from_dict["range"] == (-1, 1)
+
+    with pytest.raises(TypeError):
+        reg._normalize_input_spec(1.5)
+
+
+def test_regressor_repr_children_handles_missing_artifacts():
+    reg = ANFISRegressor()
+    reg._mark_fitted()
+    reg.model_ = None
+    reg.optimizer_ = None
+    reg.training_history_ = {}
+    reg.rules_ = None
+    reg.feature_names_in_ = None
+    assert reg._repr_children_entries() == []
+
+
+def test_regressor_summarize_model_and_history_non_numeric_tail():
+    reg = ANFISRegressor()
+
+    class MinimalModel:
+        membership_functions: dict[str, list[object]] = {}
+
+    summary = reg._summarize_model(MinimalModel())
+    assert summary == "MinimalModel"
+
+    history = ANFISRegressor._summarize_history({"train": [{"loss": 1.0}]})
+    assert "train=1" in history
+
+    assert ANFISRegressor._describe_optimizer_config(None) is None
+
+
+def test_regressor_get_rules_returns_empty_when_unset():
+    reg = ANFISRegressor()
+    reg.rules_ = []
+    reg._mark_fitted()
+    assert reg.get_rules() == ()
 
 
 def test_optimizer_params_forwarded():

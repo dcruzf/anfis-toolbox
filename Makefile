@@ -93,15 +93,6 @@ docs-gh-deploy: .uv
 		--with ruff \
 		mkdocs gh-deploy
 
-.PHONY: docs-gh-deploy-dev  ## deploy gh-pages to /dev
-docs-gh-deploy-dev: .uv
-	uvx --with mkdocs-material \
-		--with mkdocstrings --with mkdocstrings-python \
-		--with mkdocs-awesome-pages-plugin \
-		--with mkdocs-git-revision-date-localized-plugin \
-		--with mkdocs-jupyter \
-		--with ruff \
-		mkdocs gh-deploy -d dev
 
 .PHONY: clean  ## Clear local caches and build artifacts
 clean:

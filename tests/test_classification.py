@@ -1,18 +1,21 @@
 import inspect
 import logging
-from types import SimpleNamespace
+import pickle
+from types import MethodType, SimpleNamespace
 from typing import Any
 
 import numpy as np
 import pytest
 
-from anfis_toolbox import ANFISClassifier, TSKANFISClassifier, accuracy
+from anfis_toolbox import ANFISClassifier, ANFISRegressor
 from anfis_toolbox.builders import ANFISBuilder
 from anfis_toolbox.classifier import _ensure_training_logging
 from anfis_toolbox.estimator_utils import NotFittedError
 from anfis_toolbox.losses import LossFunction
 from anfis_toolbox.losses import resolve_loss as _resolve_loss
 from anfis_toolbox.membership import GaussianMF, MembershipFunction
+from anfis_toolbox.metrics import ANFISMetrics, accuracy
+from anfis_toolbox.model import TSKANFISClassifier
 from anfis_toolbox.optim import BaseTrainer, HybridAdamTrainer, HybridTrainer, SGDTrainer
 
 LowLevelClassifier = TSKANFISClassifier
@@ -181,6 +184,147 @@ def test_classifier_fit_raises_when_trainer_history_invalid():
     y = np.array([0, 1])
 
     with pytest.raises(TypeError, match="TrainingHistory"):
+        clf.fit(X, y)
+
+
+def test_classifier_fit_raises_when_n_classes_not_inferred(monkeypatch):
+    clf = ANFISClassifier(n_mfs=2, optimizer="sgd", random_state=0, verbose=False)
+
+    X = np.array([[0.0], [1.0]])
+    y = np.array([0, 1])
+
+    def fake_encode(self, targets, n_samples, *, allow_partial_classes=False):
+        return np.zeros(n_samples, dtype=int), np.array([0, 1])
+
+    monkeypatch.setattr(clf, "_encode_targets", MethodType(fake_encode, clf))
+
+    with pytest.raises(RuntimeError, match="n_classes could not be inferred"):
+        clf.fit(X, y)
+
+
+def test_classifier_fit_accepts_verbose_override(monkeypatch):
+    calls: list[bool] = []
+
+    def fake_logging(flag: bool):
+        calls.append(flag)
+
+    monkeypatch.setattr("anfis_toolbox.classifier._ensure_training_logging", fake_logging)
+
+    class DummyTrainer(BaseTrainer):
+        def fit(self, model, X_fit, y_fit, **kwargs):
+            assert clf.verbose is True
+            return {"train": [0.0]}
+
+        def init_state(self, model, X_fit, y_fit):  # pragma: no cover - unused
+            return None
+
+        def train_step(self, model, X_batch, y_batch, state):  # pragma: no cover - unused
+            return 0.0, state
+
+        def compute_loss(self, model, X_eval, y_eval):  # pragma: no cover - unused
+            return 0.0
+
+    clf = ANFISClassifier(n_classes=2, n_mfs=2, optimizer="sgd", random_state=0, verbose=False)
+
+    dummy_model = SimpleNamespace(
+        rules=[],
+        predict=lambda X_pred: np.zeros(X_pred.shape[0], dtype=int),
+        predict_proba=lambda X_pred: np.full((X_pred.shape[0], clf.n_classes or 1), 1.0),
+    )
+
+    monkeypatch.setattr(clf, "_build_model", lambda X, feature_names: dummy_model)
+    monkeypatch.setattr(clf, "_instantiate_trainer", lambda: DummyTrainer())
+
+    X = np.array([[0.0], [1.0]])
+    y = np.array([0, 1])
+
+    clf.fit(X, y, verbose=True)
+
+    assert calls == [True]
+    assert clf.verbose is True
+
+
+def test_classifier_infers_n_classes_from_targets(monkeypatch):
+    class DummyTrainer(BaseTrainer):
+        def fit(self, model, X_fit, y_fit, **kwargs):
+            self.X_shape = X_fit.shape
+            self.y_shape = y_fit.shape
+            return {"train": [0.0]}
+
+        def init_state(self, model, X_fit, y_fit):  # pragma: no cover - unused stub
+            return None
+
+        def train_step(self, model, X_batch, y_batch, state):  # pragma: no cover - unused stub
+            return 0.0, state
+
+        def compute_loss(self, model, X_eval, y_eval):  # pragma: no cover - unused stub
+            return 0.0
+
+    clf = ANFISClassifier(n_mfs=2, optimizer="sgd", random_state=0, verbose=False)
+
+    def fake_build_model(X, feature_names):
+        assert clf.n_classes == 2
+        return SimpleNamespace(
+            rules=[],
+            predict=lambda X_pred: np.zeros(X_pred.shape[0], dtype=int),
+            predict_proba=lambda X_pred: np.full((X_pred.shape[0], clf.n_classes or 1), 1.0),
+        )
+
+    monkeypatch.setattr(clf, "_build_model", fake_build_model)
+    monkeypatch.setattr(clf, "_instantiate_trainer", lambda: DummyTrainer())
+
+    X = np.array([[0.0], [1.0], [0.5], [1.5]])
+    y = np.array([0, 1, 0, 1])
+
+    clf.fit(X, y)
+
+    assert clf.n_classes == 2
+    np.testing.assert_array_equal(clf.classes_, np.array([0, 1], dtype=object))
+
+
+def test_classifier_infers_n_classes_from_one_hot(monkeypatch):
+    class DummyTrainer(BaseTrainer):
+        def fit(self, model, X_fit, y_fit, **kwargs):
+            return {"train": [0.0]}
+
+        def init_state(self, model, X_fit, y_fit):  # pragma: no cover - unused stub
+            return None
+
+        def train_step(self, model, X_batch, y_batch, state):  # pragma: no cover - unused stub
+            return 0.0, state
+
+        def compute_loss(self, model, X_eval, y_eval):  # pragma: no cover - unused stub
+            return 0.0
+
+    clf = ANFISClassifier(n_mfs=2, optimizer="sgd", random_state=0, verbose=False)
+
+    def fake_build_model(X, feature_names):
+        assert clf.n_classes == 3
+        return SimpleNamespace(
+            rules=[],
+            predict=lambda X_pred: np.zeros(X_pred.shape[0], dtype=int),
+            predict_proba=lambda X_pred: np.full((X_pred.shape[0], clf.n_classes or 1), 1.0 / (clf.n_classes or 1)),
+        )
+
+    monkeypatch.setattr(clf, "_build_model", fake_build_model)
+    monkeypatch.setattr(clf, "_instantiate_trainer", lambda: DummyTrainer())
+
+    X = np.array([[0.0], [1.0], [0.5]])
+    y = np.zeros((X.shape[0], 3), dtype=float)
+    y[np.arange(X.shape[0]), [0, 1, 2]] = 1.0
+
+    clf.fit(X, y)
+
+    assert clf.n_classes == 3
+    np.testing.assert_array_equal(clf.classes_, np.array([0, 1, 2]))
+
+
+def test_classifier_inferred_classes_require_multiple_labels():
+    clf = ANFISClassifier(n_mfs=2, optimizer="sgd", random_state=0, verbose=False)
+    X = np.array([[0.0], [1.0], [0.5]])
+    y = np.zeros(X.shape[0], dtype=int)
+
+    with pytest.raises(ValueError, match="at least two distinct classes"):
         clf.fit(X, y)
 
 
@@ -715,6 +859,16 @@ def test_anfis_classifier_encode_targets_validation():
     with pytest.raises(ValueError, match="must be 1-dimensional or a one-hot encoded 2D"):
         clf._encode_targets(np.zeros((2, 2, 1)), n_samples=2)
 
+    clf_no_n = ANFISClassifier()
+    y_single_hot = np.ones((4, 1), dtype=float)
+    with pytest.raises(ValueError, match="One-hot targets must encode at least two classes"):
+        clf_no_n._encode_targets(y_single_hot, n_samples=4)
+
+    clf_partial = ANFISClassifier()
+    y_constant = np.zeros(4, dtype=int)
+    with pytest.raises(ValueError, match="at least two distinct classes"):
+        clf_partial._encode_targets(y_constant, n_samples=4, allow_partial_classes=True)
+
 
 def test_anfis_classifier_encode_targets_one_hot_success():
     clf = ANFISClassifier(n_classes=3)
@@ -789,11 +943,74 @@ def test_anfis_classifier_evaluate_prints_results(capsys):
     clf = ANFISClassifier(n_classes=2, n_mfs=2, optimizer="sgd", epochs=2, verbose=False, random_state=0)
     clf.fit(X, y)
 
-    metrics = clf.evaluate(X[:4], y[:4], print_results=True)
+    metrics = clf.evaluate(X[:4], y[:4])
     captured = capsys.readouterr().out
     assert "ANFISClassifier evaluation:" in captured
-    assert "Accuracy" in captured
+    assert "accuracy" in captured
+    assert "confusion_matrix" in captured
+    assert "log_loss" not in captured
     assert "accuracy" in metrics
+    assert np.isnan(metrics.get("log_loss", np.nan))
+
+
+def test_anfis_classifier_evaluate_filters_nan_metrics(monkeypatch, capsys):
+    clf = ANFISClassifier(n_classes=3)
+    clf.n_classes = 3
+    clf.classes_ = np.array([0, 1, 2])
+    clf.n_features_in_ = 2
+    clf.feature_names_in_ = ["x1", "x2"]
+    clf.rules_ = []
+
+    class DummyModel:
+        def predict_proba(self, X):
+            probs = np.array([0.6, 0.3, 0.1], dtype=float)
+            return np.tile(probs, (X.shape[0], 1))
+
+    clf.model_ = DummyModel()
+    clf._mark_fitted()
+
+    X = np.zeros((3, 2), dtype=float)
+    y = np.array([0, 1, 2], dtype=int)
+
+    metrics_template = {
+        "accuracy": 0.75,
+        "support": 5,
+        "vector": np.array([0.1, 0.9]),
+        "matrix": np.arange(4, dtype=float).reshape(2, 2),
+        "empty": np.array([], dtype=float),
+        "object_array": np.array(["a", "b"], dtype=object),
+        "skip_nan": float("nan"),
+        "nan_array": np.array([[np.nan, np.nan]]),
+        "none_val": None,
+        "info": "note",
+        "log_loss": float("nan"),
+    }
+
+    monkeypatch.setattr(
+        ANFISMetrics,
+        "classification_metrics",
+        lambda y_true, proba: dict(metrics_template),
+    )
+
+    result = clf.evaluate(X, y, return_dict=True, print_results=True)
+    out = capsys.readouterr().out
+
+    assert "ANFISClassifier evaluation:" in out
+    assert "  accuracy: 0.750000" in out
+    assert "  support: 5" in out
+    assert "  vector: [0.1 0.9]" in out
+    assert "  matrix:\n    [[0. 1.]\n     [2. 3.]]" in out
+    assert "  empty: []" in out
+    assert "  object_array: ['a' 'b']" in out
+    assert "  info: note" in out
+    assert "skip_nan" not in out
+    assert "nan_array" not in out
+    assert "none_val" not in out
+    assert "log_loss" not in result
+
+    clf.evaluate(X, y, print_results=False)
+    suppressed = capsys.readouterr().out
+    assert suppressed == ""
 
 
 def test_anfis_classifier_build_model_respects_range_overrides(monkeypatch):
@@ -1034,3 +1251,206 @@ def test_moon(optimizer):
     proba = clf.predict_proba(X)
     acc = accuracy(y, proba)
     assert acc >= 0.7
+
+
+def test_classifier_repr_pre_and_post_fit():
+    clf = ANFISClassifier(
+        n_classes=3,
+        n_mfs=2,
+        mf_type="gaussian",
+        init="grid",
+        optimizer="sgd",
+        shuffle=True,
+    )
+
+    prefit = repr(clf)
+    assert prefit.startswith("ANFISClassifier(")
+    assert "n_classes=3" in prefit
+    assert "optimizer='sgd'" in prefit
+    assert "model_" not in prefit
+
+    class DummyModel:
+        n_inputs = 2
+        n_rules = 4
+        n_classes = 3
+        input_names = ["x1", "x2"]
+        membership_functions = {
+            "x1": [object(), object()],
+            "x2": [object(), object(), object()],
+        }
+
+    clf.model_ = DummyModel()
+    clf.optimizer_ = SimpleNamespace(learning_rate=0.01, epochs=5, batch_size=4)
+    clf.training_history_ = {"train": [1.0, 0.3], "val": [0.5, 0.2]}
+    clf.rules_ = [(0, 0), (1, 1), (2, 2)]
+    clf.feature_names_in_ = ["x1", "x2"]
+    clf.classes_ = np.arange(8)
+    clf._mark_fitted()
+
+    fitted = repr(clf)
+    assert "model_" in fitted
+    assert "optimizer_" in fitted
+    assert "training_history_" in fitted
+    assert "classes_" in fitted
+    assert "rules_" in fitted
+    assert "feature_names_in_" in fitted
+    assert "DummyModel" in fitted
+    assert "SimpleNamespace" in fitted
+    assert "classes_: 0, 1, 2, 3, 4, ..." in fitted
+    assert "├─" in fitted or "|--" in fitted
+
+
+def test_classifier_save_and_load_roundtrip(tmp_path):
+    X, y = _generate_classification_data()
+    clf = ANFISClassifier(
+        n_classes=2,
+        n_mfs=2,
+        mf_type="gaussian",
+        optimizer="sgd",
+        learning_rate=0.05,
+        epochs=5,
+        random_state=0,
+        shuffle=False,
+    )
+    clf.fit(X, y)
+    baseline = clf.predict_proba(X[:5])
+
+    path = tmp_path / "nested" / "classifier.pkl"
+    clf.save(path)
+
+    loaded = ANFISClassifier.load(path)
+    assert isinstance(loaded, ANFISClassifier)
+    assert loaded.is_fitted_
+    assert np.array_equal(loaded.classes_, clf.classes_)
+    np.testing.assert_allclose(loaded.predict_proba(X[:5]), baseline, atol=1e-6)
+
+
+def test_classifier_load_rejects_wrong_type(tmp_path):
+    path = tmp_path / "wrong.pkl"
+    with path.open("wb") as stream:
+        pickle.dump(ANFISRegressor(), stream)
+
+    with pytest.raises(TypeError, match="Expected pickled ANFISClassifier"):
+        ANFISClassifier.load(path)
+
+
+def test_classifier_repr_config_pairs_optional_sections():
+    clf = ANFISClassifier(
+        n_classes=3,
+        rules=[(0, 1)],
+        optimizer=SGDTrainer,
+        optimizer_params={"momentum": 0.9},
+    )
+    pairs = clf._repr_config_pairs()
+    assert ("optimizer", "SGDTrainer") in pairs
+    assert ("rules", "preset:1") in pairs
+    assert ("optimizer_params", {"momentum": 0.9}) in pairs
+
+    instance_label = ANFISClassifier._describe_optimizer_config(SGDTrainer())
+    assert instance_label == "SGDTrainer"
+
+    generic_label = ANFISClassifier._describe_optimizer_config(object())
+    assert generic_label.startswith("<")
+
+
+def test_classifier_summarize_optimizer_history_and_classes_preview():
+    class BareTrainer(BaseTrainer):
+        def fit(self, model, X_fit, y_fit, **kwargs):  # pragma: no cover - dummy
+            return {}
+
+        def init_state(self, model, X_fit, y_fit):  # pragma: no cover - dummy
+            return None
+
+        def train_step(self, model, X_batch, y_batch, state):  # pragma: no cover - dummy
+            return 0.0, state
+
+        def compute_loss(self, model, X_eval, y_eval):  # pragma: no cover - dummy
+            return 0.0
+
+        def __repr__(self) -> str:  # pragma: no cover - simple repr
+            return "BareTrainer(classifier=True)"
+
+    class NoneTrainer(BaseTrainer):
+        learning_rate = None
+        epochs = None
+
+        def fit(self, model, X_fit, y_fit, **kwargs):  # pragma: no cover - dummy
+            return {}
+
+        def init_state(self, model, X_fit, y_fit):  # pragma: no cover - dummy
+            return None
+
+        def train_step(self, model, X_batch, y_batch, state):  # pragma: no cover - dummy
+            return 0.0, state
+
+        def compute_loss(self, model, X_eval, y_eval):  # pragma: no cover - dummy
+            return 0.0
+
+    clf = ANFISClassifier(n_classes=2)
+    optimizer_summary = clf._summarize_optimizer(BareTrainer())
+    assert optimizer_summary == "BareTrainer(classifier=True)"
+
+    none_summary = clf._summarize_optimizer(NoneTrainer())
+    assert "NoneTrainer" in none_summary
+
+    history_zero = ANFISClassifier._summarize_history({"metrics": []})
+    assert "metrics=0" in history_zero
+
+    history_unknown = ANFISClassifier._summarize_history({"foo": 1})
+    assert history_unknown == "{}"
+
+    clf.classes_ = np.array(["a", "b", "c"])
+    clf._mark_fitted()
+    children = dict(clf._repr_children_entries())
+    assert children["classes_"] == "a, b, c"
+
+
+def test_classifier_normalize_input_spec_variants():
+    clf = ANFISClassifier(n_classes=2)
+    gaussian = GaussianMF(mean=0.0, sigma=1.0)
+
+    from_none = clf._normalize_input_spec(None)
+    assert from_none["n_mfs"] == clf.n_mfs
+
+    from_list = clf._normalize_input_spec([gaussian])
+    assert from_list["membership_functions"] == [gaussian]
+
+    from_str = clf._normalize_input_spec("triangular")
+    assert from_str["mf_type"] == "triangular"
+
+    from_int = clf._normalize_input_spec(6)
+    assert from_int["n_mfs"] == 6
+
+    from_dict = clf._normalize_input_spec({"mfs": [gaussian], "range": (-1, 1)})
+    assert from_dict["membership_functions"] == [gaussian]
+    assert from_dict["range"] == (-1, 1)
+
+    with pytest.raises(TypeError):
+        clf._normalize_input_spec(1.5)
+
+
+def test_classifier_repr_children_handles_missing_artifacts():
+    clf = ANFISClassifier(n_classes=2)
+    clf._mark_fitted()
+    clf.model_ = None
+    clf.optimizer_ = None
+    clf.training_history_ = {}
+    clf.classes_ = None
+    clf.rules_ = None
+    clf.feature_names_in_ = None
+    assert clf._repr_children_entries() == []
+
+
+def test_classifier_summarize_model_and_history_non_numeric_tail():
+    clf = ANFISClassifier(n_classes=2)
+
+    class MinimalModel:
+        membership_functions: dict[str, list[object]] = {}
+
+    summary = clf._summarize_model(MinimalModel())
+    assert summary == "MinimalModel"
+
+    history = ANFISClassifier._summarize_history({"val": [{"loss": 1.0}]})
+    assert "val=1" in history
+
+    assert ANFISClassifier._describe_optimizer_config(None) is None

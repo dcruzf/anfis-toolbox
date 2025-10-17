@@ -1,7 +1,7 @@
 import numpy as np
 
-from anfis_toolbox import quick_evaluate
 from anfis_toolbox.builders import ANFISBuilder
+from anfis_toolbox.metrics import quick_evaluate
 
 
 def _build_regression_model(X: np.ndarray, *, n_mfs: int = 3, mf_type: str = "gaussian"):

@@ -10,8 +10,10 @@ from __future__ import annotations
 
 import inspect
 import logging
+import pickle
 from collections.abc import Mapping, Sequence
 from copy import deepcopy
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -23,6 +25,7 @@ from .estimator_utils import (
     FittedMixin,
     _ensure_2d_array,
     check_is_fitted,
+    format_estimator_repr,
 )
 from .logging_config import enable_training_logs
 from .losses import LossFunction
@@ -68,8 +71,9 @@ class ANFISClassifier(BaseEstimatorLike, FittedMixin, ClassifierMixinLike):
 
     Parameters
     ----------
-    n_classes : int
-        Number of target classes. Must be >= 2.
+    n_classes : int, optional
+        Number of target classes. Must be >= 2 when provided. If omitted, the
+        classifier infers the class count during the first call to ``fit``.
     n_mfs : int, default=3
         Default number of membership functions per input.
     mf_type : str, default="gaussian"
@@ -111,7 +115,7 @@ class ANFISClassifier(BaseEstimatorLike, FittedMixin, ClassifierMixinLike):
     def __init__(
         self,
         *,
-        n_classes: int,
+        n_classes: int | None = None,
         n_mfs: int = 3,
         mf_type: str = "gaussian",
         init: str | None = "grid",
@@ -133,8 +137,10 @@ class ANFISClassifier(BaseEstimatorLike, FittedMixin, ClassifierMixinLike):
 
         Parameters
         ----------
-        n_classes : int
-            Number of output classes. Must be at least two.
+        n_classes : int, optional
+            Number of output classes. Must be at least two when provided. If
+            omitted, the value is inferred from the training targets during
+            the first ``fit`` call.
         n_mfs : int, default=3
             Default number of membership functions to allocate per input when
             inferred from data.
@@ -180,9 +186,9 @@ class ANFISClassifier(BaseEstimatorLike, FittedMixin, ClassifierMixinLike):
             membership-function index for each input. ``None`` uses the full
             Cartesian product of configured membership functions.
         """
-        if int(n_classes) < 2:
+        if n_classes is not None and int(n_classes) < 2:
             raise ValueError("n_classes must be >= 2")
-        self.n_classes = int(n_classes)
+        self.n_classes: int | None = int(n_classes) if n_classes is not None else None
         self.n_mfs = int(n_mfs)
         self.mf_type = str(mf_type)
         self.init = None if init is None else str(init)
@@ -222,8 +228,9 @@ class ANFISClassifier(BaseEstimatorLike, FittedMixin, ClassifierMixinLike):
         *,
         validation_data: tuple[np.ndarray, np.ndarray] | None = None,
         validation_frequency: int = 1,
+        verbose: bool | None = None,
         **fit_params: Any,
-    ):
+    ) -> ANFISClassifier:
         """Fit the classifier on labelled data.
 
         Parameters
@@ -232,7 +239,8 @@ class ANFISClassifier(BaseEstimatorLike, FittedMixin, ClassifierMixinLike):
             Training inputs with shape ``(n_samples, n_features)``.
         y : array-like
             Target labels. Accepts integer/str labels or one-hot matrices with
-            ``(n_samples, n_classes)`` columns.
+        verbose: bool | None = None,
+        **fit_params: Any,
         validation_data : tuple[np.ndarray, np.ndarray], optional
             Optional validation split supplied to the underlying trainer.
             Targets may be integer encoded or one-hot encoded consistent with
@@ -240,6 +248,10 @@ class ANFISClassifier(BaseEstimatorLike, FittedMixin, ClassifierMixinLike):
         validation_frequency : int, default=1
             Frequency (in epochs) at which validation metrics are computed when
             ``validation_data`` is provided.
+        verbose : bool, optional
+            Override the estimator's ``verbose`` flag for this fit call. When
+            provided, the value is stored on the estimator and forwarded to the
+            trainer configuration.
         **fit_params : Any
             Additional keyword arguments forwarded directly to the trainer
             ``fit`` method.
@@ -269,7 +281,12 @@ class ANFISClassifier(BaseEstimatorLike, FittedMixin, ClassifierMixinLike):
         self.n_features_in_ = X_arr.shape[1]
         self.input_specs_ = self._resolve_input_specs(feature_names)
 
+        if verbose is not None:
+            self.verbose = bool(verbose)
+
         _ensure_training_logging(self.verbose)
+        if self.n_classes is None:
+            raise RuntimeError("n_classes could not be inferred from the provided targets")
         self.model_ = self._build_model(X_arr, feature_names)
         trainer = self._instantiate_trainer()
         self.optimizer_ = trainer
@@ -359,7 +376,7 @@ class ANFISClassifier(BaseEstimatorLike, FittedMixin, ClassifierMixinLike):
 
         return np.asarray(self.model_.predict_proba(X_arr), dtype=float)  # type: ignore[operator]
 
-    def evaluate(self, X, y, *, return_dict: bool = True, print_results: bool = False):
+    def evaluate(self, X, y, *, return_dict: bool = True, print_results: bool = True):
         """Evaluate predictive performance on a labelled dataset.
 
         Parameters
@@ -371,8 +388,9 @@ class ANFISClassifier(BaseEstimatorLike, FittedMixin, ClassifierMixinLike):
         return_dict : bool, default=True
             When ``True`` return the computed metric dictionary; when ``False``
             return ``None`` after optional printing.
-        print_results : bool, default=False
-            Emit a formatted summary to stdout when ``True``.
+        print_results : bool, default=True
+            Emit a formatted summary to stdout. Set to ``False`` to suppress
+            printing.
 
         Returns:
         -------
@@ -396,12 +414,40 @@ class ANFISClassifier(BaseEstimatorLike, FittedMixin, ClassifierMixinLike):
         metrics = ANFISMetrics.classification_metrics(encoded_targets, proba)
         metrics.pop("log_loss", None)
         if print_results:
-            quick = [
-                ("Accuracy", metrics["accuracy"]),
-            ]
+
+            def _is_effectively_nan(value: Any) -> bool:
+                if value is None:
+                    return True
+                if isinstance(value, (float, np.floating)):
+                    return bool(np.isnan(value))
+                if isinstance(value, (int, np.integer)):
+                    return False
+                if isinstance(value, np.ndarray):
+                    if value.size == 0:
+                        return False
+                    if np.issubdtype(value.dtype, np.number):
+                        return bool(np.isnan(value.astype(float)).all())
+                    return False
+                return False
+
             print("ANFISClassifier evaluation:")  # noqa: T201
-            for name, value in quick:
-                print(f"  {name:>8}: {value:.6f}")  # noqa: T201
+            for key, value in metrics.items():
+                if _is_effectively_nan(value):
+                    continue
+                if isinstance(value, (float, np.floating)):
+                    display_value = f"{float(value):.6f}"
+                    print(f"  {key}: {display_value}")  # noqa: T201
+                elif isinstance(value, (int, np.integer)):
+                    print(f"  {key}: {int(value)}")  # noqa: T201
+                elif isinstance(value, np.ndarray):
+                    array_repr = np.array2string(value, precision=6, suppress_small=True)
+                    if "\n" in array_repr:
+                        indented = "\n    ".join(array_repr.splitlines())
+                        print(f"  {key}:\n    {indented}")  # noqa: T201
+                    else:
+                        print(f"  {key}: {array_repr}")  # noqa: T201
+                else:
+                    print(f"  {key}: {value}")  # noqa: T201
         return metrics if return_dict else None
 
     def get_rules(self) -> tuple[tuple[int, ...], ...]:
@@ -422,6 +468,31 @@ class ANFISClassifier(BaseEstimatorLike, FittedMixin, ClassifierMixinLike):
         if not self.rules_:
             return ()
         return tuple(tuple(rule) for rule in self.rules_)
+
+    def save(self, filepath: str | Path) -> None:
+        """Serialize this estimator (including fitted artefacts) to ``filepath``."""
+        path = Path(filepath)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("wb") as stream:
+            pickle.dump(self, stream)
+
+    @classmethod
+    def load(cls, filepath: str | Path) -> ANFISClassifier:
+        """Load a pickled ``ANFISClassifier`` from ``filepath`` and validate its type."""
+        path = Path(filepath)
+        with path.open("rb") as stream:
+            estimator = pickle.load(stream)
+        if not isinstance(estimator, cls):
+            raise TypeError(f"Expected pickled {cls.__name__} instance, got {type(estimator).__name__}.")
+        return estimator
+
+    def __repr__(self) -> str:
+        """Return a formatted representation summarising configuration and fitted artefacts."""
+        return format_estimator_repr(
+            type(self).__name__,
+            self._repr_config_pairs(),
+            self._repr_children_entries(),
+        )
 
     # ------------------------------------------------------------------
     # Helpers
@@ -522,6 +593,127 @@ class ANFISClassifier(BaseEstimatorLike, FittedMixin, ClassifierMixinLike):
             rules=self.rules,
         )
 
+    # ------------------------------------------------------------------
+    # Representation helpers
+    # ------------------------------------------------------------------
+    def _repr_config_pairs(self) -> list[tuple[str, Any]]:
+        optimizer_label = self._describe_optimizer_config(self.optimizer)
+        pairs: list[tuple[str, Any]] = [
+            ("n_classes", self.n_classes),
+            ("n_mfs", self.n_mfs),
+            ("mf_type", self.mf_type),
+            ("init", self.init),
+            ("overlap", self.overlap),
+            ("margin", self.margin),
+            ("random_state", self.random_state),
+            ("optimizer", optimizer_label),
+            ("learning_rate", self.learning_rate),
+            ("epochs", self.epochs),
+            ("batch_size", self.batch_size),
+            ("shuffle", self.shuffle),
+            ("loss", self.loss),
+        ]
+        if self.rules is not None:
+            pairs.append(("rules", f"preset:{len(self.rules)}"))
+        if self.optimizer_params:
+            pairs.append(("optimizer_params", self.optimizer_params))
+        return pairs
+
+    def _repr_children_entries(self) -> list[tuple[str, str]]:
+        if not getattr(self, "is_fitted_", False):
+            return []
+
+        children: list[tuple[str, str]] = []
+        model = getattr(self, "model_", None)
+        if model is not None:
+            children.append(("model_", self._summarize_model(model)))
+
+        optimizer = getattr(self, "optimizer_", None)
+        if optimizer is not None:
+            children.append(("optimizer_", self._summarize_optimizer(optimizer)))
+
+        history = getattr(self, "training_history_", None)
+        if isinstance(history, Mapping) and history:
+            children.append(("training_history_", self._summarize_history(history)))
+
+        class_labels = getattr(self, "classes_", None)
+        if class_labels is not None:
+            labels = list(map(str, class_labels))
+            preview = labels if len(labels) <= 6 else labels[:5] + ["..."]
+            children.append(("classes_", ", ".join(preview)))
+
+        learned_rules = getattr(self, "rules_", None)
+        if learned_rules is not None:
+            children.append(("rules_", f"{len(learned_rules)} learned"))
+
+        feature_names = getattr(self, "feature_names_in_", None)
+        if feature_names is not None:
+            children.append(("feature_names_in_", ", ".join(feature_names)))
+
+        return children
+
+    @staticmethod
+    def _describe_optimizer_config(optimizer: Any) -> Any:
+        if optimizer is None:
+            return None
+        if isinstance(optimizer, str):
+            return optimizer
+        if inspect.isclass(optimizer):
+            return optimizer.__name__
+        if isinstance(optimizer, BaseTrainer):
+            return type(optimizer).__name__
+        return repr(optimizer)
+
+    def _summarize_model(self, model: Any) -> str:
+        name = type(model).__name__
+        parts = [name]
+        n_inputs = getattr(model, "n_inputs", None)
+        n_rules = getattr(model, "n_rules", None)
+        n_classes = getattr(model, "n_classes", None)
+        if n_inputs is not None:
+            parts.append(f"n_inputs={n_inputs}")
+        if n_rules is not None:
+            parts.append(f"n_rules={n_rules}")
+        if n_classes is not None:
+            parts.append(f"n_classes={n_classes}")
+        input_names = getattr(model, "input_names", None)
+        if input_names:
+            parts.append(f"inputs={list(input_names)}")
+        mf_map = getattr(model, "membership_functions", None)
+        if isinstance(mf_map, Mapping) and mf_map:
+            counts = [len(mf_map[name]) for name in getattr(model, "input_names", mf_map.keys())]
+            parts.append(f"mfs_per_input={counts}")
+        return ", ".join(parts)
+
+    def _summarize_optimizer(self, optimizer: BaseTrainer) -> str:
+        name = type(optimizer).__name__
+        fields = []
+        for attr in ("learning_rate", "epochs", "batch_size", "shuffle", "verbose", "loss"):
+            if hasattr(optimizer, attr):
+                value = getattr(optimizer, attr)
+                if value is not None:
+                    fields.append(f"{attr}={value!r}")
+        if hasattr(optimizer, "__dict__") and not fields:
+            return repr(optimizer)
+        return f"{name}({', '.join(fields)})" if fields else name
+
+    @staticmethod
+    def _summarize_history(history: Mapping[str, Any]) -> str:
+        segments = []
+        for key in ("train", "val", "validation", "metrics"):
+            if key in history and isinstance(history[key], Sequence):
+                series = history[key]
+                length = len(series)
+                if length == 0:
+                    segments.append(f"{key}=0")
+                else:
+                    tail = series[-1]
+                    if isinstance(tail, (float, np.floating)):
+                        segments.append(f"{key}={length} (last={float(tail):.4f})")
+                    else:
+                        segments.append(f"{key}={length}")
+        return ", ".join(segments) if segments else "{}"
+
     def _instantiate_trainer(self) -> BaseTrainer:
         optimizer = self.optimizer if self.optimizer is not None else "adam"
         if isinstance(optimizer, BaseTrainer):
@@ -613,32 +805,53 @@ class ANFISClassifier(BaseEstimatorLike, FittedMixin, ClassifierMixinLike):
         if y_arr.ndim == 2:
             if y_arr.shape[0] != n_samples:
                 raise ValueError("y must contain the same number of samples as X")
-            if y_arr.shape[1] != self.n_classes:
-                raise ValueError(f"One-hot targets must have shape (n_samples, n_classes={self.n_classes}).")
+            n_classes = self.n_classes
+            if n_classes is None:
+                inferred = y_arr.shape[1]
+                if inferred < 2:
+                    raise ValueError("One-hot targets must encode at least two classes for classification.")
+                self.n_classes = inferred
+                n_classes = inferred
+            if y_arr.shape[1] != n_classes:
+                raise ValueError(f"One-hot targets must have shape (n_samples, n_classes={n_classes}).")
             encoded = np.argmax(y_arr, axis=1).astype(int)
-            classes = np.arange(self.n_classes)
+            classes = np.arange(n_classes)
             return encoded, classes
         if y_arr.ndim == 1:
             if y_arr.shape[0] != n_samples:
                 raise ValueError("y must contain the same number of samples as X")
             classes = np.unique(y_arr)
-            if not allow_partial_classes and classes.size != self.n_classes:
+            n_unique = classes.size
+            if n_unique < 2 and not allow_partial_classes:
+                raise ValueError("Classification targets must include at least two distinct classes.")
+            n_classes = self.n_classes
+            if n_classes is None:
+                if n_unique < 2:
+                    raise ValueError("Classification targets must include at least two distinct classes.")
+                self.n_classes = n_unique
+                n_classes = n_unique
+            if not allow_partial_classes and n_unique != n_classes:
+                raise ValueError(f"y contains {n_unique} unique classes but estimator was configured for {n_classes}.")
+            if n_unique > n_classes:
                 raise ValueError(
-                    f"y contains {classes.size} unique classes but estimator was configured for {self.n_classes}."
+                    f"y contains {n_unique} unique classes which exceeds configured n_classes={n_classes}."
                 )
-            if classes.size > self.n_classes:
-                raise ValueError(
-                    f"y contains {classes.size} unique classes which exceeds configured n_classes={self.n_classes}."
-                )
-            mapping = {self._normalize_class_key(cls): idx for idx, cls in enumerate(classes.tolist())}
+            normalized_classes = [self._normalize_class_key(cls) for cls in classes.tolist()]
+            mapping = {cls: idx for idx, cls in enumerate(normalized_classes)}
             encoded = np.array([mapping[self._normalize_class_key(val)] for val in y_arr], dtype=int)
-            return encoded, classes.astype(object)
+            return encoded, np.asarray(normalized_classes)
         raise ValueError("Target array must be 1-dimensional or a one-hot encoded 2D array.")
 
     def _resolved_loss_spec(self) -> LossFunction | str:
         if self.loss is None:
             return "cross_entropy"
         return self.loss
+
+    def _more_tags(self) -> dict[str, Any]:  # pragma: no cover - informational hook
+        return {
+            "estimator_type": "classifier",
+            "requires_y": True,
+        }
 
     @staticmethod
     def _normalize_class_key(value: Any) -> Any:
