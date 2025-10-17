@@ -84,7 +84,7 @@ Most fuzzy logic libraries require extensive boilerplate code. ANFIS Toolbox get
     ```
 
 
-## Quick Example
+### ⚡ Quick Example
 
 === "Regression"
 
@@ -112,7 +112,7 @@ Most fuzzy logic libraries require extensive boilerplate code. ANFIS Toolbox get
     model.fit(X, y)
     ```
 
-### Metrics & Evaluation
+### 📐 Metrics & Evaluation
 
 Want a structured report instead of a plain dictionary? Use `evaluate` to detect the task type automatically and access every score.
 
@@ -138,8 +138,6 @@ pip install anfis-toolbox
 | **Function Approximation** | Learn complex mathematical functions    |
 | **Regression**             | Predict continuous values               |
 | **Classification**         | Predict discrete class labels           |
-| **Pattern Recognition**    | Classify patterns with fuzzy boundaries |
-| **Control Systems**        | Design fuzzy controllers                |
 | **Time Series**            | Forecast future values                  |
 
 
@@ -245,6 +243,7 @@ flowchart LR
 
 - 🐛 **[Report Issues](https://github.com/dcruzf/anfis-toolbox/issues)** - Bug reports and feature requests
 - 💬 **[Discussions](https://github.com/dcruzf/anfis-toolbox/discussions)** - Questions and community chat
+- 📘 **[Developer Guide](guide.md)** - Architecture notes and contribution workflow
 - ⭐ **[Star on GitHub](https://github.com/dcruzf/anfis-toolbox)** - Show your support!
 
 ---
