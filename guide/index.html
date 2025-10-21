@@ -1733,6 +1733,75 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#implementation-and-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      Implementation and Architecture
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Implementation and Architecture">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#core-execution-pipeline-anfis_toolboxmodel-and-anfis_toolboxlayers" class="md-nav__link">
+    <span class="md-ellipsis">
+      Core execution pipeline (anfis_toolbox.model and anfis_toolbox.layers)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#builder-and-configuration-layer-builderspy-configpy" class="md-nav__link">
+    <span class="md-ellipsis">
+      Builder and configuration layer (builders.py, config.py)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#estimator-orchestration-regressorpy-classifierpy-estimator_utilspy" class="md-nav__link">
+    <span class="md-ellipsis">
+      Estimator orchestration (regressor.py, classifier.py, estimator_utils.py)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#training-infrastructure-optim" class="md-nav__link">
+    <span class="md-ellipsis">
+      Training infrastructure (optim/)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#variants-and-extension-points" class="md-nav__link">
+    <span class="md-ellipsis">
+      Variants and extension points
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#uml-overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      UML overview
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#working-with-estimators" class="md-nav__link">
     <span class="md-ellipsis">
       Working With Estimators
@@ -1878,18 +1947,179 @@ API reference, consult the generated MkDocs site or the module docstrings.</p>
 </ol>
 <p>The diagram below illustrates the runtime flow:</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>User code -&gt; ANFISRegressor.fit ------------------------------.
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>                            |                                             |
-</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>                            v                                             |
-</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>                Membership config     Optimizer selection           |
-</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>                            |                    |                        |
-</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>                            v                    v                        |
-</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>                builders.ANFISBuilder  optim.&lt;Trainer&gt;              |
-</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>                            |                    |                        |
-</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>                            &#39;------&gt; model.ANFIS &lt;------------------------&#39;
-</span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>                                                                     |
-</span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>                                                                     v
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>                            |                                  |
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>                            v                                  |
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>                Membership config     Optimizer selection      |
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>                            |                    |             |
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>                            v                    v             |
+</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>                builders.ANFISBuilder  optim.&lt;Trainer&gt;         |
+</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>                            |                    |             |
+</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>                            &#39;------&gt; model.ANFIS &lt;-------------&#39;
+</span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>                                                               |
+</span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>                                                               v
 </span><span id="__span-1-12"><a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>                                                         Training loop
 </span></code></pre></div>
+<h2 id="implementation-and-architecture">Implementation and Architecture<a class="headerlink" href="#implementation-and-architecture" title="Permanent link">&para;</a></h2>
+<p>ANFIS Toolbox implements the flow above through a set of small, composable modules. The public estimators in
+<code>anfis_toolbox.regressor</code> and <code>anfis_toolbox.classifier</code> act as façades that translate user-friendly configuration into the
+lower-level computational graph defined in <code>anfis_toolbox.model</code> and <code>anfis_toolbox.layers</code>. Supporting modules such as
+<code>builders</code>, <code>config</code>, <code>membership</code>, <code>losses</code>, and <code>optim</code> provide reusable building blocks that keep concerns separated.</p>
+<h3 id="core-execution-pipeline-anfis_toolboxmodel-and-anfis_toolboxlayers">Core execution pipeline (<code>anfis_toolbox.model</code> and <code>anfis_toolbox.layers</code>)<a class="headerlink" href="#core-execution-pipeline-anfis_toolboxmodel-and-anfis_toolboxlayers" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Fuzzification</strong> sits in <code>MembershipLayer</code>, which wraps concrete membership-function objects. The layer caches the raw
+    inputs and per-function activations so that the backward pass can recover gradients without re-evaluating membership
+    functions.</li>
+<li><strong>Rule evaluation</strong> is performed by <code>RuleLayer</code>. It receives the membership lattice, expands (or filters) the Cartesian
+    product of membership indices, and computes rule firing strengths using the configured T-norm (product). The layer also
+    propagates derivatives back to the membership layer by reusing the cached activations.</li>
+<li><strong>Normalization</strong> is handled by <code>NormalizationLayer</code>, which performs numerically stable weight normalisation and exposes a
+    Jacobian-vector product in its <code>backward</code> method so that trainers can work directly with batched gradients.</li>
+<li><strong>Consequents</strong> are implemented by <code>ConsequentLayer</code> (regression) and <code>ClassificationConsequentLayer</code> (classification).
+    Both layers augment the input batch with biases, compute per-rule linear consequents, and aggregate them using the
+    normalised firing strengths. The classification flavour maps the weighted outputs to logits, and integrates with the
+    built-in softmax helper in <code>metrics.py</code>.</li>
+<li><strong>Model orchestration</strong> happens in <code>TSKANFIS</code> and <code>TSKANFISClassifier</code>. Each model wires the layers, exposes forward and
+    backward passes, persists gradient buffers, and implements <code>get_parameters</code>, <code>set_parameters</code>, and <code>update_parameters</code> so
+    optimizers can operate without needing to understand layer internals.</li>
+</ul>
+<h3 id="builder-and-configuration-layer-builderspy-configpy">Builder and configuration layer (<code>builders.py</code>, <code>config.py</code>)<a class="headerlink" href="#builder-and-configuration-layer-builderspy-configpy" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>ANFISBuilder</code> encapsulates membership-function synthesis. It centralises creation strategies (grid, FCM, random) and maps
+    human-readable names (<code>"gaussian"</code>, <code>"bell"</code>) to concrete membership classes. The builder also normalises explicit rule
+    sets via <code>set_rules</code> and exposes a <code>build()</code> factory that returns a fully wired <code>TSKANFIS</code> instance.</li>
+<li><code>ANFISConfig</code> provides a serialisable description of inputs and training defaults. It can emit builders, write JSON
+    configurations, and round-trip through <code>ANFISModelManager</code> alongside pickled models. This enables reproducible deployments
+    or experiment tracking without shipping raw Python objects.</li>
+<li>Membership families (e.g. <code>GaussianMF</code>, <code>PiMF</code>, <code>DiffSigmoidalMF</code>) live under <code>membership.py</code>. Each object exposes a
+    <code>parameters</code>/<code>gradients</code> interface so the layers can mutate them generically during backpropagation.</li>
+</ul>
+<h3 id="estimator-orchestration-regressorpy-classifierpy-estimator_utilspy">Estimator orchestration (<code>regressor.py</code>, <code>classifier.py</code>, <code>estimator_utils.py</code>)<a class="headerlink" href="#estimator-orchestration-regressorpy-classifierpy-estimator_utilspy" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>ANFISRegressor.fit</code> and <code>ANFISClassifier.fit</code> delegate input validation and reshaping to helpers in <code>estimator_utils</code>,
+    ensuring NumPy arrays, pandas DataFrames, and Python iterables are handled consistently.</li>
+<li>During fitting, estimators resolve per-input overrides through <code>_resolve_input_specs</code>, instantiate an <code>ANFISBuilder</code>,
+    build the low-level model, select a trainer based on string aliases or explicit objects, and finally call
+    <code>trainer.fit(model, X, y, **kwargs)</code>. The resulting history dictionary is cached in <code>training_history_</code> for downstream
+    inspection.</li>
+<li>Persistence relies on the estimator mixins: <code>save</code>/<code>load</code> methods serialise the estimator and underlying model with
+    <code>pickle</code>, and <code>format_estimator_repr</code> produces concise <code>__repr__</code> output that mirrors scikit-learn conventions.</li>
+<li>Logging hooks are opt-in through <code>logging_config.enable_training_logs</code>, so verbose fits emit trainer progress while
+    remaining silent by default.</li>
+</ul>
+<h3 id="training-infrastructure-optim">Training infrastructure (<code>optim/</code>)<a class="headerlink" href="#training-infrastructure-optim" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>BaseTrainer</code> defines the contract (<code>fit</code>, <code>evaluate</code>, metric tracking) and shared utilities like batching, progress
+    reporting, and validation scheduling.</li>
+<li>Gradient-based trainers (<code>HybridTrainer</code>, <code>HybridAdamTrainer</code>, <code>AdamTrainer</code>, <code>RMSPropTrainer</code>, <code>SGDTrainer</code>) call the
+    model's <code>forward</code>, <code>backward</code>, <code>update_parameters</code>, and <code>reset_gradients</code> methods directly. Hybrid variants alternate
+    between closed-form least-squares updates for consequents and gradient descent for membership parameters to accelerate
+    convergence on regression tasks.</li>
+<li><code>PSOTrainer</code> diverges from gradient descent by optimising consequent coefficients with particle swarm optimisation while
+    refreshing membership parameters less aggressively, making it suitable for noisy or non-differentiable objectives.</li>
+<li>All trainers populate a <code>TrainingHistory</code> mapping (defined in <code>optim.base</code>) that captures per-epoch losses and optional
+    validation metrics, facilitating visualisation or early-stopping criteria implemented outside the core package.</li>
+</ul>
+<h3 id="variants-and-extension-points">Variants and extension points<a class="headerlink" href="#variants-and-extension-points" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Regression vs. classification</strong>: <code>ANFISRegressor</code> wraps <code>TSKANFIS</code>, using mean-squared-error-style losses by default and
+    exposing regression metrics. <code>ANFISClassifier</code> wraps <code>TSKANFISClassifier</code>, instantiates a multi-class consequent layer,
+    and defaults to cross-entropy losses with probability calibration via <code>predict_proba</code>.</li>
+<li><strong>Membership variants</strong>: Users can mix automatic generation (<code>n_mfs</code>, <code>mf_type</code>, <code>init</code>, <code>overlap</code>, <code>margin</code>) with explicit
+    <code>MembershipFunction</code> instances per feature. Builders preserve the order in which inputs are added so the resulting rule
+    indices remain deterministic.</li>
+<li><strong>Rule customisation</strong>: Providing <code>rules=[(...)]</code> to estimators or builders prunes the Cartesian-product rule set. The
+    <code>RuleLayer</code> validates dimensionality and membership bounds so sparsified rule bases remain consistent.</li>
+<li><strong>Custom trainers and losses</strong>: Passing a subclass of <code>BaseTrainer</code> or a callable <code>LossFunction</code> lets advanced users swap
+    in bespoke optimisation strategies. Trainers may register additional callbacks or hooks (for example, to integrate with
+    <code>docs/hooks/*</code> when rendering docs) without patching the core model.</li>
+<li><strong>Configuration persistence</strong>: <code>ANFISModelManager</code> ties trained models to the serialised configuration extracted from the
+    membership catalogue, enabling reproducible evaluation environments and lightweight deployment artefacts.</li>
+</ul>
+<h3 id="uml-overview">UML overview<a class="headerlink" href="#uml-overview" title="Permanent link">&para;</a></h3>
+<pre class="mermaid"><code>classDiagram
+    direction LR
+    class ANFISRegressor {
+        +fit(X, y)
+        +predict(X)
+        +evaluate(X, y)
+        +save(path)
+        +load(path)
+    }
+    class ANFISClassifier {
+        +fit(X, y)
+        +predict(X)
+        +predict_proba(X)
+        +evaluate(X, y)
+    }
+    class ANFISBuilder {
+        +add_input(name, min, max, n_mfs, mf_type)
+        +add_input_from_data(name, data, ...)
+        +set_rules(rules)
+        +build()
+    }
+    class TSKANFIS {
+        +forward(X)
+        +backward(dL)
+        +fit(X, y, trainer)
+        +get_parameters()
+    }
+    class TSKANFISClassifier {
+        +forward(X)
+        +backward(dL)
+        +predict_logits(X)
+        +get_parameters()
+    }
+    class MembershipLayer {
+        +forward(X)
+        +backward(gradients)
+    }
+    class RuleLayer {
+        +forward(mu)
+        +backward(dL)
+    }
+    class NormalizationLayer {
+        +forward(weights)
+        +backward(dL)
+    }
+    class ConsequentLayer {
+        +forward(X, w)
+        +backward(dL)
+    }
+    class ClassificationConsequentLayer {
+        +forward(X, w)
+        +backward(dL)
+    }
+    class BaseTrainer {
+        &lt;&lt;abstract&gt;&gt;
+        +fit(model, X, y)
+    }
+    class HybridTrainer
+    class HybridAdamTrainer
+    class AdamTrainer
+    class RMSPropTrainer
+    class SGDTrainer
+    class PSOTrainer
+
+    ANFISRegressor --&gt; ANFISBuilder : configures
+    ANFISClassifier --&gt; ANFISBuilder : configures
+    ANFISBuilder --&gt; TSKANFIS : builds
+    ANFISBuilder --&gt; TSKANFISClassifier : builds
+    TSKANFIS --&gt; MembershipLayer : composes
+    TSKANFIS --&gt; RuleLayer
+    TSKANFIS --&gt; NormalizationLayer
+    TSKANFIS --&gt; ConsequentLayer
+    TSKANFISClassifier --&gt; MembershipLayer
+    TSKANFISClassifier --&gt; RuleLayer
+    TSKANFISClassifier --&gt; NormalizationLayer
+    TSKANFISClassifier --&gt; ClassificationConsequentLayer
+    ANFISRegressor --&gt; BaseTrainer : selects
+    ANFISClassifier --&gt; BaseTrainer : selects
+    BaseTrainer &lt;|-- HybridTrainer
+    BaseTrainer &lt;|-- HybridAdamTrainer
+    BaseTrainer &lt;|-- AdamTrainer
+    BaseTrainer &lt;|-- RMSPropTrainer
+    BaseTrainer &lt;|-- SGDTrainer
+    BaseTrainer &lt;|-- PSOTrainer</code></pre>
 <h2 id="working-with-estimators">Working With Estimators<a class="headerlink" href="#working-with-estimators" title="Permanent link">&para;</a></h2>
 <ul>
 <li><strong>Initialization</strong>: Provide global defaults (<code>n_mfs</code>, <code>mf_type</code>, <code>init</code>,
@@ -2000,7 +2230,7 @@ discussion or issue on GitHub.</p>
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-timeago" title="October 17, 2025 18:16:13 UTC"><span class="timeago" datetime="2025-10-17T18:16:13+00:00" locale="en"></span></span><span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="October 17, 2025 18:16:13 UTC">2025-10-17</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-timeago" title="October 17, 2025 21:27:30 UTC"><span class="timeago" datetime="2025-10-17T21:27:30+00:00" locale="en"></span></span><span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="October 17, 2025 21:27:30 UTC">2025-10-17</span>
   </span>
 
     
@@ -2010,7 +2240,7 @@ discussion or issue on GitHub.</p>
     <span class="md-icon" title="Created">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M14.47 15.08 11 13V7h1.5v5.25l3.08 1.83c-.41.28-.79.62-1.11 1m-1.39 4.84c-.36.05-.71.08-1.08.08-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8c0 .37-.03.72-.08 1.08.69.1 1.33.32 1.92.64.1-.56.16-1.13.16-1.72 0-5.5-4.5-10-10-10S2 6.5 2 12s4.47 10 10 10c.59 0 1.16-.06 1.72-.16-.32-.59-.54-1.23-.64-1.92M18 15v3h-3v2h3v3h2v-3h3v-2h-3v-3z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-timeago" title="October 17, 2025 18:16:13 UTC"><span class="timeago" datetime="2025-10-17T18:16:13+00:00" locale="en"></span></span><span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="October 17, 2025 18:16:13 UTC">2025-10-17</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-timeago" title="October 17, 2025 21:27:30 UTC"><span class="timeago" datetime="2025-10-17T21:27:30+00:00" locale="en"></span></span><span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-iso_date" title="October 17, 2025 21:27:30 UTC">2025-10-17</span>
   </span>
 
     
