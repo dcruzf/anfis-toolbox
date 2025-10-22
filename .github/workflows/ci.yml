@@ -39,7 +39,7 @@ jobs:
         run: uvx pre-commit run --all-files
 
       - name: Run tests
-        run: uv tool run hatch test -c
+        run: uv tool run hatch test --all -c
 
   publish-docs:
     name: Publish Docs (dev)
