@@ -35,6 +35,10 @@ format: .uv
 lint: .uv
 	uvx pre-commit run --all-files
 
+.PHONY: type-check  ## Static type checks with mypy
+type-check: .uv
+	uvx mypy --config-file pyproject.toml
+
 .PHONY: .hatch  ## Check that hatch is installed
 .hatch:
 	@uv tool run hatch --version || echo 'Please install hatch: uv tool install hatch'
