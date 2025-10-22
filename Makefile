@@ -91,7 +91,7 @@ docs-gh-deploy: .uv
 		--with mkdocs-git-revision-date-localized-plugin \
 		--with mkdocs-jupyter \
 		--with ruff \
-		mkdocs gh-deploy
+		mkdocs gh-deploy -b docs
 
 
 .PHONY: clean  ## Clear local caches and build artifacts
