@@ -84,7 +84,7 @@ docs-build: .uv
 		mkdocs build
 
 .PHONY: docs-gh-deploy  ## deploy gh-pages
-docs-gh-deploy: .uv
+docs-deploy: .uv cov-report
 	uvx --with mkdocs-material \
 		--with mkdocstrings --with mkdocstrings-python \
 		--with mkdocs-awesome-pages-plugin \
