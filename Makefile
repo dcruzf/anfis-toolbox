@@ -7,7 +7,7 @@ project_dir = anfis_toolbox
 
 .PHONY: .uv  ## Check that uv is installed
 .uv:
-	@uv -V || echo 'Please install uv: https://docs.astral.sh/uv/getting-started/installation/'
+	@uv -V || curl -LsSf https://astral.sh/uv/install.sh | sh || echo 'Please install uv: https://docs.astral.sh/uv/getting-started/installation/'
 
 .PHONY: rebuild-lockfiles  ## Rebuild lockfiles from scratch, updating all dependencies
 rebuild-lockfiles: .uv
