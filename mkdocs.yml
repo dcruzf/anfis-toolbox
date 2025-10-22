@@ -72,6 +72,7 @@ nav:
   - Examples:
     - Regression: examples/regression_basic.ipynb
     - Classification: examples/classifier_basic.ipynb
+    - Iris Classification: examples/classifier_iris.ipynb
     - Time Series: examples/time_series.ipynb
     - Function Aproximation: examples/function_approximation.ipynb
   - API Reference:
