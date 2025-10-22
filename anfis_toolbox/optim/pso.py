@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 from dataclasses import dataclass, field
+from typing import Any, TypedDict
 
 import numpy as np
 
@@ -9,7 +10,13 @@ from ..losses import LossFunction, resolve_loss
 from .base import BaseTrainer
 
 
-def _flatten_params(params: dict) -> tuple[np.ndarray, dict]:
+class _FlattenMeta(TypedDict):
+    consequent_shape: tuple[int, ...]
+    n_consequent: int
+    membership_info: list[tuple[str, int, str]]
+
+
+def _flatten_params(params: dict[str, Any]) -> tuple[np.ndarray, _FlattenMeta]:
     """Flatten model parameters into a 1D vector and return meta for reconstruction.
 
     The expected structure matches model.get_parameters():
@@ -28,7 +35,7 @@ def _flatten_params(params: dict) -> tuple[np.ndarray, dict]:
         theta = np.concatenate([cons, memb])
     else:
         theta = cons.copy()
-    meta = {
+    meta: _FlattenMeta = {
         "consequent_shape": params["consequent"].shape,
         "n_consequent": cons.size,
         "membership_info": memb_info,
@@ -36,11 +43,11 @@ def _flatten_params(params: dict) -> tuple[np.ndarray, dict]:
     return theta, meta
 
 
-def _unflatten_params(theta: np.ndarray, meta: dict, template: dict) -> dict:
+def _unflatten_params(theta: np.ndarray, meta: _FlattenMeta, template: dict[str, Any]) -> dict[str, Any]:
     """Reconstruct parameter dictionary from theta using meta and template structure."""
     n_cons = meta["n_consequent"]
-    cons = theta[:n_cons].reshape(meta["consequent_shape"])  # type: ignore[arg-type]
-    out = {"consequent": cons.copy(), "membership": {}}
+    cons = theta[:n_cons].reshape(meta["consequent_shape"])
+    out: dict[str, Any] = {"consequent": cons.copy(), "membership": {}}
     offset = n_cons
     # Copy structure from template membership dict
     for name in template["membership"].keys():
