@@ -12,6 +12,7 @@ from .membership import (
     GaussianMF,
     LinSShapedMF,
     LinZShapedMF,
+    MembershipFunction,
     PiMF,
     ProdSigmoidalMF,
     SigmoidalMF,
@@ -28,8 +29,8 @@ class ANFISBuilder:
 
     def __init__(self):
         """Initialize the ANFIS builder."""
-        self.input_mfs = {}
-        self.input_ranges = {}
+        self.input_mfs: dict[str, list[MembershipFunction]] = {}
+        self.input_ranges: dict[str, tuple[float, float]] = {}
         self._rules: list[tuple[int, ...]] | None = None
         # Centralized dispatch for MF creators (supports aliases)
         self._dispatch = {
@@ -102,7 +103,7 @@ class ANFISBuilder:
         mf_type: str = "gaussian",
         overlap: float = 0.5,
         margin: float = 0.10,
-        init: str = "grid",
+        init: str | None = "grid",
         random_state: int | None = None,
     ) -> "ANFISBuilder":
         """Add an input inferring range_min/range_max from data with a margin.
@@ -114,7 +115,7 @@ class ANFISBuilder:
             mf_type: Membership function type (see add_input)
             overlap: Overlap factor between adjacent MFs
             margin: Fraction of (max-min) to pad on each side
-            init: Initialization strategy: "grid" (default) or "fcm". When "fcm",
+            init: Initialization strategy: "grid" (default), "fcm", "random", or ``None``. When ``"fcm"``,
                 clusters from the data determine MF centers and widths (supports
                 'gaussian' and 'bell').
             random_state: Optional seed for deterministic FCM initialization.
@@ -157,7 +158,7 @@ class ANFISBuilder:
         n_mfs: int,
         mf_type: str,
         random_state: int | None,
-    ) -> list:
+    ) -> list[MembershipFunction]:
         """Create MFs from 1D data via FCM.
 
         - Centers are FCM cluster centers.
@@ -170,8 +171,12 @@ class ANFISBuilder:
             raise ValueError("n_samples must be >= n_mfs for FCM initialization")
         fcm = FuzzyCMeans(n_clusters=n_mfs, m=2.0, random_state=random_state)
         fcm.fit(x)
-        centers = fcm.cluster_centers_.reshape(-1)  # (k,)
-        U = fcm.membership_  # (n,k)
+        centers_arr = fcm.cluster_centers_
+        membership = fcm.membership_
+        if centers_arr is None or membership is None:
+            raise RuntimeError("FCM did not produce centers or membership values; ensure fit succeeded.")
+        centers = centers_arr.reshape(-1)  # (k,)
+        U = membership  # (n,k)
         m = fcm.m
         # weighted variance per cluster
         # num_k = sum_i u_ik^m * (x_i - c_k)^2, den_k = sum_i u_ik^m
@@ -277,11 +282,11 @@ class ANFISBuilder:
         widths: np.ndarray,
         rmin: float,
         rmax: float,
-    ) -> list:
+    ) -> list[MembershipFunction]:
         if key == "gaussian":
             return [GaussianMF(mean=float(c), sigma=float(s)) for c, s in zip(centers, sigmas, strict=False)]
         if key == "gaussian2":
-            mfs: list[Gaussian2MF] = []
+            gaussian2_mfs: list[MembershipFunction] = []
             plateau_frac = 0.3
             for c, s, w in zip(centers, sigmas, widths, strict=False):
                 half_plateau = (w * plateau_frac) / 2.0
@@ -290,12 +295,12 @@ class ANFISBuilder:
                 if not (c1 < c2):
                     eps = 1e-6
                     c1, c2 = c - eps, c + eps
-                mfs.append(Gaussian2MF(sigma1=float(s), c1=c1, sigma2=float(s), c2=c2))
-            return mfs
+                gaussian2_mfs.append(Gaussian2MF(sigma1=float(s), c1=c1, sigma2=float(s), c2=c2))
+            return gaussian2_mfs
         if key in {"bell", "gbell"}:
             return [BellMF(a=float(s), b=2.0, c=float(c)) for c, s in zip(centers, sigmas, strict=False)]
         if key == "triangular":
-            mfs: list[TriangularMF] = []
+            triangular_mfs: list[MembershipFunction] = []
             for c, w in zip(centers, widths, strict=False):
                 a = float(max(c - w / 2.0, rmin))
                 cc = float(min(c + w / 2.0, rmax))
@@ -303,10 +308,10 @@ class ANFISBuilder:
                 if not (a < b < cc):
                     eps = 1e-6
                     a, b, cc = c - 2 * eps, c, c + 2 * eps
-                mfs.append(TriangularMF(a, b, cc))
-            return mfs
+                triangular_mfs.append(TriangularMF(a, b, cc))
+            return triangular_mfs
         if key == "trapezoidal":
-            mfs: list[TrapezoidalMF] = []
+            trapezoidal_mfs: list[MembershipFunction] = []
             plateau_frac = 0.3
             for c, w in zip(centers, widths, strict=False):
                 a = float(c - w / 2.0)
@@ -320,36 +325,36 @@ class ANFISBuilder:
                 if not (a < b <= cr < d):
                     eps = 1e-6
                     a, b, cr, d = c - 2 * eps, c - eps, c + eps, c + 2 * eps
-                mfs.append(TrapezoidalMF(a, b, cr, d))
-            return mfs
+                trapezoidal_mfs.append(TrapezoidalMF(a, b, cr, d))
+            return trapezoidal_mfs
         if key in {"sigmoidal", "sigmoid"}:
-            mfs: list[SigmoidalMF] = []
+            sigmoidal_mfs: list[MembershipFunction] = []
             for c, w in zip(centers, widths, strict=False):
                 a = 4.4 / max(float(w), 1e-8)
-                mfs.append(SigmoidalMF(a=float(a), c=float(c)))
-            return mfs
+                sigmoidal_mfs.append(SigmoidalMF(a=float(a), c=float(c)))
+            return sigmoidal_mfs
         if key in {"linsshape", "ls"}:
-            mfs: list[LinSShapedMF] = []
+            lin_s_mfs: list[MembershipFunction] = []
             for c, w in zip(centers, widths, strict=False):
                 a = float(max(c - w / 2.0, rmin))
                 b = float(min(c + w / 2.0, rmax))
                 if a >= b:
                     eps = 1e-6
                     a, b = c - eps, c + eps
-                mfs.append(LinSShapedMF(a, b))
-            return mfs
+                lin_s_mfs.append(LinSShapedMF(a, b))
+            return lin_s_mfs
         if key in {"linzshape", "lz"}:
-            mfs: list[LinZShapedMF] = []
+            lin_z_mfs: list[MembershipFunction] = []
             for c, w in zip(centers, widths, strict=False):
                 a = float(max(c - w / 2.0, rmin))
                 b = float(min(c + w / 2.0, rmax))
                 if a >= b:
                     eps = 1e-6
                     a, b = c - eps, c + eps
-                mfs.append(LinZShapedMF(a, b))
-            return mfs
+                lin_z_mfs.append(LinZShapedMF(a, b))
+            return lin_z_mfs
         if key in {"diffsigmoidal", "diffsigmoid"}:
-            mfs: list[DiffSigmoidalMF] = []
+            diff_sig_mfs: list[MembershipFunction] = []
             for c, w in zip(centers, widths, strict=False):
                 c1 = float(max(c - w / 2.0, rmin))
                 c2 = float(min(c + w / 2.0, rmax))
@@ -357,10 +362,10 @@ class ANFISBuilder:
                     eps = 1e-6
                     c1, c2 = c - eps, c + eps
                 a = 4.4 / max(float(w), 1e-8)
-                mfs.append(DiffSigmoidalMF(a1=float(a), c1=c1, a2=float(a), c2=c2))
-            return mfs
+                diff_sig_mfs.append(DiffSigmoidalMF(a1=float(a), c1=c1, a2=float(a), c2=c2))
+            return diff_sig_mfs
         if key in {"prodsigmoidal", "prodsigmoid"}:
-            mfs: list[ProdSigmoidalMF] = []
+            prod_sig_mfs: list[MembershipFunction] = []
             for c, w in zip(centers, widths, strict=False):
                 c1 = float(max(c - w / 2.0, rmin))
                 c2 = float(min(c + w / 2.0, rmax))
@@ -368,30 +373,30 @@ class ANFISBuilder:
                     eps = 1e-6
                     c1, c2 = c - eps, c + eps
                 a = 4.4 / max(float(w), 1e-8)
-                mfs.append(ProdSigmoidalMF(a1=float(a), c1=c1, a2=float(-a), c2=c2))
-            return mfs
+                prod_sig_mfs.append(ProdSigmoidalMF(a1=float(a), c1=c1, a2=float(-a), c2=c2))
+            return prod_sig_mfs
         if key in {"sshape", "s"}:
-            mfs: list[SShapedMF] = []
+            s_shape_mfs: list[MembershipFunction] = []
             for c, w in zip(centers, widths, strict=False):
                 a = float(max(c - w / 2.0, rmin))
                 b = float(min(c + w / 2.0, rmax))
                 if a >= b:
                     eps = 1e-6
                     a, b = c - eps, c + eps
-                mfs.append(SShapedMF(a, b))
-            return mfs
+                s_shape_mfs.append(SShapedMF(a, b))
+            return s_shape_mfs
         if key in {"zshape", "z"}:
-            mfs: list[ZShapedMF] = []
+            z_shape_mfs: list[MembershipFunction] = []
             for c, w in zip(centers, widths, strict=False):
                 a = float(max(c - w / 2.0, rmin))
                 b = float(min(c + w / 2.0, rmax))
                 if a >= b:
                     eps = 1e-6
                     a, b = c - eps, c + eps
-                mfs.append(ZShapedMF(a, b))
-            return mfs
+                z_shape_mfs.append(ZShapedMF(a, b))
+            return z_shape_mfs
         if key in {"pi", "pimf"}:
-            mfs: list[PiMF] = []
+            pi_mfs: list[MembershipFunction] = []
             plateau_frac = 0.3
             for c, w in zip(centers, widths, strict=False):
                 a = float(c - w / 2.0)
@@ -405,8 +410,8 @@ class ANFISBuilder:
                 if not (a < b <= cr < d):
                     eps = 1e-6
                     a, b, cr, d = c - 2 * eps, c - eps, c + eps, c + 2 * eps
-                mfs.append(PiMF(a, b, cr, d))
-            return mfs
+                pi_mfs.append(PiMF(a, b, cr, d))
+            return pi_mfs
         supported = (
             "gaussian, gaussian2, bell/gbell, triangular, trapezoidal, sigmoidal/sigmoid, sshape/s, zshape/z, pi/pimf"
         )
