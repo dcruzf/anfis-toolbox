@@ -9,6 +9,7 @@ jobs:
   publish:
     name: Publish
     runs-on: ubuntu-latest
+    environment: pypi
     defaults:
       run:
         shell: bash
@@ -24,5 +25,4 @@ jobs:
       run: make build
 
     - name: Publish
-      environment: pypi
       run: make publish
