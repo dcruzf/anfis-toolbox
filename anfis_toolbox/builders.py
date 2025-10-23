@@ -1,9 +1,13 @@
 """Builder classes for easy ANFIS model construction."""
 
+from __future__ import annotations
+
 from collections.abc import Callable, Sequence
-from typing import cast
+from typing import TypeAlias, cast
 
 import numpy as np
+from numpy.random import Generator
+from numpy.typing import ArrayLike, NDArray
 
 from .clustering import FuzzyCMeans
 from .membership import (
@@ -25,6 +29,9 @@ from .membership import (
 from .model import TSKANFIS
 
 MembershipFactory = Callable[[float, float, int, float], list[MembershipFunction]]
+RandomStateLike: TypeAlias = int | Generator | None
+FloatArray1D: TypeAlias = NDArray[np.float64]
+FloatArray2D: TypeAlias = NDArray[np.float64]
 
 
 class ANFISBuilder:
@@ -62,7 +69,7 @@ class ANFISBuilder:
             "diffsigmoid": cast(MembershipFactory, self._create_diff_sigmoidal_mfs),
             "prodsigmoid": cast(MembershipFactory, self._create_prod_sigmoidal_mfs),
         }
-        self._dispatch = dispatch
+        self._dispatch: dict[str, MembershipFactory] = dispatch
 
     def add_input(
         self,
@@ -72,7 +79,7 @@ class ANFISBuilder:
         n_mfs: int = 3,
         mf_type: str = "gaussian",
         overlap: float = 0.5,
-    ) -> "ANFISBuilder":
+    ) -> ANFISBuilder:
         """Add an input variable with automatic membership function generation.
 
         Parameters:
@@ -102,14 +109,14 @@ class ANFISBuilder:
     def add_input_from_data(
         self,
         name: str,
-        data: np.ndarray,
+        data: ArrayLike,
         n_mfs: int = 3,
         mf_type: str = "gaussian",
         overlap: float = 0.5,
         margin: float = 0.10,
         init: str | None = "grid",
-        random_state: int | None = None,
-    ) -> "ANFISBuilder":
+        random_state: RandomStateLike = None,
+    ) -> ANFISBuilder:
         """Add an input inferring range_min/range_max from data with a margin.
 
         Parameters:
@@ -124,7 +131,7 @@ class ANFISBuilder:
                 'gaussian' and 'bell').
             random_state: Optional seed for deterministic FCM initialization.
         """
-        arr = np.asarray(data, dtype=float).reshape(-1)
+        arr = cast(FloatArray1D, np.asarray(data, dtype=np.float64).reshape(-1))
 
         if init is None:
             strategy = "grid"
@@ -133,7 +140,6 @@ class ANFISBuilder:
 
         if strategy == "fcm":
             self.input_mfs[name] = self._create_mfs_from_fcm(arr, n_mfs, mf_type, random_state)
-            # store observed range for reference
             self.input_ranges[name] = (float(np.min(arr)), float(np.max(arr)))
             return self
         if strategy == "random":
@@ -149,7 +155,7 @@ class ANFISBuilder:
         if strategy != "grid":
             supported = "grid, fcm, random"
             raise ValueError(f"Unknown init strategy '{init}'. Supported: {supported}")
-        # default grid-based placement with margins
+
         rmin = float(np.min(arr))
         rmax = float(np.max(arr))
         pad = (rmax - rmin) * float(margin)
@@ -158,51 +164,48 @@ class ANFISBuilder:
     # FCM-based MF creation for 1D inputs
     def _create_mfs_from_fcm(
         self,
-        data_1d: np.ndarray,
+        data_1d: FloatArray1D,
         n_mfs: int,
         mf_type: str,
-        random_state: int | None,
+        random_state: RandomStateLike,
     ) -> list[MembershipFunction]:
-        """Create MFs from 1D data via FCM.
-
-        - Centers are FCM cluster centers.
-                - Widths come from weighted within-cluster variance with weights U^m.
-                - Supports: 'gaussian', 'bell'/'gbell', 'triangular', 'trapezoidal',
-                    'sigmoidal'/'sigmoid', 'sshape'/'s', 'zshape'/'z', 'pi'/'pimf'.
-        """
-        x = np.asarray(data_1d, dtype=float).reshape(-1, 1)
+        """Create membership functions from 1D data via FCM."""
+        x = cast(FloatArray2D, np.asarray(data_1d, dtype=np.float64).reshape(-1, 1))
         if x.shape[0] < n_mfs:
             raise ValueError("n_samples must be >= n_mfs for FCM initialization")
-        fcm = FuzzyCMeans(n_clusters=n_mfs, m=2.0, random_state=random_state)
+
+        if isinstance(random_state, Generator):
+            fcm_seed: int | None = int(random_state.integers(0, 2**32 - 1))
+        else:
+            fcm_seed = random_state
+
+        fcm = FuzzyCMeans(n_clusters=n_mfs, m=2.0, random_state=fcm_seed)
         fcm.fit(x)
         centers_arr = fcm.cluster_centers_
         membership = fcm.membership_
         if centers_arr is None or membership is None:
             raise RuntimeError("FCM did not produce centers or membership values; ensure fit succeeded.")
-        centers = centers_arr.reshape(-1)  # (k,)
-        U = membership  # (n,k)
+
+        centers = centers_arr.reshape(-1)
+        U = membership
         m = fcm.m
-        # weighted variance per cluster
-        # num_k = sum_i u_ik^m * (x_i - c_k)^2, den_k = sum_i u_ik^m
+
         diffs = x[:, 0][:, None] - centers[None, :]
         num = np.sum((U**m) * (diffs * diffs), axis=0)
         den = np.maximum(np.sum(U**m, axis=0), 1e-12)
         sigmas = np.sqrt(num / den)
-        # fallback if any sigma is ~0
+
         spacing = np.diff(np.sort(centers))
         default_sigma = float(np.median(spacing)) if spacing.size else max(float(np.std(x)), 1e-3)
         sigmas = np.where(sigmas > 1e-12, sigmas, max(default_sigma, 1e-3))
 
-        # Order by center for deterministic layout
         order = np.argsort(centers)
         centers = centers[order]
         sigmas = sigmas[order]
 
         key = mf_type.strip().lower()
-        # Shared helpers
         rmin = float(np.min(x))
         rmax = float(np.max(x))
-        # Map a width from sigma (ensure positive and with a reasonable floor)
         min_w = max(float(np.median(np.diff(np.sort(centers)))) if centers.size > 1 else float(np.std(x)), 1e-3)
         widths = np.maximum(2.0 * sigmas, min_w)
 
@@ -211,23 +214,24 @@ class ANFISBuilder:
     def _add_input_random(
         self,
         name: str,
-        data: np.ndarray,
+        data: ArrayLike,
         n_mfs: int,
         mf_type: str,
         overlap: float,
         margin: float,
-        random_state: int | None,
-    ) -> "ANFISBuilder":
-        x = np.asarray(data, dtype=float).reshape(-1)
+        random_state: RandomStateLike,
+    ) -> ANFISBuilder:
+        x = cast(FloatArray1D, np.asarray(data, dtype=np.float64).reshape(-1))
         if x.size == 0:
             raise ValueError("Cannot initialize membership functions from empty data array")
+
         rmin = float(np.min(x))
         rmax = float(np.max(x))
         pad = (rmax - rmin) * float(margin)
         low = rmin - pad
         high = rmax + pad
 
-        if isinstance(random_state, np.random.Generator):
+        if isinstance(random_state, Generator):
             rng = random_state
         else:
             rng = np.random.default_rng(random_state)
@@ -237,7 +241,6 @@ class ANFISBuilder:
             widths = np.array([max(high - low, 1e-3)])
         else:
             diffs = np.diff(centers)
-            # mirror edge spacings to maintain array shape
             left = np.concatenate(([diffs[0]], diffs))
             right = np.concatenate((diffs, [diffs[-1]]))
             widths = (left + right) / 2.0
@@ -255,7 +258,7 @@ class ANFISBuilder:
         self.input_mfs[name] = mfs
         return self
 
-    def set_rules(self, rules: Sequence[Sequence[int]] | None) -> "ANFISBuilder":
+    def set_rules(self, rules: Sequence[Sequence[int]] | None) -> ANFISBuilder:
         """Define an explicit set of fuzzy rules to use when building the model.
 
         Parameters:
@@ -473,7 +476,7 @@ class ANFISBuilder:
         centers = np.linspace(range_min, range_max, n_mfs)
         width = (range_max - range_min) / (n_mfs - 1) * (1 + overlap)
 
-        mfs = []
+        mfs: list[TriangularMF] = []
         for i, center in enumerate(centers):
             a = center - width / 2
             b = center
@@ -497,7 +500,7 @@ class ANFISBuilder:
         width = (range_max - range_min) / (n_mfs - 1) * (1 + overlap)
         plateau = width * 0.3  # 30% plateau
 
-        mfs = []
+        mfs: list[TrapezoidalMF] = []
         for i, center in enumerate(centers):
             a = center - width / 2
             b = center - plateau / 2
