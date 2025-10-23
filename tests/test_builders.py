@@ -204,6 +204,24 @@ class TestANFISBuilder:
         # Higher overlap should result in wider functions
         assert all(w_h > w_l for w_h, w_l in zip(widths_high, widths_low, strict=False))
 
+    def test_create_mfs_from_fcm_missing_membership_raises(self, monkeypatch):
+        builder = ANFISBuilder()
+
+        class DummyFCM:
+            def __init__(self, *args, **kwargs):
+                self.m = 2.0
+                self.cluster_centers_ = None
+                self.membership_ = None
+
+            def fit(self, _x):
+                self.cluster_centers_ = None
+                self.membership_ = None
+
+        monkeypatch.setattr("anfis_toolbox.builders.FuzzyCMeans", DummyFCM)
+
+        with pytest.raises(RuntimeError, match="did not produce centers or membership"):
+            builder._create_mfs_from_fcm(np.array([0.0, 1.0]), n_mfs=2, mf_type="gaussian", random_state=None)
+
     def test_different_n_mfs(self):
         """Test creating different numbers of membership functions."""
         builder = ANFISBuilder()

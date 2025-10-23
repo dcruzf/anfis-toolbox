@@ -526,6 +526,15 @@ def test_fit_logging_branch_and_hybrid_logging(monkeypatch, caplog):
     assert len(hyb_losses) == 1
 
 
+def test_tskanfis_fit_requires_trainer_protocol():
+    model = _make_simple_model()
+    X = np.array([[0.0, 0.0], [1.0, 1.0]])
+    y = (X[:, 0] + X[:, 1]).reshape(-1, 1)
+
+    with pytest.raises(TypeError, match="trainer must implement fit"):
+        model.fit(X, y, trainer=object())
+
+
 def test_membership_functions_property_and_parameter_set_get():
     model = _make_simple_model()
     # Property alias

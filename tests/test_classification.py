@@ -1454,3 +1454,90 @@ def test_classifier_summarize_model_and_history_non_numeric_tail():
     assert "val=1" in history
 
     assert ANFISClassifier._describe_optimizer_config(None) is None
+
+
+def test_classifier_predict_requires_known_feature_count():
+    clf = ANFISClassifier(n_classes=2)
+    clf.is_fitted_ = True
+    clf.model_ = SimpleNamespace(predict=lambda _X: np.zeros((1, 1)))
+    clf.classes_ = np.array([0, 1])
+    clf.n_features_in_ = None
+
+    with pytest.raises(RuntimeError, match="Model must be fitted before calling predict."):
+        clf.predict(np.array([[0.1]]))
+
+
+def test_classifier_predict_proba_requires_known_feature_count():
+    clf = ANFISClassifier(n_classes=2)
+    clf.is_fitted_ = True
+    clf.model_ = SimpleNamespace(predict_proba=lambda _X: np.ones((1, 2)))
+    clf.n_features_in_ = None
+
+    with pytest.raises(RuntimeError, match="Model must be fitted before calling predict_proba."):
+        clf.predict_proba(np.array([[0.1]]))
+
+
+def test_classifier_predict_requires_model_instance():
+    clf = ANFISClassifier(n_classes=2)
+    clf.is_fitted_ = True
+    clf.model_ = None
+    clf.classes_ = np.array([0, 1])
+    clf.n_features_in_ = 1
+
+    with pytest.raises(RuntimeError, match="Model must be fitted before calling predict."):
+        clf.predict(np.array([[0.1]]))
+
+
+def test_classifier_predict_proba_requires_model_instance():
+    clf = ANFISClassifier(n_classes=2)
+    clf.is_fitted_ = True
+    clf.model_ = None
+    clf.n_features_in_ = 1
+
+    with pytest.raises(RuntimeError, match="Model must be fitted before calling predict_proba."):
+        clf.predict_proba(np.array([[0.1]]))
+
+
+def test_classifier_build_model_requires_input_specs():
+    clf = ANFISClassifier(n_classes=2)
+    X = np.array([[0.0], [1.0]])
+    clf.input_specs_ = None
+
+    with pytest.raises(RuntimeError, match="Input specifications must be resolved"):
+        clf._build_model(X, ["x0"])
+
+
+def test_classifier_build_model_requires_known_class_count():
+    clf = ANFISClassifier()
+    clf.input_specs_ = [clf._normalize_input_spec(None)]
+    X = np.array([[0.0], [1.0]])
+
+    with pytest.raises(RuntimeError, match="Number of classes must be known before constructing"):
+        clf._build_model(X, ["x0"])
+
+
+@pytest.mark.parametrize(
+    "spec",
+    [
+        {"membership_functions": [GaussianMF(mean=0.0, sigma=1.0)], "range": (0.0,)},
+        {"range": (0.0,)},
+    ],
+)
+def test_classifier_build_model_range_override_requires_two_values(spec):
+    clf = ANFISClassifier(n_classes=2)
+    normalized = clf._normalize_input_spec(spec)
+    clf.input_specs_ = [normalized]
+    X = np.array([[0.0], [1.0]])
+
+    with pytest.raises(ValueError, match="range overrides must contain exactly two values"):
+        clf._build_model(X, ["x0"])
+
+
+def test_low_level_classifier_requires_trainer_protocol():
+    mfs = make_simple_input_mfs(n_features=1, n_mfs=2)
+    clf = LowLevelClassifier(mfs, n_classes=2)
+    X = np.array([[0.0], [0.5]])
+    y = np.array([0, 1])
+
+    with pytest.raises(TypeError, match="trainer must implement fit"):
+        clf.fit(X, y, trainer=object())
