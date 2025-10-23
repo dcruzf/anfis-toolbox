@@ -112,8 +112,9 @@ class CrossEntropyLoss(LossFunction):
         """Convert labels or one-hot encodings into dense float matrices."""
         y_arr = np.asarray(y)
         if y_arr.ndim == 1:
-            if model is not None and hasattr(model, "n_classes"):
-                n_classes = int(model.n_classes)  # type: ignore[attr-defined]
+            n_classes_attr = getattr(model, "n_classes", None) if model is not None else None
+            if n_classes_attr is not None:
+                n_classes = int(n_classes_attr)
             else:
                 n_classes = int(np.max(y_arr)) + 1
             oh = np.zeros((y_arr.shape[0], n_classes), dtype=float)
@@ -121,8 +122,9 @@ class CrossEntropyLoss(LossFunction):
             return oh
         if y_arr.ndim != 2:
             raise ValueError("y for cross-entropy must be 1D labels or 2D one-hot encoded")
-        if model is not None and hasattr(model, "n_classes"):
-            expected = int(model.n_classes)  # type: ignore[attr-defined]
+        expected_attr = getattr(model, "n_classes", None) if model is not None else None
+        if expected_attr is not None:
+            expected = int(expected_attr)
             if y_arr.shape[1] != expected:
                 raise ValueError(f"y one-hot must have {expected} columns")
         return y_arr.astype(float)

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Literal, Protocol, TypeAlias, cast, runtime_checkable
 
 import numpy as np
 import numpy.typing as npt
@@ -17,9 +17,9 @@ if TYPE_CHECKING:  # pragma: no cover - typing helper
     from .model import ANFIS
 
 
-ArrayLike = npt.ArrayLike
-MetricValue = float | np.ndarray
-MetricFn = Callable[[np.ndarray, np.ndarray], float]
+ArrayLike: TypeAlias = npt.ArrayLike
+MetricValue: TypeAlias = float | np.ndarray
+MetricFn: TypeAlias = Callable[[np.ndarray, np.ndarray], float]
 
 _EPSILON: float = 1e-12
 
@@ -726,13 +726,13 @@ def _resolve_predictor(model: object) -> _PredictorLike:
     """Return an object exposing ``predict`` for use in :func:`quick_evaluate`."""
     predict_fn = getattr(model, "predict", None)
     if callable(predict_fn):
-        return model  # type: ignore[return-value]
+        return cast(_PredictorLike, model)
 
     underlying = getattr(model, "model_", None)
     if underlying is not None:
         predict_fn = getattr(underlying, "predict", None)
         if callable(predict_fn):
-            return underlying  # type: ignore[return-value]
+            return cast(_PredictorLike, underlying)
 
     raise TypeError(
         "quick_evaluate requires an object with a callable 'predict' method. Pass a fitted ANFIS "

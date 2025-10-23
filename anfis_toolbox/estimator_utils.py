@@ -203,10 +203,14 @@ def format_estimator_repr(
     return "\n".join(lines)
 
 
-class RuleInspectorMixin:
+class RuleInspectorMixin(FittedMixin):
     """Mixin that exposes ANFIS rule descriptors for fitted estimators."""
 
-    def get_rules(self, *, include_membership_functions: bool = False):
+    def get_rules(
+        self,
+        *,
+        include_membership_functions: bool = False,
+    ) -> list[tuple[int, ...]] | list[dict[str, Any]]:
         """Return the fuzzy rules learned by the estimator.
 
         Parameters
@@ -274,6 +278,10 @@ class RuleInspectorMixin:
 class RegressorMixinLike:
     """Mixin implementing a default `score` method for regressors."""
 
+    def predict(self, X: np.ndarray) -> np.ndarray:  # pragma: no cover - interface
+        """Return predicted targets for ``X``."""
+        raise NotImplementedError
+
     def score(self, X: np.ndarray, y: np.ndarray) -> float:
         """Return the coefficient of determination R^2 of the prediction."""
         y_true = np.asarray(y, dtype=float).reshape(-1)
@@ -290,6 +298,10 @@ class RegressorMixinLike:
 
 class ClassifierMixinLike:
     """Mixin implementing default `score` via simple accuracy."""
+
+    def predict(self, X: np.ndarray) -> np.ndarray:  # pragma: no cover - interface
+        """Return predicted class labels for ``X``."""
+        raise NotImplementedError
 
     def score(self, X: np.ndarray, y: np.ndarray) -> float:
         """Return the mean accuracy on the given test data and labels."""

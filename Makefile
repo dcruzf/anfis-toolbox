@@ -7,7 +7,7 @@ project_dir = anfis_toolbox
 
 .PHONY: .uv  ## Check that uv is installed
 .uv:
-	@uv -V || echo 'Please install uv: https://docs.astral.sh/uv/getting-started/installation/'
+	@uv -V || curl -LsSf https://astral.sh/uv/install.sh | sh || echo 'Please install uv: https://docs.astral.sh/uv/getting-started/installation/'
 
 .PHONY: rebuild-lockfiles  ## Rebuild lockfiles from scratch, updating all dependencies
 rebuild-lockfiles: .uv
@@ -35,6 +35,14 @@ format: .uv
 lint: .uv
 	uvx pre-commit run --all-files
 
+.PHONY: bandit ## Run security checks with Bandit
+bandit: .uv
+	uvx bandit -c pyproject.toml -r $(project_dir)
+
+.PHONY: type-check  ## Static type checks with mypy
+type-check: .uv
+	uvx mypy --config-file pyproject.toml
+
 .PHONY: .hatch  ## Check that hatch is installed
 .hatch:
 	@uv tool run hatch --version || echo 'Please install hatch: uv tool install hatch'
@@ -56,7 +64,7 @@ cov-report: .uv
 	uvx coverage html -d docs/assets/cov/
 
 .PHONY: all
-all: format lint test-all
+all: format lint type-check bandit test-all
 
 
 .PHONY: build  ## Build wheel and sdist into dist/
@@ -84,7 +92,7 @@ docs-build: .uv
 		mkdocs build
 
 .PHONY: docs-gh-deploy  ## deploy gh-pages
-docs-gh-deploy: .uv
+docs-deploy: .uv cov-report
 	uvx --with mkdocs-material \
 		--with mkdocstrings --with mkdocstrings-python \
 		--with mkdocs-awesome-pages-plugin \

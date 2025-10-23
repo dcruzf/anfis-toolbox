@@ -839,3 +839,49 @@ def test_invalid_init_strategy_raises_error():
     reg = ANFISRegressor(init="invalid", epochs=1)
     with pytest.raises(ValueError, match="Unknown init strategy"):
         reg.fit(X, y)
+
+
+def test_regressor_predict_requires_known_feature_count():
+    reg = ANFISRegressor()
+    reg.is_fitted_ = True
+    reg.model_ = SimpleNamespace(predict=lambda _X: np.zeros((1, 1)))
+    reg.n_features_in_ = None
+
+    with pytest.raises(RuntimeError, match="Model must be fitted before calling predict."):
+        reg.predict(np.array([[0.1]]))
+
+
+def test_regressor_predict_requires_model_instance():
+    reg = ANFISRegressor()
+    reg.is_fitted_ = True
+    reg.model_ = None
+    reg.n_features_in_ = 1
+
+    with pytest.raises(RuntimeError, match="Model must be fitted before calling predict."):
+        reg.predict(np.array([[0.1]]))
+
+
+def test_regressor_build_model_requires_input_specs():
+    reg = ANFISRegressor()
+    X = np.array([[0.0], [1.0]])
+    reg.input_specs_ = None
+
+    with pytest.raises(RuntimeError, match="Input specifications must be resolved"):
+        reg._build_model(X, ["x0"])
+
+
+@pytest.mark.parametrize(
+    "spec",
+    [
+        {"membership_functions": [GaussianMF(mean=0.0, sigma=1.0)], "range": (0.0,)},
+        {"range": (0.0,)},
+    ],
+)
+def test_regressor_build_model_range_override_requires_two_values(spec):
+    reg = ANFISRegressor()
+    normalized = reg._normalize_input_spec(spec)
+    reg.input_specs_ = [normalized]
+    X = np.array([[0.0], [1.0]])
+
+    with pytest.raises(ValueError, match="range overrides must contain exactly two values"):
+        reg._build_model(X, ["x0"])
