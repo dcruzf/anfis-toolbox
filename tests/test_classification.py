@@ -18,8 +18,6 @@ from anfis_toolbox.metrics import ANFISMetrics, accuracy
 from anfis_toolbox.model import TSKANFISClassifier
 from anfis_toolbox.optim import BaseTrainer, HybridAdamTrainer, HybridTrainer, SGDTrainer
 
-LowLevelClassifier = TSKANFISClassifier
-
 
 def make_simple_input_mfs(n_features=1, n_mfs=2):
     input_mfs = {}
@@ -43,7 +41,7 @@ def _build_classifier_from_data(
     mf_type: str = "gaussian",
     init: str = "grid",
     random_state: int | None = None,
-) -> LowLevelClassifier:
+) -> TSKANFISClassifier:
     if X.ndim != 2:
         raise ValueError("Input data must be 2D (n_samples, n_features)")
 
@@ -81,12 +79,12 @@ def _build_classifier_from_data(
                 mf_type,
             )
 
-    return LowLevelClassifier(builder.input_mfs, n_classes=n_classes, random_state=random_state)
+    return TSKANFISClassifier(builder.input_mfs, n_classes=n_classes, random_state=random_state)
 
 
 def test_classifier_forward_and_predict_shapes():
     mfs = make_simple_input_mfs(n_features=2, n_mfs=2)
-    clf = LowLevelClassifier(mfs, n_classes=3)
+    clf = TSKANFISClassifier(mfs, n_classes=3)
     X = np.array([[0.0, 0.5], [1.0, -1.0]])
     logits = clf.forward(X)
     assert logits.shape == (2, 3)
@@ -127,7 +125,7 @@ def test_ensure_training_logging_behaviour(monkeypatch):
 
 def test_classifier_predict_proba_accepts_1d_input_and_repr_and_property():
     mfs = make_simple_input_mfs(n_features=1, n_mfs=2)
-    clf = LowLevelClassifier(mfs, n_classes=2)
+    clf = TSKANFISClassifier(mfs, n_classes=2)
     x1 = np.array([0.0])
     proba = clf.predict_proba(x1)
     assert proba.shape == (1, 2)
@@ -351,7 +349,7 @@ def test_classifier_fit_with_one_hot_and_invalid_shapes():
 
 def test_classifier_input_validation():
     mfs = make_simple_input_mfs(n_features=2, n_mfs=2)
-    clf = LowLevelClassifier(mfs, n_classes=2)
+    clf = TSKANFISClassifier(mfs, n_classes=2)
     with pytest.raises(ValueError):
         clf.predict_proba(np.array([1.0, 2.0, 3.0]))
     with pytest.raises(ValueError):
@@ -360,7 +358,7 @@ def test_classifier_input_validation():
         clf.predict_proba(np.zeros((2, 2, 2)))
     # invalid n_classes
     with pytest.raises(ValueError):
-        LowLevelClassifier(make_simple_input_mfs(), n_classes=1)
+        TSKANFISClassifier(make_simple_input_mfs(), n_classes=1)
 
 
 def test_classifier_builder_helper_fcm_and_invalid_ndim():
@@ -372,7 +370,7 @@ def test_classifier_builder_helper_fcm_and_invalid_ndim():
         ]
     )
     model = _build_classifier_from_data(X, n_classes=2, n_mfs=2, mf_type="gaussian", init="fcm", random_state=0)
-    assert isinstance(model, LowLevelClassifier)
+    assert isinstance(model, TSKANFISClassifier)
     preds = model.predict(X)
     assert preds.shape == (X.shape[0],)
     # invalid ndim
@@ -452,11 +450,11 @@ def test_classifier_set_parameters_membership_missing_name_skips_safely():
         assert params_after["membership"][n] == params_before["membership"][n]
 
 
-def _make_simple_clf(n_inputs: int = 1, n_mfs: int = 2, n_classes: int = 2) -> LowLevelClassifier:
+def _make_simple_clf(n_inputs: int = 1, n_mfs: int = 2, n_classes: int = 2) -> TSKANFISClassifier:
     input_mfs = {}
     for i in range(n_inputs):
         input_mfs[f"x{i + 1}"] = [GaussianMF(mean=-1.0, sigma=1.0), GaussianMF(mean=1.0, sigma=1.0)][:n_mfs]
-    return LowLevelClassifier(input_mfs, n_classes=n_classes, random_state=0)
+    return TSKANFISClassifier(input_mfs, n_classes=n_classes, random_state=0)
 
 
 def test_classifier_apply_membership_gradients_private_helper():
@@ -486,7 +484,7 @@ def test_classifier_apply_membership_gradients_private_helper():
 
 def test_classifier_fit_uses_custom_loss_and_default_trainer(monkeypatch):
     mfs = make_simple_input_mfs(n_features=1, n_mfs=2)
-    clf = LowLevelClassifier(mfs, n_classes=2)
+    clf = TSKANFISClassifier(mfs, n_classes=2)
     X = np.array([[-0.5], [0.2], [0.8]])
     y = np.array([0, 1, 1])
 
@@ -540,7 +538,7 @@ def test_classifier_fit_updates_existing_trainer_loss():
 
     dummy = DummyTrainer()
     mfs = make_simple_input_mfs(n_features=1, n_mfs=2)
-    clf = LowLevelClassifier(mfs, n_classes=2)
+    clf = TSKANFISClassifier(mfs, n_classes=2)
     X = np.array([[0.1], [-0.3]])
     y = np.array([0, 1])
 
@@ -567,7 +565,7 @@ def test_classifier_fit_with_trainer_without_loss_attribute():
 
     trainer = NoLossTrainer()
     mfs = make_simple_input_mfs(n_features=1, n_mfs=2)
-    clf = LowLevelClassifier(mfs, n_classes=2)
+    clf = TSKANFISClassifier(mfs, n_classes=2)
     X = np.array([[-0.2], [0.4]])
     y = np.array([0, 1])
 
@@ -595,7 +593,7 @@ def test_anfis_classifier_fit_predict_flow():
     result = clf.fit(X, y)
     assert result is clf
     assert clf.model_ is not None
-    assert isinstance(clf.model_, LowLevelClassifier)
+    assert isinstance(clf.model_, TSKANFISClassifier)
     assert clf.optimizer_ is not None
     assert isinstance(clf.optimizer_, SGDTrainer)
     assert clf.training_history_ is not None
@@ -1044,7 +1042,7 @@ def test_anfis_classifier_build_model_respects_range_overrides(monkeypatch):
             self.rules = rules
 
     monkeypatch.setattr("anfis_toolbox.classifier.ANFISBuilder", StubBuilder)
-    monkeypatch.setattr("anfis_toolbox.classifier.LowLevelANFISClassifier", StubClassifier)
+    monkeypatch.setattr("anfis_toolbox.classifier.TSKANFISClassifier", StubClassifier)
 
     clf = ANFISClassifier(n_classes=2, n_mfs=2, inputs_config=inputs_config)
     feature_names = ["x1", "x2"]
@@ -1187,7 +1185,7 @@ def test_classifier_fit_forwards_validation_kwargs():
             captured["y"] = y_fit
             return {"train": [0.0], "val": [0.0]}
 
-    classifier = LowLevelClassifier(make_simple_input_mfs(n_features=2, n_mfs=2), n_classes=2)
+    classifier = TSKANFISClassifier(make_simple_input_mfs(n_features=2, n_mfs=2), n_classes=2)
     history = classifier.fit(
         X,
         y,
@@ -1215,7 +1213,7 @@ def test_classifier_fit_raises_for_non_dict_history():
         def fit(self, model, X_fit, y_fit, **kwargs):
             return [0.0]
 
-    classifier = LowLevelClassifier(make_simple_input_mfs(n_features=2, n_mfs=2), n_classes=2)
+    classifier = TSKANFISClassifier(make_simple_input_mfs(n_features=2, n_mfs=2), n_classes=2)
     with pytest.raises(TypeError, match="Trainer.fit must return a TrainingHistory dictionary"):
         classifier.fit(X, y, trainer=BadTrainer())
 
@@ -1535,7 +1533,7 @@ def test_classifier_build_model_range_override_requires_two_values(spec):
 
 def test_low_level_classifier_requires_trainer_protocol():
     mfs = make_simple_input_mfs(n_features=1, n_mfs=2)
-    clf = LowLevelClassifier(mfs, n_classes=2)
+    clf = TSKANFISClassifier(mfs, n_classes=2)
     X = np.array([[0.0], [0.5]])
     y = np.array([0, 1])
 

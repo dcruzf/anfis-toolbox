@@ -2,16 +2,16 @@ import numpy as np
 import pytest
 
 from anfis_toolbox.membership import GaussianMF
-from anfis_toolbox.model import ANFIS, TSKANFISClassifier
+from anfis_toolbox.model import TSKANFIS, TSKANFISClassifier
 from anfis_toolbox.optim import PSOTrainer
 from anfis_toolbox.optim.pso import _flatten_params, _unflatten_params
 
 
-def _make_regression_model(n_inputs: int = 2) -> ANFIS:
+def _make_regression_model(n_inputs: int = 2) -> TSKANFIS:
     input_mfs = {}
     for i in range(n_inputs):
         input_mfs[f"x{i + 1}"] = [GaussianMF(mean=-1.0, sigma=1.0), GaussianMF(mean=1.0, sigma=1.0)]
-    return ANFIS(input_mfs)
+    return TSKANFIS(input_mfs)
 
 
 def _make_classifier(n_inputs: int = 1, n_classes: int = 2) -> TSKANFISClassifier:
@@ -21,7 +21,7 @@ def _make_classifier(n_inputs: int = 1, n_classes: int = 2) -> TSKANFISClassifie
     return TSKANFISClassifier(input_mfs, n_classes=n_classes, random_state=0)
 
 
-def _flatten_model_params(model: ANFIS) -> np.ndarray:
+def _flatten_model_params(model: TSKANFIS) -> np.ndarray:
     theta, _ = _flatten_params(model.get_parameters())
     return theta
 

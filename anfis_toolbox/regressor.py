@@ -32,7 +32,7 @@ from .logging_config import enable_training_logs
 from .losses import LossFunction
 from .membership import MembershipFunction
 from .metrics import ANFISMetrics
-from .model import ANFIS as LowLevelANFIS
+from .model import TSKANFIS
 from .optim import (
     AdamTrainer,
     BaseTrainer,
@@ -211,7 +211,7 @@ class ANFISRegressor(BaseEstimatorLike, FittedMixin, RegressorMixinLike):
         self.rules = None if rules is None else tuple(tuple(int(idx) for idx in rule) for rule in rules)
 
         # Fitted attributes (initialised later)
-        self.model_: LowLevelANFIS | None = None
+        self.model_: TSKANFIS | None = None
         self.optimizer_: BaseTrainer | None = None
         self.feature_names_in_: list[str] | None = None
         self.n_features_in_: int | None = None
@@ -631,7 +631,7 @@ class ANFISRegressor(BaseEstimatorLike, FittedMixin, RegressorMixinLike):
             return config
         raise TypeError(f"Unsupported input configuration type: {type(spec)!r}")
 
-    def _build_model(self, X: np.ndarray, feature_names: list[str]) -> LowLevelANFIS:
+    def _build_model(self, X: np.ndarray, feature_names: list[str]) -> TSKANFIS:
         builder = ANFISBuilder()
         if self.input_specs_ is None:
             raise RuntimeError("Input specifications must be resolved before building the model.")

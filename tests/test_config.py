@@ -12,7 +12,7 @@ from anfis_toolbox.config import (
     create_config_from_preset,
     list_presets,
 )
-from anfis_toolbox.model import ANFIS
+from anfis_toolbox.model import TSKANFIS
 
 
 class TestANFISConfig:
@@ -102,7 +102,7 @@ class TestANFISConfig:
 
         model = config.build_model()
 
-        assert isinstance(model, ANFIS)
+        assert isinstance(model, TSKANFIS)
         assert model.n_inputs == 2
         assert model.n_rules == 4  # 2 * 2 = 4 rules
 
@@ -415,7 +415,7 @@ class TestANFISModelManager:
             loaded_model = ANFISModelManager.load_model(filepath)
 
             # Verify model was loaded correctly
-            assert isinstance(loaded_model, ANFIS)
+            assert isinstance(loaded_model, TSKANFIS)
             assert loaded_model.n_inputs == model.n_inputs
             assert loaded_model.n_rules == model.n_rules
 
@@ -440,7 +440,7 @@ class TestANFISModelManager:
 
             # Test loading model
             loaded_model = ANFISModelManager.load_model(filepath)
-            assert isinstance(loaded_model, ANFIS)
+            assert isinstance(loaded_model, TSKANFIS)
             assert loaded_model.n_inputs == model.n_inputs
             assert loaded_model.n_rules == model.n_rules
 
