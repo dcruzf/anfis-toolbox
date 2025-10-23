@@ -5,10 +5,11 @@
   </a>
 </div>
 
-[![Python 3.13+](https://img.shields.io/badge/python-3.13+-blue.svg)](https://www.python.org/downloads/)
+
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![Docs](https://img.shields.io/badge/docs-online-brightgreen.svg)](https://dcruzf.github.io/anfis-toolbox/)
-[![coverage](https://img.shields.io/badge/dynamic/regex?url=https%3A%2F%2Fdcruzf.github.io%2Fanfis-toolbox%2Fassets%2Fcov%2Findex.html&search=%3Cspan%20class%3D%22pc_cov%22%3E(%3F%3Ccov%3E%5Cd%2B%25)%3C%2Fspan%3E&replace=%24%3Ccov%3E&style=flat&logo=pytest&logoColor=white&label=coverage&color=green)](https://dcruzf.github.io/anfis-toolbox/assets/cov/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![coverage](https://img.shields.io/badge/dynamic/regex?url=https%3A%2F%2Fdcruzf.github.io%2Fanfis-toolbox%2Fassets%2Fcov%2Findex.html&search=%3Cspan%20class%3D%22pc_cov%22%3E(%3F%3Ccov%3E%5Cd%2B%25)%3C%2Fspan%3E&replace=%24%3Ccov%3E&style=flat&logo=pytest&logoColor=white&label=coverage&color=brightgreen)](https://dcruzf.github.io/anfis-toolbox/assets/cov/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-gray.svg)](LICENSE)
 
 
 
@@ -105,7 +106,7 @@ Additional targets:
 - `make docs` — Build the MkDocs site locally
 - `make help` — Show all available targets with their help messages
 
-This project is tested on Python 3.13+ across Linux, Windows and macOS.
+This project is tested on Python 3.10 | 3.11 | 3.12 | 3.13 | 3.14 across Linux, Windows and macOS.
 
 ## 🤝 Contributing
 
