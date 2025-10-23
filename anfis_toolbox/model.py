@@ -657,8 +657,3 @@ class TSKANFISClassifier:
             str: A formatted string describing the classifier configuration.
         """
         return f"TSKANFISClassifier(n_inputs={self.n_inputs}, n_rules={self.n_rules}, n_classes={self.n_classes})"
-
-
-# Backwards compatibility alias: legacy low-level TSK ANFIS engine
-ANFIS = TSKANFIS
-ANFISClassifier = TSKANFISClassifier

@@ -24,7 +24,7 @@ from anfis_toolbox.membership import (
     TriangularMF,
     ZShapedMF,
 )
-from anfis_toolbox.model import ANFIS
+from anfis_toolbox.model import TSKANFIS
 
 
 class TestANFISBuilder:
@@ -98,10 +98,8 @@ class TestANFISBuilder:
         """Test building model with single input."""
         builder = ANFISBuilder()
         builder.add_input("x1", -2.0, 2.0, n_mfs=3)
-
         model = builder.build()
-
-        assert isinstance(model, ANFIS)
+        assert isinstance(model, TSKANFIS)
         assert model.n_inputs == 1
         assert model.n_rules == 3
 
@@ -110,10 +108,8 @@ class TestANFISBuilder:
         builder = ANFISBuilder()
         builder.add_input("x1", -1.0, 1.0, n_mfs=2)
         builder.add_input("x2", 0.0, 5.0, n_mfs=3)
-
         model = builder.build()
-
-        assert isinstance(model, ANFIS)
+        assert isinstance(model, TSKANFIS)
         assert model.n_inputs == 2
         assert model.n_rules == 2 * 3  # Product of MFs per input
 
@@ -141,10 +137,8 @@ class TestANFISBuilder:
     def test_method_chaining(self):
         """Test that methods can be chained."""
         builder = ANFISBuilder()
-
         model = builder.add_input("x1", -1, 1, n_mfs=2).add_input("x2", 0, 10, n_mfs=2).build()
-
-        assert isinstance(model, ANFIS)
+        assert isinstance(model, TSKANFIS)
         assert model.n_inputs == 2
 
     def test_create_gaussian_mfs(self):

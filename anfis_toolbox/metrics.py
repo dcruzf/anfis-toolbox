@@ -14,7 +14,7 @@ import numpy as np
 import numpy.typing as npt
 
 if TYPE_CHECKING:  # pragma: no cover - typing helper
-    from .model import ANFIS
+    from .model import TSKANFIS as ANFIS
 
 
 ArrayLike: TypeAlias = npt.ArrayLike

@@ -1,4 +1,4 @@
-"""Tests for ANFIS model."""
+"""Tests for TSKANFIS model."""
 
 import logging
 
@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 
 from anfis_toolbox.membership import GaussianMF
-from anfis_toolbox.model import ANFIS
+from anfis_toolbox.model import TSKANFIS
 from anfis_toolbox.optim import HybridTrainer, SGDTrainer
 
 # Disable logging during tests to keep output clean
@@ -15,16 +15,16 @@ logging.getLogger("anfis_toolbox").setLevel(logging.CRITICAL)
 
 @pytest.fixture
 def sample_anfis():
-    """Create a sample ANFIS model for testing."""
+    """Create a sample TSKANFIS model for testing."""
     input_mfs = {
         "x1": [GaussianMF(mean=-1.0, sigma=1.0), GaussianMF(mean=1.0, sigma=1.0)],
         "x2": [GaussianMF(mean=-1.0, sigma=1.0), GaussianMF(mean=1.0, sigma=1.0)],
     }
-    return ANFIS(input_mfs)
+    return TSKANFIS(input_mfs)
 
 
 def test_anfis_initialization(sample_anfis):
-    """Test ANFIS model initialization."""
+    """Test TSKANFIS model initialization."""
     assert sample_anfis.n_inputs == 2
     assert sample_anfis.n_rules == 4  # 2 * 2 = 4 rules
     assert sample_anfis.input_names == ["x1", "x2"]
@@ -37,7 +37,7 @@ def test_anfis_initialization(sample_anfis):
 
 
 def test_anfis_forward_pass(sample_anfis):
-    """Test ANFIS forward pass."""
+    """Test TSKANFIS forward pass."""
     # Create sample input
     x = np.array([[0.0, 0.0], [1.0, -1.0], [-1.0, 1.0]])  # (3, 2)
 
@@ -52,7 +52,7 @@ def test_anfis_forward_pass(sample_anfis):
 
 
 def test_anfis_predict(sample_anfis):
-    """Test ANFIS predict method."""
+    """Test TSKANFIS predict method."""
     x = np.array([[0.0, 0.0], [1.0, -1.0]])  # (2, 2)
 
     # Predict should give same result as forward
@@ -63,7 +63,7 @@ def test_anfis_predict(sample_anfis):
 
 
 def test_anfis_backward_pass(sample_anfis):
-    """Test ANFIS backward pass."""
+    """Test TSKANFIS backward pass."""
     x = np.array([[0.0, 0.0]])  # (1, 2)
 
     # Forward pass
@@ -91,7 +91,7 @@ def test_anfis_backward_pass(sample_anfis):
 
 
 def test_anfis_reset_gradients(sample_anfis):
-    """Test ANFIS gradient reset functionality."""
+    """Test TSKANFIS gradient reset functionality."""
     x = np.array([[0.0, 0.0]])
 
     # Forward and backward pass to create gradients
@@ -170,7 +170,7 @@ def test_backprop_updates_params_via_trainer(sample_anfis):
 
 
 def test_anfis_fit(sample_anfis):
-    """Test ANFIS training over multiple epochs."""
+    """Test TSKANFIS training over multiple epochs."""
     # Create simple training data (linear function)
     np.random.seed(42)
     x = np.random.randn(20, 2)
@@ -294,12 +294,12 @@ def test_tskanfis_fit_raises_for_non_dict_history():
 
 
 def test_anfis_nonlinear_function():
-    """Test ANFIS on a nonlinear function approximation task."""
-    # Create ANFIS with more membership functions for better approximation
+    """Test TSKANFIS on a nonlinear function approximation task."""
+    # Create TSKANFIS with more membership functions for better approximation
     input_mfs = {
         "x": [GaussianMF(mean=-2.0, sigma=1.0), GaussianMF(mean=0.0, sigma=1.0), GaussianMF(mean=2.0, sigma=1.0)]
     }
-    model = ANFIS(input_mfs)
+    model = TSKANFIS(input_mfs)
 
     # Create nonlinear function: y = x^2
     x = np.linspace(-3, 3, 30).reshape(-1, 1)
@@ -319,24 +319,24 @@ def test_anfis_nonlinear_function():
 
 
 def test_anfis_string_representations(sample_anfis):
-    """Test string representations of ANFIS model."""
+    """Test string representations of TSKANFIS model."""
     str_repr = str(sample_anfis)
     repr_repr = repr(sample_anfis)
 
-    assert "ANFIS Model" in str_repr
+    assert "TSKANFIS Model" in str_repr
     assert "2" in str_repr  # number of inputs
     assert "4" in str_repr  # number of rules
 
-    assert "ANFIS" in repr_repr
+    assert "TSKANFIS" in repr_repr
     assert "n_inputs=2" in repr_repr
     assert "n_rules=4" in repr_repr
 
 
 def test_anfis_edge_cases():
-    """Test ANFIS with edge cases."""
+    """Test TSKANFIS with edge cases."""
     # Single input, single MF per input
     input_mfs = {"x": [GaussianMF(mean=0.0, sigma=1.0)]}
-    model = ANFIS(input_mfs)
+    model = TSKANFIS(input_mfs)
 
     assert model.n_inputs == 1
     assert model.n_rules == 1
@@ -357,13 +357,13 @@ def test_anfis_edge_cases():
 
 
 def test_anfis_hybrid_algorithm():
-    """Test ANFIS hybrid learning algorithm (original Jang 1993)."""
-    # Create simple ANFIS model
+    """Test TSKANFIS hybrid learning algorithm (original Jang 1993)."""
+    # Create simple TSKANFIS model
     input_mfs = {
         "x1": [GaussianMF(mean=-1.0, sigma=1.0), GaussianMF(mean=1.0, sigma=1.0)],
         "x2": [GaussianMF(mean=-1.0, sigma=1.0), GaussianMF(mean=1.0, sigma=1.0)],
     }
-    model = ANFIS(input_mfs)
+    model = TSKANFIS(input_mfs)
 
     # Create simple training data
     np.random.seed(42)
@@ -391,8 +391,8 @@ def test_anfis_hybrid_vs_backprop_comparison():
     input_mfs = {"x": [GaussianMF(mean=-1.0, sigma=1.0), GaussianMF(mean=1.0, sigma=1.0)]}
 
     # Create identical models
-    model_hybrid = ANFIS(input_mfs)
-    model_backprop = ANFIS({"x": [GaussianMF(mean=-1.0, sigma=1.0), GaussianMF(mean=1.0, sigma=1.0)]})
+    model_hybrid = TSKANFIS(input_mfs)
+    model_backprop = TSKANFIS({"x": [GaussianMF(mean=-1.0, sigma=1.0), GaussianMF(mean=1.0, sigma=1.0)]})
 
     # Simple quadratic function
     x = np.array([[-2], [-1], [0], [1], [2]], dtype=float)
@@ -420,7 +420,7 @@ def test_anfis_hybrid_vs_backprop_comparison():
 
 
 def test_logging_configuration():
-    """Test ANFIS logging configuration."""
+    """Test TSKANFIS logging configuration."""
     from anfis_toolbox.logging_config import disable_training_logs, enable_training_logs, setup_logging
 
     # Test enabling training logs
@@ -440,11 +440,11 @@ def test_logging_configuration():
     logger.setLevel(logging.CRITICAL)
 
 
-def _make_simple_model(n_inputs: int = 2, n_mfs: int = 2) -> ANFIS:
+def _make_simple_model(n_inputs: int = 2, n_mfs: int = 2) -> TSKANFIS:
     input_mfs = {}
     for i in range(n_inputs):
         input_mfs[f"x{i + 1}"] = [GaussianMF(mean=0.0, sigma=1.0), GaussianMF(mean=1.0, sigma=1.0)][:n_mfs]
-    return ANFIS(input_mfs)
+    return TSKANFIS(input_mfs)
 
 
 def test_predict_invalid_shapes():
@@ -475,12 +475,12 @@ def test_str_and_repr_cover():
     model = _make_simple_model()
     s = str(model)
     r = repr(model)
-    assert "ANFIS Model" in s
-    assert "ANFIS(" in r
+    assert "TSKANFIS Model" in s
+    assert "TSKANFIS(" in r
 
 
 def test_apply_membership_gradients_private_helper():
-    # Cover ANFIS._apply_membership_gradients branch
+    # Cover TSKANFIS._apply_membership_gradients branch
     model = _make_simple_model()
     X = np.array([[0.0, 0.0], [1.0, -1.0]])
     # Create some gradients via a minibackward step
