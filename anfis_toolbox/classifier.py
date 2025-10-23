@@ -13,23 +13,24 @@ import pickle  # nosec B403
 from collections.abc import Mapping, Sequence
 from copy import deepcopy
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, TypeAlias, cast
 
 import numpy as np
+import numpy.typing as npt
 
 from .builders import ANFISBuilder
 from .estimator_utils import (
     BaseEstimatorLike,
     ClassifierMixinLike,
     FittedMixin,
-    _ensure_2d_array,
     check_is_fitted,
+    ensure_2d_array,
     format_estimator_repr,
 )
 from .logging_config import enable_training_logs
 from .losses import LossFunction
 from .membership import MembershipFunction
-from .metrics import ANFISMetrics
+from .metrics import ANFISMetrics, MetricValue
 from .model import TSKANFISClassifier
 from .optim import (
     AdamTrainer,
@@ -45,6 +46,9 @@ from .optim import (
     HybridTrainer as _HybridTrainer,
 )
 from .optim.base import TrainingHistory
+
+InputConfigValue: TypeAlias = Mapping[str, Any] | Sequence[Any] | MembershipFunction | str | int | None
+NormalizedInputSpec: TypeAlias = dict[str, Any]
 
 TRAINER_REGISTRY: dict[str, type[BaseTrainer]] = {
     "sgd": SGDTrainer,
@@ -205,7 +209,9 @@ class ANFISClassifier(BaseEstimatorLike, FittedMixin, ClassifierMixinLike):
         self.init = None if init is None else str(init)
         self.overlap = float(overlap)
         self.margin = float(margin)
-        self.inputs_config = dict(inputs_config) if inputs_config is not None else None
+        self.inputs_config: dict[Any, InputConfigValue] | None = (
+            dict(inputs_config) if inputs_config is not None else None
+        )
         self.random_state = random_state
         self.optimizer = optimizer
         self.optimizer_params = dict(optimizer_params) if optimizer_params is not None else None
@@ -223,7 +229,7 @@ class ANFISClassifier(BaseEstimatorLike, FittedMixin, ClassifierMixinLike):
         self.feature_names_in_: list[str] | None = None
         self.n_features_in_: int | None = None
         self.training_history_: TrainingHistory | None = None
-        self.input_specs_: list[dict[str, Any]] | None = None
+        self.input_specs_: list[NormalizedInputSpec] | None = None
         self.classes_: np.ndarray | None = None
         self._class_to_index_: dict[Any, int] | None = None
         self.rules_: list[tuple[int, ...]] | None = None
@@ -234,8 +240,8 @@ class ANFISClassifier(BaseEstimatorLike, FittedMixin, ClassifierMixinLike):
 
     def fit(
         self,
-        X,
-        y,
+        X: npt.ArrayLike,
+        y: npt.ArrayLike,
         *,
         validation_data: tuple[np.ndarray, np.ndarray] | None = None,
         validation_frequency: int = 1,
@@ -280,7 +286,7 @@ class ANFISClassifier(BaseEstimatorLike, FittedMixin, ClassifierMixinLike):
             If the trainer ``fit`` implementation does not return a
             dictionary-style training history.
         """
-        X_arr, feature_names = _ensure_2d_array(X)
+        X_arr, feature_names = ensure_2d_array(X)
         n_samples = X_arr.shape[0]
         y_encoded, classes = self._encode_targets(y, n_samples)
 
@@ -315,7 +321,7 @@ class ANFISClassifier(BaseEstimatorLike, FittedMixin, ClassifierMixinLike):
         self._mark_fitted()
         return self
 
-    def predict(self, X):
+    def predict(self, X: npt.ArrayLike) -> np.ndarray:
         """Predict class labels for the provided samples.
 
         Parameters
@@ -341,7 +347,7 @@ class ANFISClassifier(BaseEstimatorLike, FittedMixin, ClassifierMixinLike):
         if X_arr.ndim == 1:
             X_arr = X_arr.reshape(1, -1)
         else:
-            X_arr, _ = _ensure_2d_array(X)
+            X_arr, _ = ensure_2d_array(X)
 
         if self.n_features_in_ is None:
             raise RuntimeError("Model must be fitted before calling predict.")
@@ -354,7 +360,7 @@ class ANFISClassifier(BaseEstimatorLike, FittedMixin, ClassifierMixinLike):
         encoded = np.asarray(model.predict(X_arr), dtype=int)
         return np.asarray(classes)[encoded]
 
-    def predict_proba(self, X):
+    def predict_proba(self, X: npt.ArrayLike) -> np.ndarray:
         """Predict class probabilities for the provided samples.
 
         Parameters
@@ -380,7 +386,7 @@ class ANFISClassifier(BaseEstimatorLike, FittedMixin, ClassifierMixinLike):
         if X_arr.ndim == 1:
             X_arr = X_arr.reshape(1, -1)
         else:
-            X_arr, _ = _ensure_2d_array(X)
+            X_arr, _ = ensure_2d_array(X)
 
         if self.n_features_in_ is None:
             raise RuntimeError("Model must be fitted before calling predict_proba.")
@@ -391,7 +397,14 @@ class ANFISClassifier(BaseEstimatorLike, FittedMixin, ClassifierMixinLike):
             raise RuntimeError("Model must be fitted before calling predict_proba.")
         return np.asarray(model.predict_proba(X_arr), dtype=float)
 
-    def evaluate(self, X, y, *, return_dict: bool = True, print_results: bool = True):
+    def evaluate(
+        self,
+        X: npt.ArrayLike,
+        y: npt.ArrayLike,
+        *,
+        return_dict: bool = True,
+        print_results: bool = True,
+    ) -> Mapping[str, MetricValue] | None:
         """Evaluate predictive performance on a labelled dataset.
 
         Parameters
@@ -409,7 +422,7 @@ class ANFISClassifier(BaseEstimatorLike, FittedMixin, ClassifierMixinLike):
 
         Returns:
         -------
-        dict[str, float] | None
+        Mapping[str, MetricValue] | None
             Dictionary containing accuracy, balanced accuracy, macro/micro
             precision/recall/F1 scores, and the confusion matrix when
             ``return_dict`` is ``True``; otherwise ``None``.
@@ -423,10 +436,10 @@ class ANFISClassifier(BaseEstimatorLike, FittedMixin, ClassifierMixinLike):
             incompatible with the configured class count.
         """
         check_is_fitted(self, attributes=["model_"])
-        X_arr, _ = _ensure_2d_array(X)
+        X_arr, _ = ensure_2d_array(X)
         encoded_targets, _ = self._encode_targets(y, X_arr.shape[0], allow_partial_classes=True)
         proba = self.predict_proba(X_arr)
-        metrics = ANFISMetrics.classification_metrics(encoded_targets, proba)
+        metrics: dict[str, MetricValue] = ANFISMetrics.classification_metrics(encoded_targets, proba)
         metrics.pop("log_loss", None)
         if print_results:
 
@@ -512,27 +525,27 @@ class ANFISClassifier(BaseEstimatorLike, FittedMixin, ClassifierMixinLike):
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
-    def _resolve_input_specs(self, feature_names: list[str]) -> list[dict[str, Any]]:
-        resolved: list[dict[str, Any]] = []
+    def _resolve_input_specs(self, feature_names: list[str]) -> list[NormalizedInputSpec]:
+        resolved: list[NormalizedInputSpec] = []
         for idx, name in enumerate(feature_names):
             spec = self._fetch_input_config(name, idx)
             resolved.append(self._normalize_input_spec(spec))
         return resolved
 
-    def _fetch_input_config(self, name: str, index: int):
+    def _fetch_input_config(self, name: str, index: int) -> InputConfigValue:
         if self.inputs_config is None:
             return None
-        if name in self.inputs_config:
-            return self.inputs_config[name]
-        if index in self.inputs_config:
-            return self.inputs_config[index]
+        spec = self.inputs_config.get(name)
+        if spec is not None:
+            return spec
+        spec = self.inputs_config.get(index)
+        if spec is not None:
+            return spec
         alt_key = f"x{index + 1}"
-        if alt_key in self.inputs_config:
-            return self.inputs_config[alt_key]
-        return None
+        return self.inputs_config.get(alt_key)
 
-    def _normalize_input_spec(self, spec) -> dict[str, Any]:
-        config: dict[str, Any] = {
+    def _normalize_input_spec(self, spec: InputConfigValue) -> NormalizedInputSpec:
+        config: NormalizedInputSpec = {
             "n_mfs": self.n_mfs,
             "mf_type": self.mf_type,
             "init": self.init,
@@ -549,12 +562,13 @@ class ANFISClassifier(BaseEstimatorLike, FittedMixin, ClassifierMixinLike):
         if isinstance(spec, MembershipFunction):
             config["membership_functions"] = [spec]
             return config
-        if isinstance(spec, dict):
-            if "mfs" in spec and "membership_functions" not in spec:
-                spec = {**spec, "membership_functions": spec["mfs"]}
+        if isinstance(spec, Mapping):
+            mapping = dict(spec)
+            if "mfs" in mapping and "membership_functions" not in mapping:
+                mapping = {**mapping, "membership_functions": mapping["mfs"]}
             for key in ("n_mfs", "mf_type", "init", "overlap", "margin", "range", "membership_functions"):
-                if key in spec and (spec[key] is not None or key == "init"):
-                    config[key] = spec[key]
+                if key in mapping and (mapping[key] is not None or key == "init"):
+                    config[key] = mapping[key]
             return config
         if isinstance(spec, str):
             config["mf_type"] = spec
@@ -712,7 +726,7 @@ class ANFISClassifier(BaseEstimatorLike, FittedMixin, ClassifierMixinLike):
 
     def _summarize_optimizer(self, optimizer: BaseTrainer) -> str:
         name = type(optimizer).__name__
-        fields = []
+        fields: list[str] = []
         for attr in ("learning_rate", "epochs", "batch_size", "shuffle", "verbose", "loss"):
             if hasattr(optimizer, attr):
                 value = getattr(optimizer, attr)
@@ -724,7 +738,7 @@ class ANFISClassifier(BaseEstimatorLike, FittedMixin, ClassifierMixinLike):
 
     @staticmethod
     def _summarize_history(history: Mapping[str, Any]) -> str:
-        segments = []
+        segments: list[str] = []
         for key in ("train", "val", "validation", "metrics"):
             if key in history and isinstance(history[key], Sequence):
                 series = history[key]
@@ -781,7 +795,7 @@ class ANFISClassifier(BaseEstimatorLike, FittedMixin, ClassifierMixinLike):
         if self.optimizer_params is not None:
             params.update(self.optimizer_params)
 
-        overrides = {
+        overrides: dict[str, Any] = {
             "learning_rate": self.learning_rate,
             "epochs": self.epochs,
             "batch_size": self.batch_size,
@@ -826,7 +840,7 @@ class ANFISClassifier(BaseEstimatorLike, FittedMixin, ClassifierMixinLike):
         *,
         allow_partial_classes: bool = False,
     ) -> tuple[np.ndarray, np.ndarray]:
-        y_arr = np.asarray(y)
+        y_arr: np.ndarray = np.asarray(y)
         if y_arr.ndim == 2:
             if y_arr.shape[0] != n_samples:
                 raise ValueError("y must contain the same number of samples as X")
