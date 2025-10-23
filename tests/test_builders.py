@@ -415,6 +415,41 @@ class TestANFISBuilder:
         for mf in mfs:
             assert mf.parameters["a"] > 0
 
+    def test_add_input_from_data_fcm_generator_seed(self, monkeypatch):
+        """Passing a numpy Generator uses an integer seed for FCM initialization."""
+
+        captured: dict[str, int | None] = {"random_state": None}
+
+        class DummyFCM:
+            def __init__(self, *, n_clusters: int, m: float, random_state):
+                captured["random_state"] = random_state
+                self.m = m
+                self.cluster_centers_ = None
+                self.membership_ = None
+
+            def fit(self, x):
+                # Provide simple, well-formed FCM outputs for downstream calculations.
+                centers = np.linspace(float(np.min(x)), float(np.max(x)), num=2, dtype=float)
+                self.cluster_centers_ = centers.reshape(-1, 1)
+                weights = np.linspace(0.2, 0.8, num=x.shape[0], dtype=float)
+                membership = np.empty((x.shape[0], 2), dtype=float)
+                membership[:, 0] = weights
+                membership[:, 1] = 1.0 - weights
+                self.membership_ = membership
+
+        monkeypatch.setattr("anfis_toolbox.builders.FuzzyCMeans", DummyFCM)
+
+        data = np.linspace(-1.0, 1.0, 20, dtype=float)
+        rng = np.random.default_rng(1234)
+        builder = ANFISBuilder()
+        builder.add_input_from_data("x", data, n_mfs=2, mf_type="gaussian", init="fcm", random_state=rng)
+
+        seed = captured["random_state"]
+        assert isinstance(seed, int)
+        assert 0 <= seed < 2**32
+        # The builder should still create Gaussian membership functions.
+        assert all(isinstance(mf, GaussianMF) for mf in builder.input_mfs["x"])
+
     def test_add_input_from_data_fcm_sshape_zshape(self):
         rng = np.random.RandomState(10)
         x = np.concatenate([rng.normal(-3.0, 0.4, 80), rng.normal(3.0, 0.4, 80)])
