@@ -107,6 +107,7 @@ dev = [
     "pytest>=8.4.1",
     "scikit-learn>=1.7.2",
     "mypy>=1.10.0",
+    "bandit>=1.7.9",
 ]
 
 [tool.mypy]
@@ -124,3 +125,7 @@ check_untyped_defs = true
 [[tool.mypy.overrides]]
 module = ["tests.*"]
 ignore_errors = true
+
+[tool.bandit]
+targets = ["anfis_toolbox"]
+exclude_dirs = ["tests", "docs", "site"]

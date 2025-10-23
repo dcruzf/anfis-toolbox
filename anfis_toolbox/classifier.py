@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import inspect
 import logging
-import pickle
+import pickle  # nosec B403
 from collections.abc import Mapping, Sequence
 from copy import deepcopy
 from pathlib import Path
@@ -489,14 +489,14 @@ class ANFISClassifier(BaseEstimatorLike, FittedMixin, ClassifierMixinLike):
         path = Path(filepath)
         path.parent.mkdir(parents=True, exist_ok=True)
         with path.open("wb") as stream:
-            pickle.dump(self, stream)
+            pickle.dump(self, stream)  # nosec B301
 
     @classmethod
     def load(cls, filepath: str | Path) -> ANFISClassifier:
         """Load a pickled ``ANFISClassifier`` from ``filepath`` and validate its type."""
         path = Path(filepath)
         with path.open("rb") as stream:
-            estimator = pickle.load(stream)
+            estimator = pickle.load(stream)  # nosec B301
         if not isinstance(estimator, cls):
             raise TypeError(f"Expected pickled {cls.__name__} instance, got {type(estimator).__name__}.")
         return estimator

@@ -35,6 +35,10 @@ format: .uv
 lint: .uv
 	uvx pre-commit run --all-files
 
+.PHONY: bandit ## Run security checks with Bandit
+bandit: .uv
+	uvx bandit -c pyproject.toml -r $(project_dir)
+
 .PHONY: type-check  ## Static type checks with mypy
 type-check: .uv
 	uvx mypy --config-file pyproject.toml
@@ -60,7 +64,7 @@ cov-report: .uv
 	uvx coverage html -d docs/assets/cov/
 
 .PHONY: all
-all: format lint test-all
+all: format lint type-check bandit test-all
 
 
 .PHONY: build  ## Build wheel and sdist into dist/

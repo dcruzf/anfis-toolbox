@@ -2,7 +2,7 @@
 
 import json
 import logging
-import pickle
+import pickle  # nosec B403
 from copy import deepcopy
 from pathlib import Path
 from typing import Any, TypedDict, cast
@@ -166,7 +166,7 @@ class ANFISModelManager:
 
         # Save model using pickle
         with open(filepath, "wb") as f:
-            pickle.dump(model, f)
+            pickle.dump(model, f)  # nosec B301
 
         # Save configuration if requested
         if include_config:
@@ -189,7 +189,7 @@ class ANFISModelManager:
             Loaded ANFIS model
         """
         with open(filepath, "rb") as f:
-            model = pickle.load(f)
+            model = pickle.load(f)  # nosec B301
 
         return model
 

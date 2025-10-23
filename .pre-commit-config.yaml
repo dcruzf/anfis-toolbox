@@ -17,3 +17,15 @@ repos:
     types: [python]
     language: system
     pass_filenames: false
+
+  - id: bandit
+    name: Bandit Security Scan
+    entry: make bandit
+    language: system
+    pass_filenames: false
+
+  - id: type-check
+    name: Type Check
+    entry: make type-check
+    language: system
+    pass_filenames: false
