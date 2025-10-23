@@ -5,7 +5,7 @@ import logging
 import pickle
 from copy import deepcopy
 from pathlib import Path
-from typing import Any, TypedDict
+from typing import Any, TypedDict, cast
 
 from .builders import ANFISBuilder
 from .model import ANFIS
@@ -89,14 +89,16 @@ class ANFISConfig:
 
         builder = ANFISBuilder()
 
-        for name, params in self.config["inputs"].items():
+        inputs = cast(dict[str, dict[str, Any]], self.config["inputs"])
+
+        for name, params in inputs.items():
             builder.add_input(
                 name=name,
-                range_min=params["range_min"],
-                range_max=params["range_max"],
-                n_mfs=params["n_mfs"],
-                mf_type=params["mf_type"],
-                overlap=params["overlap"],
+                range_min=float(params["range_min"]),
+                range_max=float(params["range_max"]),
+                n_mfs=int(params["n_mfs"]),
+                mf_type=str(params["mf_type"]),
+                overlap=float(params["overlap"]),
             )
 
         return builder.build()
@@ -140,8 +142,9 @@ class ANFISConfig:
 
     def __repr__(self) -> str:
         """String representation of configuration."""
-        n_inputs = len(self.config["inputs"])
-        total_mfs = sum(inp["n_mfs"] for inp in self.config["inputs"].values())
+        inputs = cast(dict[str, dict[str, Any]], self.config["inputs"])
+        n_inputs = len(inputs)
+        total_mfs = sum(int(inp["n_mfs"]) for inp in inputs.values())
 
         return f"ANFISConfig(inputs={n_inputs}, total_mfs={total_mfs}, method={self.config['training']['method']})"
 

@@ -1,6 +1,7 @@
 """Builder classes for easy ANFIS model construction."""
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
+from typing import cast
 
 import numpy as np
 
@@ -23,6 +24,8 @@ from .membership import (
 )
 from .model import ANFIS
 
+MembershipFactory = Callable[[float, float, int, float], list[MembershipFunction]]
+
 
 class ANFISBuilder:
     """Builder class for creating ANFIS models with intuitive API."""
@@ -33,32 +36,33 @@ class ANFISBuilder:
         self.input_ranges: dict[str, tuple[float, float]] = {}
         self._rules: list[tuple[int, ...]] | None = None
         # Centralized dispatch for MF creators (supports aliases)
-        self._dispatch = {
+        dispatch: dict[str, MembershipFactory] = {
             # Canonical
-            "gaussian": self._create_gaussian_mfs,
-            "gaussian2": self._create_gaussian2_mfs,
-            "triangular": self._create_triangular_mfs,
-            "trapezoidal": self._create_trapezoidal_mfs,
-            "bell": self._create_bell_mfs,
-            "sigmoidal": self._create_sigmoidal_mfs,
-            "sshape": self._create_sshape_mfs,
-            "zshape": self._create_zshape_mfs,
-            "pi": self._create_pi_mfs,
-            "linsshape": self._create_linsshape_mfs,
-            "linzshape": self._create_linzshape_mfs,
-            "diffsigmoidal": self._create_diff_sigmoidal_mfs,
-            "prodsigmoidal": self._create_prod_sigmoidal_mfs,
+            "gaussian": cast(MembershipFactory, self._create_gaussian_mfs),
+            "gaussian2": cast(MembershipFactory, self._create_gaussian2_mfs),
+            "triangular": cast(MembershipFactory, self._create_triangular_mfs),
+            "trapezoidal": cast(MembershipFactory, self._create_trapezoidal_mfs),
+            "bell": cast(MembershipFactory, self._create_bell_mfs),
+            "sigmoidal": cast(MembershipFactory, self._create_sigmoidal_mfs),
+            "sshape": cast(MembershipFactory, self._create_sshape_mfs),
+            "zshape": cast(MembershipFactory, self._create_zshape_mfs),
+            "pi": cast(MembershipFactory, self._create_pi_mfs),
+            "linsshape": cast(MembershipFactory, self._create_linsshape_mfs),
+            "linzshape": cast(MembershipFactory, self._create_linzshape_mfs),
+            "diffsigmoidal": cast(MembershipFactory, self._create_diff_sigmoidal_mfs),
+            "prodsigmoidal": cast(MembershipFactory, self._create_prod_sigmoidal_mfs),
             # Aliases
-            "gbell": self._create_bell_mfs,
-            "sigmoid": self._create_sigmoidal_mfs,
-            "s": self._create_sshape_mfs,
-            "z": self._create_zshape_mfs,
-            "pimf": self._create_pi_mfs,
-            "ls": self._create_linsshape_mfs,
-            "lz": self._create_linzshape_mfs,
-            "diffsigmoid": self._create_diff_sigmoidal_mfs,
-            "prodsigmoid": self._create_prod_sigmoidal_mfs,
+            "gbell": cast(MembershipFactory, self._create_bell_mfs),
+            "sigmoid": cast(MembershipFactory, self._create_sigmoidal_mfs),
+            "s": cast(MembershipFactory, self._create_sshape_mfs),
+            "z": cast(MembershipFactory, self._create_zshape_mfs),
+            "pimf": cast(MembershipFactory, self._create_pi_mfs),
+            "ls": cast(MembershipFactory, self._create_linsshape_mfs),
+            "lz": cast(MembershipFactory, self._create_linzshape_mfs),
+            "diffsigmoid": cast(MembershipFactory, self._create_diff_sigmoidal_mfs),
+            "prodsigmoid": cast(MembershipFactory, self._create_prod_sigmoidal_mfs),
         }
+        self._dispatch = dispatch
 
     def add_input(
         self,
