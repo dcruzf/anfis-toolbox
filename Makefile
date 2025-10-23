@@ -91,7 +91,7 @@ docs-build: .uv
 		--with ruff \
 		mkdocs build
 
-.PHONY: docs-gh-deploy  ## deploy gh-pages
+.PHONY: docs-deploy  ## deploy gh-pages
 docs-deploy: .uv cov-report
 	uvx --with mkdocs-material \
 		--with mkdocstrings --with mkdocstrings-python \
