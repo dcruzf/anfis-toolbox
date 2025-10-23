@@ -1,3 +1,4 @@
+import numpy as np
 import pytest
 
 from anfis_toolbox.membership import BellMF, GaussianMF, PiMF, SigmoidalMF, TrapezoidalMF, TriangularMF
@@ -24,3 +25,16 @@ def test_str_repr(mf):
 
     # Contém o nome da classe e "MF"
     assert mf.__class__.__name__ in s
+
+
+@pytest.mark.parametrize(
+    "mf",
+    [
+        GaussianMF(mean=0.0, sigma=1.0),
+        BellMF(a=0.5, b=1.0, c=2.0),
+        SigmoidalMF(a=1.0, c=0.0),
+    ],
+)
+def test_membership_backward_requires_forward(mf):
+    with pytest.raises(RuntimeError, match="forward must be called before backward"):
+        mf.backward(np.ones(1))
