@@ -71,6 +71,10 @@ all: format lint type-check bandit test-all
 build: .hatch
 	uv tool run hatch build
 
+.PHONY: publish  ## Build wheel and sdist into dist/
+publish: .hatch
+	uv tool run hatch publish
+
 .PHONY: docs  ## Serve the documentation at http://localhost:8000
 docs:
 	uvx --with mkdocs-material \
