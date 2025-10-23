@@ -18,10 +18,16 @@ from __future__ import annotations
 
 import logging
 from abc import ABC, abstractmethod
+from typing import TypedDict
 
 import numpy as np
 
-TrainingHistory = dict[str, list[float | None]]
+
+class TrainingHistory(TypedDict, total=False):
+    """History of loss values collected during training."""
+
+    train: list[float]
+    val: list[float | None]
 
 
 class BaseTrainer(ABC):

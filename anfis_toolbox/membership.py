@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from typing import cast
 
 import numpy as np
 
@@ -140,8 +141,11 @@ class GaussianMF(MembershipFunction):
         mean = self.parameters["mean"]
         sigma = self.parameters["sigma"]
 
-        x = self.last_input
-        y = self.last_output
+        if self.last_input is None or self.last_output is None:
+            raise RuntimeError("forward must be called before backward.")
+
+        x = cast(np.ndarray, self.last_input)
+        y = cast(np.ndarray, self.last_output)
 
         z = (x - mean) / sigma
 
@@ -703,8 +707,11 @@ class BellMF(MembershipFunction):
         b = self.parameters["b"]
         c = self.parameters["c"]
 
-        x = self.last_input
-        y = self.last_output  # This is μ(x)
+        if self.last_input is None or self.last_output is None:
+            raise RuntimeError("forward must be called before backward.")
+
+        x = cast(np.ndarray, self.last_input)
+        y = cast(np.ndarray, self.last_output)  # This is μ(x)
 
         # Intermediate calculations
         normalized = (x - c) / a
@@ -873,8 +880,11 @@ class SigmoidalMF(MembershipFunction):
         a = self.parameters["a"]
         c = self.parameters["c"]
 
-        x = self.last_input
-        y = self.last_output  # This is μ(x)
+        if self.last_input is None or self.last_output is None:
+            raise RuntimeError("forward must be called before backward.")
+
+        x = cast(np.ndarray, self.last_input)
+        y = cast(np.ndarray, self.last_output)  # This is μ(x)
 
         # For sigmoid: ∂μ/∂z = μ(1-μ) where z = -a(x-c)
         # This is a fundamental property of the sigmoid function

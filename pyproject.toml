@@ -15,7 +15,7 @@ requires-python = ">=3.10"
 readme = "README.md"
 keywords = ["anfis", "neuro-fuzzy", "fuzzy logic", "machine learning", "explainable ai"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Science/Research",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
@@ -41,11 +41,15 @@ path = 'anfis_toolbox/__init__.py'
 [tool.hatch.envs.default]
 installer = "uv"
 
+[tool.hatch.build]
+include = ["docs/assets/logo.svg", "LICENSE"]
+
 [tool.hatch.build.targets.wheel]
-packages = ["anfis_toolbox"]
+only-include = ["anfis_toolbox", "docs/assets/logo.svg", "LICENSE"]
 
 [tool.hatch.build.targets.sdist]
-include = ["/README.md", "/Makefile", "/anfis_toolbox", "/tests"]
+include = ["/README.md", "/Makefile", "/anfis_toolbox", "/tests", "/docs/assets/logo.svg", "/LICENSE"]
+
 
 [tool.hatch.envs.hatch-test]
 installer = "uv"
@@ -57,7 +61,7 @@ dependencies = [
 ]
 
 [[tool.hatch.envs.hatch-test.matrix]]
-python = ["3.13", "3.12", "3.11", "3.10"]
+python = ["3.14","3.13", "3.12", "3.11", "3.10"]
 
 [tool.hatch.envs.hatch-test.scripts]
 run = "pytest{env:HATCH_TEST_ARGS:} {args}"
@@ -102,4 +106,26 @@ relative_files = true
 dev = [
     "pytest>=8.4.1",
     "scikit-learn>=1.7.2",
+    "mypy>=1.10.0",
+    "bandit>=1.7.9",
 ]
+
+[tool.mypy]
+python_version = "3.10"
+files = ["anfis_toolbox", "tests"]
+ignore_missing_imports = true
+warn_unused_configs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+pretty = true
+show_column_numbers = true
+show_error_context = true
+check_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = ["tests.*"]
+ignore_errors = true
+
+[tool.bandit]
+targets = ["anfis_toolbox"]
+exclude_dirs = ["tests", "docs", "site"]

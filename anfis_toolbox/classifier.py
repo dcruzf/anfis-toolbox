@@ -9,11 +9,11 @@ from __future__ import annotations
 
 import inspect
 import logging
-import pickle
+import pickle  # nosec B403
 from collections.abc import Mapping, Sequence
 from copy import deepcopy
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 
@@ -347,9 +347,12 @@ class ANFISClassifier(BaseEstimatorLike, FittedMixin, ClassifierMixinLike):
             raise RuntimeError("Model must be fitted before calling predict.")
         if X_arr.shape[1] != self.n_features_in_:
             raise ValueError(f"Feature mismatch: expected {self.n_features_in_}, got {X_arr.shape[1]}.")
-
-        encoded = np.asarray(self.model_.predict(X_arr), dtype=int)  # type: ignore[operator]
-        return np.asarray(self.classes_)[encoded]
+        model = self.model_
+        classes = self.classes_
+        if model is None or classes is None:
+            raise RuntimeError("Model must be fitted before calling predict.")
+        encoded = np.asarray(model.predict(X_arr), dtype=int)
+        return np.asarray(classes)[encoded]
 
     def predict_proba(self, X):
         """Predict class probabilities for the provided samples.
@@ -383,8 +386,10 @@ class ANFISClassifier(BaseEstimatorLike, FittedMixin, ClassifierMixinLike):
             raise RuntimeError("Model must be fitted before calling predict_proba.")
         if X_arr.shape[1] != self.n_features_in_:
             raise ValueError(f"Feature mismatch: expected {self.n_features_in_}, got {X_arr.shape[1]}.")
-
-        return np.asarray(self.model_.predict_proba(X_arr), dtype=float)  # type: ignore[operator]
+        model = self.model_
+        if model is None:
+            raise RuntimeError("Model must be fitted before calling predict_proba.")
+        return np.asarray(model.predict_proba(X_arr), dtype=float)
 
     def evaluate(self, X, y, *, return_dict: bool = True, print_results: bool = True):
         """Evaluate predictive performance on a labelled dataset.
@@ -484,14 +489,14 @@ class ANFISClassifier(BaseEstimatorLike, FittedMixin, ClassifierMixinLike):
         path = Path(filepath)
         path.parent.mkdir(parents=True, exist_ok=True)
         with path.open("wb") as stream:
-            pickle.dump(self, stream)
+            pickle.dump(self, stream)  # nosec B301
 
     @classmethod
     def load(cls, filepath: str | Path) -> ANFISClassifier:
         """Load a pickled ``ANFISClassifier`` from ``filepath`` and validate its type."""
         path = Path(filepath)
         with path.open("rb") as stream:
-            estimator = pickle.load(stream)
+            estimator = pickle.load(stream)  # nosec B301
         if not isinstance(estimator, cls):
             raise TypeError(f"Expected pickled {cls.__name__} instance, got {type(estimator).__name__}.")
         return estimator
@@ -561,20 +566,30 @@ class ANFISClassifier(BaseEstimatorLike, FittedMixin, ClassifierMixinLike):
 
     def _build_model(self, X: np.ndarray, feature_names: list[str]) -> LowLevelANFISClassifier:
         builder = ANFISBuilder()
+        if self.input_specs_ is None:
+            raise RuntimeError("Input specifications must be resolved before building the model.")
+        if self.n_classes is None:
+            raise RuntimeError("Number of classes must be known before constructing the low-level model.")
         for idx, name in enumerate(feature_names):
             column = X[:, idx]
             spec = self.input_specs_[idx]
             mf_list = spec.get("membership_functions")
             range_override = spec.get("range")
             if mf_list is not None:
-                builder.input_mfs[name] = list(mf_list)
+                builder.input_mfs[name] = [cast(MembershipFunction, mf) for mf in mf_list]
                 if range_override is not None:
-                    builder.input_ranges[name] = tuple(float(v) for v in range_override)
+                    range_tuple = tuple(float(v) for v in range_override)
+                    if len(range_tuple) != 2:
+                        raise ValueError("range overrides must contain exactly two values")
+                    builder.input_ranges[name] = (range_tuple[0], range_tuple[1])
                 else:
                     builder.input_ranges[name] = (float(np.min(column)), float(np.max(column)))
                 continue
             if range_override is not None:
-                rmin, rmax = range_override
+                range_tuple = tuple(float(v) for v in range_override)
+                if len(range_tuple) != 2:
+                    raise ValueError("range overrides must contain exactly two values")
+                rmin, rmax = range_tuple
                 builder.add_input(
                     name,
                     float(rmin),

@@ -1,5 +1,6 @@
 from collections.abc import Sequence
 from itertools import product
+from typing import Any
 
 import numpy as np
 
@@ -33,7 +34,7 @@ class MembershipLayer:
         self.input_names = list(input_mfs.keys())
         self.n_inputs = len(input_mfs)
         self.mf_per_input = [len(mfs) for mfs in input_mfs.values()]
-        self.last = {}
+        self.last: dict[str, Any] = {}
 
     @property
     def membership_functions(self) -> dict:
@@ -180,7 +181,7 @@ class RuleLayer:
 
         self.n_rules = len(self.rules)
 
-        self.last = {}
+        self.last: dict[str, Any] = {}
 
     def forward(self, membership_outputs: dict) -> np.ndarray:
         """Performs forward pass to compute rule strengths.
@@ -275,7 +276,7 @@ class NormalizationLayer:
 
     def __init__(self):
         """Initializes the normalization layer."""
-        self.last = {}
+        self.last: dict[str, Any] = {}
 
     def forward(self, w: np.ndarray) -> np.ndarray:
         """Performs forward pass to normalize rule weights.
@@ -355,7 +356,7 @@ class ConsequentLayer:
         self.n_inputs = n_inputs
         self.parameters = np.random.randn(n_rules, n_inputs + 1)
         self.gradients = np.zeros_like(self.parameters)
-        self.last = {}
+        self.last: dict[str, Any] = {}
 
     def forward(self, x: np.ndarray, norm_w: np.ndarray) -> np.ndarray:
         """Performs forward pass to compute the final ANFIS output.
@@ -470,7 +471,7 @@ class ClassificationConsequentLayer:
             rng = np.random.default_rng(random_state)
             self.parameters = rng.normal(size=(n_rules, n_classes, n_inputs + 1))
         self.gradients = np.zeros_like(self.parameters)
-        self.last = {}
+        self.last: dict[str, Any] = {}
 
     def forward(self, x: np.ndarray, norm_w: np.ndarray) -> np.ndarray:
         """Computes the forward pass for the classification consequent layer."""

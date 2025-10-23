@@ -10,11 +10,11 @@ from __future__ import annotations
 
 import inspect
 import logging
-import pickle
+import pickle  # nosec B403
 from collections.abc import Mapping, Sequence
 from copy import deepcopy
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 
@@ -283,7 +283,8 @@ class ANFISRegressor(BaseEstimatorLike, FittedMixin, RegressorMixinLike):
             self.verbose = bool(verbose)
 
         _ensure_training_logging(self.verbose)
-        self.model_ = self._build_model(X_arr, feature_names)
+        model = self._build_model(X_arr, feature_names)
+        self.model_ = model
         trainer = self._instantiate_trainer()
         self.optimizer_ = trainer
         trainer_kwargs: dict[str, Any] = dict(fit_params)
@@ -292,11 +293,11 @@ class ANFISRegressor(BaseEstimatorLike, FittedMixin, RegressorMixinLike):
         if validation_data is not None or validation_frequency != 1:
             trainer_kwargs.setdefault("validation_frequency", validation_frequency)
 
-        history = trainer.fit(self.model_, X_arr, y_vec, **trainer_kwargs)
+        history = trainer.fit(model, X_arr, y_vec, **trainer_kwargs)
         if not isinstance(history, dict):
             raise TypeError("Trainer.fit must return a TrainingHistory dictionary")
         self.training_history_ = history
-        self.rules_ = self.model_.rules
+        self.rules_ = model.rules
 
         self._mark_fitted()
         return self
@@ -326,16 +327,18 @@ class ANFISRegressor(BaseEstimatorLike, FittedMixin, RegressorMixinLike):
         X_arr = np.asarray(X, dtype=float)
         if X_arr.ndim == 1:
             X_arr = X_arr.reshape(1, -1)
-            feature_names = self.feature_names_in_ or [f"x{i + 1}" for i in range(X_arr.shape[1])]
         else:
-            X_arr, feature_names = _ensure_2d_array(X)
+            X_arr, _ = _ensure_2d_array(X)
 
         if self.n_features_in_ is None:
             raise RuntimeError("Model must be fitted before calling predict.")
         if X_arr.shape[1] != self.n_features_in_:
             raise ValueError(f"Feature mismatch: expected {self.n_features_in_}, got {X_arr.shape[1]}.")
 
-        preds = self.model_.predict(X_arr)  # type: ignore[operator]
+        model = self.model_
+        if model is None:
+            raise RuntimeError("Model must be fitted before calling predict.")
+        preds = model.predict(X_arr)
         return np.asarray(preds, dtype=float).reshape(-1)
 
     def evaluate(self, X, y, *, return_dict: bool = True, print_results: bool = True):
@@ -435,14 +438,14 @@ class ANFISRegressor(BaseEstimatorLike, FittedMixin, RegressorMixinLike):
         path = Path(filepath)
         path.parent.mkdir(parents=True, exist_ok=True)
         with path.open("wb") as stream:
-            pickle.dump(self, stream)
+            pickle.dump(self, stream)  # nosec B301
 
     @classmethod
     def load(cls, filepath: str | Path) -> ANFISRegressor:
         """Load a pickled estimator from ``filepath`` and validate its type."""
         path = Path(filepath)
         with path.open("rb") as stream:
-            estimator = pickle.load(stream)
+            estimator = pickle.load(stream)  # nosec B301
         if not isinstance(estimator, cls):
             raise TypeError(f"Expected pickled {cls.__name__} instance, got {type(estimator).__name__}.")
         return estimator
@@ -630,20 +633,28 @@ class ANFISRegressor(BaseEstimatorLike, FittedMixin, RegressorMixinLike):
 
     def _build_model(self, X: np.ndarray, feature_names: list[str]) -> LowLevelANFIS:
         builder = ANFISBuilder()
+        if self.input_specs_ is None:
+            raise RuntimeError("Input specifications must be resolved before building the model.")
         for idx, name in enumerate(feature_names):
             column = X[:, idx]
             spec = self.input_specs_[idx]
             mf_list = spec.get("membership_functions")
             range_override = spec.get("range")
             if mf_list is not None:
-                builder.input_mfs[name] = list(mf_list)
+                builder.input_mfs[name] = [cast(MembershipFunction, mf) for mf in mf_list]
                 if range_override is not None:
-                    builder.input_ranges[name] = tuple(float(v) for v in range_override)
+                    range_tuple = tuple(float(v) for v in range_override)
+                    if len(range_tuple) != 2:
+                        raise ValueError("range overrides must contain exactly two values")
+                    builder.input_ranges[name] = (range_tuple[0], range_tuple[1])
                 else:
                     builder.input_ranges[name] = (float(np.min(column)), float(np.max(column)))
                 continue
             if range_override is not None:
-                rmin, rmax = range_override
+                range_tuple = tuple(float(v) for v in range_override)
+                if len(range_tuple) != 2:
+                    raise ValueError("range overrides must contain exactly two values")
+                rmin, rmax = range_tuple
                 builder.add_input(
                     name,
                     float(rmin),

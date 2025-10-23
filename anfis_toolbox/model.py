@@ -6,6 +6,7 @@ model that combines all the individual layers into a unified architecture.
 
 import logging
 from collections.abc import Sequence
+from typing import Any, Protocol, TypeAlias, runtime_checkable
 
 import numpy as np
 
@@ -13,7 +14,18 @@ from .layers import ClassificationConsequentLayer, ConsequentLayer, MembershipLa
 from .losses import LossFunction, resolve_loss
 from .membership import MembershipFunction
 from .metrics import softmax
-from .optim.base import TrainingHistory
+from .optim.base import BaseTrainer, TrainingHistory
+
+
+@runtime_checkable
+class TrainerProtocol(Protocol):
+    """Minimal interface required for external trainers."""
+
+    def fit(self, model: Any, X: np.ndarray, y: np.ndarray, **kwargs: Any) -> TrainingHistory:
+        """Train ``model`` using ``X`` and ``y`` and return a history mapping."""
+
+
+TrainerLike: TypeAlias = BaseTrainer | TrainerProtocol
 
 # Setup logger for ANFIS
 logger = logging.getLogger(__name__)
@@ -283,7 +295,7 @@ class TSKANFIS:
         epochs: int = 100,
         learning_rate: float = 0.01,
         verbose: bool = False,
-        trainer: None | object = None,
+        trainer: TrainerLike | None = None,
         *,
         validation_data: tuple[np.ndarray, np.ndarray] | None = None,
         validation_frequency: int = 1,
@@ -302,7 +314,7 @@ class TSKANFIS:
             epochs (int, optional): Number of epochs. Defaults to ``100``.
             learning_rate (float, optional): Learning rate. Defaults to ``0.01``.
             verbose (bool, optional): Whether to log progress. Defaults to ``False``.
-            trainer (object | None, optional): External trainer implementing
+            trainer (TrainerLike | None, optional): External trainer implementing
                 ``fit(model, X, y)``. Defaults to ``None``.
             validation_data (tuple[np.ndarray, np.ndarray] | None, optional): Optional
                 validation inputs and targets evaluated according to ``validation_frequency``.
@@ -315,16 +327,24 @@ class TSKANFIS:
             # Lazy import to avoid unnecessary dependency at module import time
             from .optim import HybridTrainer
 
-            trainer = HybridTrainer(learning_rate=learning_rate, epochs=epochs, verbose=verbose)
+            trainer_instance: TrainerLike = HybridTrainer(
+                learning_rate=learning_rate,
+                epochs=epochs,
+                verbose=verbose,
+            )
+        else:
+            trainer_instance = trainer
+            if not isinstance(trainer_instance, (BaseTrainer, TrainerProtocol)):
+                raise TypeError("trainer must implement fit(model, X, y)")
 
         # Delegate training to the provided or default trainer
-        fit_kwargs: dict[str, object] = {}
+        fit_kwargs: dict[str, Any] = {}
         if validation_data is not None:
             fit_kwargs["validation_data"] = validation_data
         if validation_frequency != 1 or validation_data is not None:
             fit_kwargs["validation_frequency"] = validation_frequency
 
-        history = trainer.fit(self, x, y, **fit_kwargs)
+        history = trainer_instance.fit(self, x, y, **fit_kwargs)
         if not isinstance(history, dict):
             raise TypeError("Trainer.fit must return a TrainingHistory dictionary")
         return history
@@ -574,7 +594,7 @@ class TSKANFISClassifier:
         epochs: int = 100,
         learning_rate: float = 0.01,
         verbose: bool = False,
-        trainer: None | object = None,
+        trainer: TrainerLike | None = None,
         loss: LossFunction | str | None = None,
         *,
         validation_data: tuple[np.ndarray, np.ndarray] | None = None,
@@ -588,7 +608,8 @@ class TSKANFISClassifier:
             epochs (int, optional): Number of training epochs. Defaults to 100.
             learning_rate (float, optional): Learning rate for the optimizer. Defaults to 0.01.
             verbose (bool, optional): If True, prints training progress. Defaults to False.
-            trainer (object or None, optional): Custom trainer object. If None, uses AdamTrainer. Defaults to None.
+            trainer (TrainerLike | None, optional): Custom trainer instance. If None,
+                uses AdamTrainer. Defaults to None.
             loss (LossFunction, str, or None, optional): Loss function to use.
                 If None, defaults to cross-entropy for classification.
             validation_data (tuple[np.ndarray, np.ndarray] | None, optional): Optional validation dataset.
@@ -597,7 +618,6 @@ class TSKANFISClassifier:
         Returns:
             TrainingHistory: Dictionary containing ``"train"`` and optionally ``"val"`` loss curves.
         """
-        # Resolve loss: default to cross-entropy for classification when unspecified
         if loss is None:
             resolved_loss = resolve_loss("cross_entropy")
         else:
@@ -606,22 +626,26 @@ class TSKANFISClassifier:
         if trainer is None:
             from .optim import AdamTrainer
 
-            trainer = AdamTrainer(
+            trainer_instance: TrainerLike = AdamTrainer(
                 learning_rate=learning_rate,
                 epochs=epochs,
                 verbose=verbose,
                 loss=resolved_loss,
             )
-        elif hasattr(trainer, "loss"):
-            trainer.loss = resolved_loss
+        else:
+            trainer_instance = trainer
+            if not isinstance(trainer_instance, (BaseTrainer, TrainerProtocol)):
+                raise TypeError("trainer must implement fit(model, X, y)")
+            if hasattr(trainer_instance, "loss"):
+                trainer_instance.loss = resolved_loss
 
-        fit_kwargs: dict[str, object] = {}
+        fit_kwargs: dict[str, Any] = {}
         if validation_data is not None:
             fit_kwargs["validation_data"] = validation_data
         if validation_frequency != 1 or validation_data is not None:
             fit_kwargs["validation_frequency"] = validation_frequency
 
-        history = trainer.fit(self, X, y, **fit_kwargs)
+        history = trainer_instance.fit(self, X, y, **fit_kwargs)
         if not isinstance(history, dict):
             raise TypeError("Trainer.fit must return a TrainingHistory dictionary")
         return history

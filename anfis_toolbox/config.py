@@ -2,13 +2,19 @@
 
 import json
 import logging
-import pickle
+import pickle  # nosec B403
 from copy import deepcopy
 from pathlib import Path
-from typing import Any
+from typing import Any, TypedDict, cast
 
 from .builders import ANFISBuilder
 from .model import ANFIS
+
+
+class _PresetConfig(TypedDict):
+    description: str
+    inputs: dict[str, dict[str, Any]]
+    training: dict[str, Any]
 
 
 class ANFISConfig:
@@ -83,14 +89,16 @@ class ANFISConfig:
 
         builder = ANFISBuilder()
 
-        for name, params in self.config["inputs"].items():
+        inputs = cast(dict[str, dict[str, Any]], self.config["inputs"])
+
+        for name, params in inputs.items():
             builder.add_input(
                 name=name,
-                range_min=params["range_min"],
-                range_max=params["range_max"],
-                n_mfs=params["n_mfs"],
-                mf_type=params["mf_type"],
-                overlap=params["overlap"],
+                range_min=float(params["range_min"]),
+                range_max=float(params["range_max"]),
+                n_mfs=int(params["n_mfs"]),
+                mf_type=str(params["mf_type"]),
+                overlap=float(params["overlap"]),
             )
 
         return builder.build()
@@ -134,8 +142,9 @@ class ANFISConfig:
 
     def __repr__(self) -> str:
         """String representation of configuration."""
-        n_inputs = len(self.config["inputs"])
-        total_mfs = sum(inp["n_mfs"] for inp in self.config["inputs"].values())
+        inputs = cast(dict[str, dict[str, Any]], self.config["inputs"])
+        n_inputs = len(inputs)
+        total_mfs = sum(int(inp["n_mfs"]) for inp in inputs.values())
 
         return f"ANFISConfig(inputs={n_inputs}, total_mfs={total_mfs}, method={self.config['training']['method']})"
 
@@ -157,7 +166,7 @@ class ANFISModelManager:
 
         # Save model using pickle
         with open(filepath, "wb") as f:
-            pickle.dump(model, f)
+            pickle.dump(model, f)  # nosec B301
 
         # Save configuration if requested
         if include_config:
@@ -180,7 +189,7 @@ class ANFISModelManager:
             Loaded ANFIS model
         """
         with open(filepath, "rb") as f:
-            model = pickle.load(f)
+            model = pickle.load(f)  # nosec B301
 
         return model
 
@@ -198,18 +207,19 @@ class ANFISModelManager:
         membership_functions = model.membership_functions
         input_names = model.input_names
 
-        config = {
+        membership_config: dict[str, list[dict[str, Any]]] = {}
+        config: dict[str, Any] = {
             "model_info": {
                 "n_inputs": int(model.n_inputs),
                 "n_rules": int(model.n_rules),
                 "input_names": input_names,
             },
-            "membership_functions": {},
+            "membership_functions": membership_config,
         }
 
         # Extract MF information
         for input_name, mfs in membership_functions.items():
-            config["membership_functions"][input_name] = []
+            membership_config[input_name] = []
 
             for _i, mf in enumerate(mfs):
                 # Get parameters and convert numpy types to native Python types for JSON serialization
@@ -219,13 +229,13 @@ class ANFISModelManager:
                         parameters[key] = value.item()
 
                 mf_info = {"type": mf.__class__.__name__, "parameters": parameters}
-                config["membership_functions"][input_name].append(mf_info)
+                membership_config[input_name].append(mf_info)
 
         return config
 
 
 # Predefined configurations for common use cases
-PREDEFINED_CONFIGS = {
+PREDEFINED_CONFIGS: dict[str, _PresetConfig] = {
     "1d_function": {
         "description": "Single input function approximation",
         "inputs": {"x": {"range_min": -5, "range_max": 5, "n_mfs": 5, "mf_type": "gaussian", "overlap": 0.5}},
