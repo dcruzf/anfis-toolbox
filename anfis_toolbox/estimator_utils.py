@@ -32,6 +32,8 @@ __all__ = [
     "RuleInspectorMixin",
     "NotFittedError",
     "check_is_fitted",
+    "ensure_2d_array",
+    "ensure_vector",
     "infer_feature_names",
     "format_estimator_repr",
 ]
@@ -321,7 +323,7 @@ class ValidationResult:
     feature_names: list[str]
 
 
-def _ensure_2d_array(X: Any) -> tuple[np.ndarray, list[str]]:
+def ensure_2d_array(X: Any) -> tuple[np.ndarray, list[str]]:
     """Validate and convert input data to a 2D float64 numpy array."""
     if hasattr(X, "to_numpy"):
         values = X.to_numpy(dtype=float)
@@ -339,7 +341,8 @@ def _ensure_2d_array(X: Any) -> tuple[np.ndarray, list[str]]:
     return values, feature_names
 
 
-def _ensure_vector(y: Any, *, allow_2d_column: bool = True) -> np.ndarray:
+def ensure_vector(y: Any, *, allow_2d_column: bool = True) -> np.ndarray:
+    """Validate and convert target data to a 1D numpy array."""
     array = np.asarray(y)
     if array.ndim == 2:
         if array.shape[1] == 1 and allow_2d_column:
@@ -349,6 +352,11 @@ def _ensure_vector(y: Any, *, allow_2d_column: bool = True) -> np.ndarray:
     elif array.ndim != 1:
         raise ValueError("Target array must be 1-dimensional.")
     return array
+
+
+# Backwards compatibility aliases (deprecated; prefer the public variants above)
+_ensure_2d_array = ensure_2d_array
+_ensure_vector = ensure_vector
 
 
 def infer_feature_names(X: Any) -> list[str]:
