@@ -3,16 +3,16 @@ import pytest
 
 from anfis_toolbox.losses import LossFunction
 from anfis_toolbox.membership import GaussianMF
-from anfis_toolbox.model import ANFIS, TSKANFISClassifier
+from anfis_toolbox.model import TSKANFIS, TSKANFISClassifier
 from anfis_toolbox.optim import AdamTrainer, HybridTrainer, RMSPropTrainer, SGDTrainer
 from anfis_toolbox.optim.base import BaseTrainer
 
 
-def _make_regression_model(n_inputs: int = 2) -> ANFIS:
+def _make_regression_model(n_inputs: int = 2) -> TSKANFIS:
     input_mfs = {}
     for i in range(n_inputs):
         input_mfs[f"x{i + 1}"] = [GaussianMF(mean=-1.0, sigma=1.0), GaussianMF(mean=1.0, sigma=1.0)]
-    return ANFIS(input_mfs)
+    return TSKANFIS(input_mfs)
 
 
 def _make_classifier(n_inputs: int = 1, n_classes: int = 2) -> TSKANFISClassifier:
