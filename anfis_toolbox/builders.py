@@ -22,7 +22,7 @@ from .membership import (
     TriangularMF,
     ZShapedMF,
 )
-from .model import ANFIS
+from .model import TSKANFIS
 
 MembershipFactory = Callable[[float, float, int, float], list[MembershipFunction]]
 
@@ -698,9 +698,9 @@ class ANFISBuilder:
             mfs.append(PiMF(a, b, c_right, d))
         return mfs
 
-    def build(self) -> ANFIS:
+    def build(self) -> TSKANFIS:
         """Build the ANFIS model with configured parameters."""
         if not self.input_mfs:
             raise ValueError("No input variables defined. Use add_input() to define inputs.")
 
-        return ANFIS(self.input_mfs, rules=self._rules)
+        return TSKANFIS(self.input_mfs, rules=self._rules)

@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any, TypedDict, cast
 
 from .builders import ANFISBuilder
-from .model import ANFIS
+from .model import TSKANFIS
 
 
 class _PresetConfig(TypedDict):
@@ -78,7 +78,7 @@ class ANFISConfig:
         )
         return self
 
-    def build_model(self) -> ANFIS:
+    def build_model(self) -> TSKANFIS:
         """Build ANFIS model from configuration.
 
         Returns:
@@ -153,7 +153,7 @@ class ANFISModelManager:
     """Model management utilities for saving/loading trained ANFIS models."""
 
     @staticmethod
-    def save_model(model: ANFIS, filepath: str | Path, include_config: bool = True):
+    def save_model(model: TSKANFIS, filepath: str | Path, include_config: bool = True):
         """Save trained ANFIS model to file.
 
         Parameters:
@@ -179,7 +179,7 @@ class ANFISModelManager:
                 logging.warning("Could not save model configuration: %s", e)
 
     @staticmethod
-    def load_model(filepath: str | Path) -> ANFIS:
+    def load_model(filepath: str | Path) -> TSKANFIS:
         """Load trained ANFIS model from file.
 
         Parameters:
@@ -194,7 +194,7 @@ class ANFISModelManager:
         return model
 
     @staticmethod
-    def _extract_config(model: ANFIS) -> dict[str, Any]:
+    def _extract_config(model: TSKANFIS) -> dict[str, Any]:
         """Extract configuration from trained model.
 
         Parameters:

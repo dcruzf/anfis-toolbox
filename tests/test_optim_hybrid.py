@@ -1,15 +1,15 @@
 import numpy as np
 
 from anfis_toolbox.membership import GaussianMF
-from anfis_toolbox.model import ANFIS
+from anfis_toolbox.model import TSKANFIS
 from anfis_toolbox.optim import HybridAdamTrainer, HybridTrainer
 
 
-def _make_regression_model(n_inputs: int = 1) -> ANFIS:
+def _make_regression_model(n_inputs: int = 1) -> TSKANFIS:
     input_mfs = {}
     for i in range(n_inputs):
         input_mfs[f"x{i + 1}"] = [GaussianMF(mean=-1.0, sigma=1.0), GaussianMF(mean=1.0, sigma=1.0)]
-    return ANFIS(input_mfs)
+    return TSKANFIS(input_mfs)
 
 
 def test_hybrid_prepare_data_reshapes_targets():
