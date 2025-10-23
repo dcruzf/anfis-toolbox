@@ -1,7 +1,7 @@
 <div align="center">
   <a href="https://dcruzf.github.io/anfis-toolbox">
   <h1>ANFIS Toolbox</h1>
-  <img src="docs/assets/logo.svg" alt="ANFIS Toolbox">
+  <img src="https://dcruzf.github.io/anfis-toolbox/assets/logo.svg" alt="ANFIS Toolbox">
   </a>
 </div>
 
