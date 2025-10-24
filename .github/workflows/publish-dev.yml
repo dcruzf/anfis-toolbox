@@ -1,18 +1,21 @@
-name: Publish Package
+name: Publish DEV Package
 
 on:
-  release:
-    types: [published]
+  push:
+    branches:
+      - dev
 
 permissions:
   contents: read
 
 jobs:
   publish:
+    if: contains(github.event.head_commit.message, '[publish]')
     name: Publish
     runs-on: ubuntu-latest
-    environment: main
+    environment: dev
     env:
+      HATCH_INDEX_REPO: ${{ vars.HATCH_INDEX_REPO }}
       HATCH_INDEX_USER: ${{ vars.HATCH_INDEX_USER }}
       HATCH_INDEX_AUTH: ${{ secrets.HATCH_INDEX_AUTH }}
     defaults:
