@@ -1,15 +1,23 @@
 name: Publish Package
 
 on:
-    push:
-      tags:
-        - 'v*'
+  push:
+    branches:
+      - dev
+
+permissions:
+  contents: read
 
 jobs:
   publish:
+    if: contains(github.event.head_commit.message, '[publish]')
     name: Publish
     runs-on: ubuntu-latest
     environment: pypi
+    env:
+      HATCH_INDEX_REPO: ${{ vars.HATCH_INDEX_REPO }}
+      HATCH_INDEX_USER: ${{ vars.HATCH_INDEX_USER }}
+      HATCH_INDEX_AUTH: ${{ secrets.HATCH_INDEX_AUTH }}
     defaults:
       run:
         shell: bash
@@ -17,9 +25,14 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v5
+      with:
+        fetch-depth: 0
 
     - name: Install uv
       uses: astral-sh/setup-uv@v6
+
+    - name: Test
+      run: make test
 
     - name: Build project
       run: make build
