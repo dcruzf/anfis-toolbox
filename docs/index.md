@@ -242,7 +242,7 @@ flowchart LR
 ## Community & Support
 
 - 🐛 **[Report Issues](https://github.com/dcruzf/anfis-toolbox/issues)** - Bug reports and feature requests
-- 💬 **[Discussions](https://github.com/dcruzf/anfis-toolbox/discussions)** - Questions and community chat
+- 💬 **[Discussions](https://github.com/dcruzf/anfis-toolbox/issues)** - Questions and feature requests
 - 📘 **[Developer Guide](guide.md)** - Architecture notes and contribution workflow
 - ⭐ **[Star on GitHub](https://github.com/dcruzf/anfis-toolbox)** - Show your support!
 
