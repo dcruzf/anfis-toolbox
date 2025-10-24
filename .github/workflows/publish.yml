@@ -13,7 +13,6 @@ jobs:
     runs-on: ubuntu-latest
     environment: main
     env:
-      HATCH_INDEX_REPO: ${{ vars.HATCH_INDEX_REPO }}
       HATCH_INDEX_USER: ${{ vars.HATCH_INDEX_USER }}
       HATCH_INDEX_AUTH: ${{ secrets.HATCH_INDEX_AUTH }}
     defaults:
