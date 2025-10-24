@@ -106,6 +106,16 @@ docs-deploy: .uv cov-report
 		mkdocs gh-deploy -b docs
 
 
+.PHONY: pre-publish  ## Prepare commit and tag for publishing
+pre-publish:
+	@echo "Publishing dev version"
+	hatch version dev
+	git add anfis_toolbox/__init__.py
+	git commit -m "chore: bump dev version to v$(hatch version)\n [publish]"
+	git tag "v$(hatch version)" -m "dev version $(hatch version)"
+	git push
+	git push origin "v$(hatch version)"
+
 .PHONY: clean  ## Clear local caches and build artifacts
 clean:
 	rm -rf `find . -name __pycache__`
