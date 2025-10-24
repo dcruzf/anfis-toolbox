@@ -15,7 +15,7 @@ requires-python = ">=3.10"
 readme = "README.md"
 keywords = ["anfis", "neuro-fuzzy", "fuzzy logic", "machine learning", "explainable ai"]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Science/Research",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
@@ -35,6 +35,7 @@ Homepage = "https://github.com/dcruzf/anfis-toolbox"
 Documentation = "https://dcruzf.github.io/anfis-toolbox/"
 Source = "https://github.com/dcruzf/anfis-toolbox"
 Tracker = "https://github.com/dcruzf/anfis-toolbox/issues"
+DOI = "https://doi.org/10.5281/zenodo.17437179"
 
 [tool.hatch.version]
 path = 'anfis_toolbox/__init__.py'
