@@ -8,7 +8,7 @@ API reference, consult the generated MkDocs site or the module docstrings.
 ## Project Goals
 
 - Provide a batteries-included Adaptive Neuro-Fuzzy Inference System (ANFIS)
-	implementation in pure Python.
+	implementation in Python.
 - Offer high-level estimators (`ANFISRegressor`, `ANFISClassifier`) that feel
 	familiar to scikit-learn users while remaining dependency-free.
 - Support a wide range of membership function families and training regimes.
