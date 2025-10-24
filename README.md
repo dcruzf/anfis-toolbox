@@ -6,15 +6,20 @@
 </div>
 
 [![CI](https://github.com/dcruzf/anfis-toolbox/actions/workflows/ci.yml/badge.svg)](https://github.com/dcruzf/anfis-toolbox/actions/workflows/ci.yml)
-[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![Docs](https://img.shields.io/badge/docs-online-brightgreen.svg)](https://dcruzf.github.io/anfis-toolbox/)
 [![coverage](https://img.shields.io/badge/dynamic/regex?url=https%3A%2F%2Fdcruzf.github.io%2Fanfis-toolbox%2Fassets%2Fcov%2Findex.html&search=%3Cspan%20class%3D%22pc_cov%22%3E(%3F%3Ccov%3E%5Cd%2B%25)%3C%2Fspan%3E&replace=%24%3Ccov%3E&style=flat&logo=pytest&logoColor=white&label=coverage&color=brightgreen)](https://dcruzf.github.io/anfis-toolbox/assets/cov/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-indigo.svg)](LICENSE)
+![PyPI - Python Version](https://img.shields.io/pypi/pyversions/anfis-toolbox)
+![PyPI - Format](https://img.shields.io/pypi/format/anfis-toolbox)
 [![security: bandit](https://img.shields.io/badge/security-bandit-black.svg)](https://github.com/PyCQA/bandit)
 ![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![Hatch](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/pypa/hatch/master/docs/assets/badge/v0.json)](https://github.com/pypa/hatch)
 [![Mypy](https://img.shields.io/badge/types-Mypy-blue.svg)](https://github.com/python/mypy)
+
+![PyPI - Version](https://img.shields.io/pypi/v/anfis-toolbox)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.17437179.svg)](https://doi.org/10.5281/zenodo.17437179)
+
 
 A batteries-included Adaptive Neuro-Fuzzy Inference System (ANFIS) toolkit built in pure Python. It exposes high-level regression and classification APIs, modern trainers, and a rich catalog of membership functions.
 
