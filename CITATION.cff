@@ -27,6 +27,7 @@ authors:
     family-names: França
     email: vitor.sousa.franca@gmail.com
     affiliation: UFPB
+    orcid: 'https://orcid.org/0009-0001-3825-2401'
 identifiers:
   - type: doi
     value: 10.5281/zenodo.17437178
