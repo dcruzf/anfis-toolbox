@@ -18,10 +18,10 @@
 [![Mypy](https://img.shields.io/badge/types-Mypy-blue.svg)](https://github.com/python/mypy)
 
 ![PyPI - Version](https://img.shields.io/pypi/v/anfis-toolbox)
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.17437179.svg)](https://doi.org/10.5281/zenodo.17437179)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.17437178.svg)](https://doi.org/10.5281/zenodo.17437178)
 
 
-A batteries-included Adaptive Neuro-Fuzzy Inference System (ANFIS) toolkit built in pure Python. It exposes high-level regression and classification APIs, modern trainers, and a rich catalog of membership functions.
+ANFIS Toolbox is a comprehensive Python library for creating, training, and deploying Adaptive Neuro-Fuzzy Inference Systems (ANFIS). It provides an intuitive API that makes fuzzy neural networks accessible to both beginners and experts.
 
 ## 🚀 Overview
 
