@@ -1,29 +1,51 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
 cff-version: 1.2.0
-message: "If you use this software in a publication, please cite it using the metadata below."
-title: "ANFIS Toolbox"
-version: "0.1.0rc0"
+title: ANFIS Toolbox
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
 authors:
-  - given-names: "Daniel"
-    family-names: "França"
-    email: "daniel@ci.ufpb.br"
-    orcid: "https://orcid.org/0009-0007-3932-9849"
-    affiliation: "UFPB"
-  - given-names: "Tiago"
-    family-names: "França"
-    email: "tcruzfranca@ufrrj.br"
-    orcid: "https://orcid.org/0000-0002-1682-4587"
-    affiliation: "UFRRJ"
-  - given-names: "Danniel"
-    family-names: "Macedo"
-    email: "dannielmacedo@ci.ufpb.br"
-    orcid: "https://orcid.org/0009-0004-8491-4113"
-    affiliation: "UFPB"
-  - given-names: "Vitor"
-    family-names: "França"
-    email: "vitor.sousa.franca@gmail.com"
-    affiliation: "UFPB"
-doi: "10.5281/zenodo.17437179"
-url: "https://github.com/dcruzf/anfis-toolbox"
-repository-code: "https://github.com/dcruzf/anfis-toolbox"
-license: "MIT"
-abstract: "A Python toolbox for building, training, and evaluating Adaptive Neuro-Fuzzy Inference System (ANFIS) models."
+  - given-names: Daniel
+    family-names: França
+    email: daniel@ci.ufpb.br
+    affiliation: UFPB
+    orcid: 'https://orcid.org/0009-0007-3932-9849'
+  - given-names: França
+    family-names: Tiago
+    orcid: 'https://orcid.org/0000-0002-1682-4587'
+    email: tcruzfranca@ufrrj.br
+    affiliation: UFRRJ
+  - given-names: Danniel
+    family-names: Macedo
+    email: dannielmacedo@ci.ufpb.br
+    orcid: 'https://orcid.org/0009-0004-8491-4113'
+    affiliation: UFPB
+  - given-names: Vitor
+    family-names: França
+    email: vitor.sousa.franca@gmail.com
+    affiliation: UFPB
+identifiers:
+  - type: doi
+    value: 10.5281/zenodo.17437178
+    description: >-
+      This DOI represents all versions, and will always
+      resolve to the latest one.
+repository-code: 'https://github.com/dcruzf/anfis-toolbox'
+url: 'https://dcruzf.github.io/anfis-toolbox'
+repository-artifact: 'https://pypi.org/project/anfis-toolbox'
+abstract: >-
+  ANFIS Toolbox is a comprehensive Python library for
+  creating, training, and deploying Adaptive Neuro-Fuzzy
+  Inference Systems (ANFIS). It provides an intuitive API
+  that makes fuzzy neural networks accessible to both
+  beginners and experts.
+keywords:
+  - ANFIS
+  - Fuzzy
+  - Machine Learning
+  - Regression
+  - Classification
+license: MIT
