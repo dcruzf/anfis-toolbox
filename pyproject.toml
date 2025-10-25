@@ -5,7 +5,7 @@ build-backend = 'hatchling.build'
 [project]
 name = "anfis-toolbox"
 dynamic = ["version"]
-description = "A Python toolbox for building, training, and evaluating Adaptive Neuro-Fuzzy Inference System (ANFIS) models."
+description = "ANFIS Toolbox is a comprehensive Python library for creating, training, and deploying Adaptive Neuro-Fuzzy Inference Systems (ANFIS). It provides an intuitive API that makes fuzzy neural networks accessible to both beginners and experts."
 authors = [{ name = "Daniel França", email = "daniel@ci.ufpb.br" }]
 license = { text = "MIT" }
 dependencies = [
@@ -35,7 +35,7 @@ Homepage = "https://github.com/dcruzf/anfis-toolbox"
 Documentation = "https://dcruzf.github.io/anfis-toolbox/"
 Source = "https://github.com/dcruzf/anfis-toolbox"
 Tracker = "https://github.com/dcruzf/anfis-toolbox/issues"
-DOI = "https://doi.org/10.5281/zenodo.17437179"
+DOI = "https://doi.org/10.5281/zenodo.17437178"
 
 [tool.hatch.version]
 path = 'anfis_toolbox/__init__.py'
@@ -130,4 +130,3 @@ ignore_errors = true
 
 [tool.bandit]
 targets = ["anfis_toolbox"]
-exclude_dirs = ["tests", "docs", "site"]
