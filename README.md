@@ -116,11 +116,11 @@ This project is tested on Python 3.10 | 3.11 | 3.12 | 3.13 | 3.14 across Linux, 
 
 ## 🤝 Contributing
 
-Issues and pull requests are welcome! Please open a discussion if you’d like to propose larger changes. See the [docs/guide](docs/guide.md) section for architecture notes and examples.
+Issues and pull requests are welcome! Please open a discussion if you’d like to propose larger changes. See the [docs/guide](https://dcruzf.github.io/anfis-toolbox/guide/) section for architecture notes and examples.
 
 ## 📄 License
 
-Distributed under the MIT License. See [LICENSE](LICENSE) for details.
+Distributed under the MIT License. See [LICENSE](https://github.com/dcruzf/anfis-toolbox/blob/main/LICENSE) for details.
 
 ## 📚 References
 
