@@ -1,13 +1,12 @@
-[<div align="center"><h1>ANFIS Toolbox</h1><img src="https://dcruzf.github.io/anfis-toolbox/assets/logo.svg" alt="ANFIS Toolbox"></div>](https://dcruzf.github.io/anfis-toolbox)
+<div align="center"><h1>ANFIS Toolbox</h1><img src="https://dcruzf.github.io/anfis-toolbox/assets/logo.svg" alt="ANFIS Toolbox"></div>
 
 [![anfis-toolbox](https://img.shields.io/endpoint?url=https%3A%2F%2Fdcruzf.github.io%2Fanfis-toolbox%2Fassets%2Fbadge%2Fv0.json&style=flat-square)](https://dcruzf.github.io/anfis-toolbox/)
 [![version](https://img.shields.io/pypi/v/anfis-toolbox?style=flat-square&label=&color=303fa1)
 ](https://pypi.org/project/anfis-toolbox/)
-[![PyPI - Format](https://img.shields.io/pypi/format/anfis-toolbox?style=flat-square&label=%20&color=303fa1)](https://www.piwheels.org/project/anfis-toolbox/)
 [![doi](https://img.shields.io/badge/-10.5281%2Fzenodo.17437178-blue?style=flat-square&logo=DOI&color=303fa1)](https://doi.org/10.5281/zenodo.17437178)
+[![License: MIT](https://img.shields.io/badge/_-MIT-303fa1.svg?style=flat-square)](https://github.com/dcruzf/anfis-toolbox/blob/main/LICENSE)
 [![docs](https://img.shields.io/badge/_-docs-303fa1.svg?style=flat-square)](https://dcruzf.github.io/anfis-toolbox/)
 [![Python versions](https://img.shields.io/pypi/pyversions/anfis-toolbox?style=flat-square&logo=python&logoColor=white&label=%20&labelColor=303fa1&color=303fa1)](https://pypi.org/project/anfis-toolbox/)
-[![License: MIT](https://img.shields.io/badge/_-MIT-303fa1.svg?style=flat-square)](https://github.com/dcruzf/anfis-toolbox/blob/main/LICENSE)
 [![CI](https://img.shields.io/badge/dynamic/regex?url=https%3A%2F%2Fgithub.com%2Fdcruzf%2Fanfis-toolbox%2Factions%2Fworkflows%2Fci.yml%2Fbadge.svg&search=%3Ctspan%20.*%3E(%3F%3Cstatus%3Epassing%7Cfailing)%3C%2Ftspan%3E&replace=ci%20%24%3Cstatus%3E&style=flat-square&logo=github&label=%20&color=303fa1)](https://github.com/dcruzf/anfis-toolbox/actions/workflows/ci.yml)
 [![Coverage](https://img.shields.io/badge/dynamic/regex?url=https%3A%2F%2Fdcruzf.github.io%2Fanfis-toolbox%2Fassets%2Fcov%2Findex.html&search=%3Cspan%20class%3D%22pc_cov%22%3E(%3F%3Ccov%3E%5Cd%2B%25)%3C%2Fspan%3E&replace=%24%3Ccov%3E&style=flat-square&logo=pytest&logoColor=white&label=cov&color=303fa1&labelColor=303fa1)](https://dcruzf.github.io/anfis-toolbox/assets/cov/)
 
