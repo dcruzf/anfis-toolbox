@@ -7,19 +7,17 @@
 
 [![CI](https://github.com/dcruzf/anfis-toolbox/actions/workflows/ci.yml/badge.svg)](https://github.com/dcruzf/anfis-toolbox/actions/workflows/ci.yml)
 [![Docs](https://img.shields.io/badge/docs-online-brightgreen.svg)](https://dcruzf.github.io/anfis-toolbox/)
-[![coverage](https://img.shields.io/badge/dynamic/regex?url=https%3A%2F%2Fdcruzf.github.io%2Fanfis-toolbox%2Fassets%2Fcov%2Findex.html&search=%3Cspan%20class%3D%22pc_cov%22%3E(%3F%3Ccov%3E%5Cd%2B%25)%3C%2Fspan%3E&replace=%24%3Ccov%3E&style=flat&logo=pytest&logoColor=white&label=coverage&color=brightgreen)](https://dcruzf.github.io/anfis-toolbox/assets/cov/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-indigo.svg)](LICENSE)
-![PyPI - Python Version](https://img.shields.io/pypi/pyversions/anfis-toolbox)
-![PyPI - Format](https://img.shields.io/pypi/format/anfis-toolbox)
+[![Coverage](https://img.shields.io/badge/dynamic/regex?url=https%3A%2F%2Fdcruzf.github.io%2Fanfis-toolbox%2Fassets%2Fcov%2Findex.html&search=%3Cspan%20class%3D%22pc_cov%22%3E(%3F%3Ccov%3E%5Cd%2B%25)%3C%2Fspan%3E&replace=%24%3Ccov%3E&style=flat&logo=pytest&logoColor=white&label=coverage&color=brightgreen)](https://dcruzf.github.io/anfis-toolbox/assets/cov/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-indigo.svg)](https://github.com/dcruzf/anfis-toolbox/blob/main/LICENSE)
+[![PyPI - Version](https://img.shields.io/pypi/v/anfis-toolbox)](https://pypi.org/project/anfis-toolbox/)
+[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/anfis-toolbox)](https://pypi.org/project/anfis-toolbox/)
+[![PyPI - Format](https://img.shields.io/pypi/format/anfis-toolbox)](https://www.piwheels.org/project/anfis-toolbox/)
 [![security: bandit](https://img.shields.io/badge/security-bandit-black.svg)](https://github.com/PyCQA/bandit)
-![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)
+[![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://github.com/astral-sh/uv)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![Hatch](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/pypa/hatch/master/docs/assets/badge/v0.json)](https://github.com/pypa/hatch)
 [![Mypy](https://img.shields.io/badge/types-Mypy-blue.svg)](https://github.com/python/mypy)
-
-![PyPI - Version](https://img.shields.io/pypi/v/anfis-toolbox)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.17437178.svg)](https://doi.org/10.5281/zenodo.17437178)
-
 
 ANFIS Toolbox is a comprehensive Python library for creating, training, and deploying Adaptive Neuro-Fuzzy Inference Systems (ANFIS). It provides an intuitive API that makes fuzzy neural networks accessible to both beginners and experts.
 
@@ -118,11 +116,11 @@ This project is tested on Python 3.10 | 3.11 | 3.12 | 3.13 | 3.14 across Linux, 
 
 ## 🤝 Contributing
 
-Issues and pull requests are welcome! Please open a discussion if you’d like to propose larger changes. See the [docs/guide](docs/guide.md) section for architecture notes and examples.
+Issues and pull requests are welcome! Please open a discussion if you’d like to propose larger changes. See the [docs/guide](https://dcruzf.github.io/anfis-toolbox/guide/) section for architecture notes and examples.
 
 ## 📄 License
 
-Distributed under the MIT License. See [LICENSE](LICENSE) for details.
+Distributed under the MIT License. See [LICENSE](https://github.com/dcruzf/anfis-toolbox/blob/main/LICENSE) for details.
 
 ## 📚 References
 
