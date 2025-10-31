@@ -29,7 +29,7 @@ anfis_toolbox/
 └── estimator_utils.py    # Mixins, validation helpers, sklearn-like machinery
 
 docs/                     # MkDocs pages and reference material
-examples/                 # Notebook-based walkthroughs
+docs/examples/            # Notebook-based walkthroughs
 tests/                    # Pytest suite with full coverage
 ```
 
