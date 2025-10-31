@@ -175,6 +175,7 @@ markdown_extensions:
   - pymdownx.tilde
 
 extra:
+  generator: false
   social:
     - icon: fontawesome/brands/github
       link: https://github.com/dcruzf/anfis-toolbox
