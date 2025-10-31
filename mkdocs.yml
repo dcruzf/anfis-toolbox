@@ -1,8 +1,11 @@
 # Configuration for MkDocs documentation
 site_name: ANFIS Toolbox
 site_description: A comprehensive Python implementation of Adaptive Neuro-Fuzzy Inference Systems (ANFIS)
+
 site_url: https://dcruzf.github.io/anfis-toolbox/
+
 repo_url: https://github.com/dcruzf/anfis-toolbox
+edit_uri: edit/main/docs/
 repo_name: dcruzf/anfis-toolbox
 
 theme:
@@ -28,8 +31,6 @@ theme:
         name: Switch to system preference
   features:
     - announce.dismiss
-    - content.action.edit
-    - content.action.view
     - content.code.annotate
     - content.code.copy
     - content.tooltips
@@ -43,10 +44,7 @@ theme:
     - search.share
     - search.suggest
     - toc.follow
-  icon:
-    repo: fontawesome/brands/github
-    edit: material/pencil
-    view: material/eye
+
   logo: assets/icon.svg
   favicon: assets/icon.svg
 

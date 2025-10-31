@@ -236,7 +236,7 @@ flowchart LR
 
 - 💡 **[Examples](examples/regression_basic.ipynb)** - Real-world use cases
 - 🔧 **[API Reference](api/index.md)** - Complete function documentation
-- 🤖 **[ANFIS Models](models/anfis.md)** - Regression and classification models
+- 🤖 **[ANFIS Models](estimators/anfis-regressor.md)** - Regression and classification models
 - 📐 **[Membership Functions](membership_functions/gaussian.ipynb)** - All MF classes
 
 ## Community & Support

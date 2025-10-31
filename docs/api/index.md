@@ -57,7 +57,7 @@ that powers the high-level estimators.
 
 ## Where to Start
 
-- New to ANFIS Toolbox? Begin with the [models overview](../models/anfis.md).
+- New to ANFIS Toolbox? Begin with the [models overview](../estimators/anfis-regressor.md).
 - Looking for ready-to-run notebooks? Browse the Examples section in the
 	navigation.
 - Exploring code while reading docs? The “View source” actions in each page jump
