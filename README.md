@@ -1,8 +1,7 @@
 <div align="center"><h1>ANFIS Toolbox</h1><img src="https://dcruzf.github.io/anfis-toolbox/assets/logo.svg" alt="ANFIS Toolbox"></div>
 
 [![anfis-toolbox](https://img.shields.io/endpoint?url=https%3A%2F%2Fdcruzf.github.io%2Fanfis-toolbox%2Fassets%2Fbadge%2Fv0.json&style=flat-square)](https://dcruzf.github.io/anfis-toolbox/)
-[![version](https://img.shields.io/pypi/v/anfis-toolbox?style=flat-square&label=&color=303fa1)
-](https://pypi.org/project/anfis-toolbox/)
+[![version](https://img.shields.io/pypi/v/anfis-toolbox?style=flat-square&label=&color=303fa1)](https://pypi.org/project/anfis-toolbox/)
 [![doi](https://img.shields.io/badge/-10.5281%2Fzenodo.17437178-blue?style=flat-square&logo=DOI&color=303fa1)](https://doi.org/10.5281/zenodo.17437178)
 [![License: MIT](https://img.shields.io/badge/_-MIT-303fa1.svg?style=flat-square)](https://github.com/dcruzf/anfis-toolbox/blob/main/LICENSE)
 [![docs](https://img.shields.io/badge/_-docs-303fa1.svg?style=flat-square)](https://dcruzf.github.io/anfis-toolbox/)
