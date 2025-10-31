@@ -15,18 +15,19 @@ authors:
     orcid: 'https://orcid.org/0009-0007-3932-9849'
   - given-names: França
     family-names: Tiago
-    orcid: 'https://orcid.org/0000-0002-1682-4587'
     email: tcruzfranca@ufrrj.br
     affiliation: UFRRJ
+    orcid: 'https://orcid.org/0000-0002-1682-4587'
   - given-names: Danniel
     family-names: Macedo
     email: dannielmacedo@ci.ufpb.br
-    orcid: 'https://orcid.org/0009-0004-8491-4113'
     affiliation: UFPB
+    orcid: 'https://orcid.org/0009-0004-8491-4113'
   - given-names: Vitor
     family-names: França
     email: vitor.sousa.franca@gmail.com
     affiliation: UFPB
+    orcid: 'https://orcid.org/0009-0001-3825-2401'
 identifiers:
   - type: doi
     value: 10.5281/zenodo.17437178
