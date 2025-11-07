@@ -6,7 +6,7 @@ for training and evaluating ANFIS models.
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Literal, Protocol, TypeAlias, cast, runtime_checkable
 
@@ -85,7 +85,7 @@ def _safe_divide(num: float, den: float) -> float:
     return num / den if den > 0.0 else 0.0
 
 
-def mean_squared_error(y_true, y_pred) -> float:
+def mean_squared_error(y_true: np.ndarray, y_pred: np.ndarray) -> float:
     """Compute the mean squared error (MSE).
 
     Parameters:
@@ -105,7 +105,7 @@ def mean_squared_error(y_true, y_pred) -> float:
     return float(np.mean(diff * diff))
 
 
-def mean_absolute_error(y_true, y_pred) -> float:
+def mean_absolute_error(y_true: np.ndarray, y_pred: np.ndarray) -> float:
     """Compute the mean absolute error (MAE).
 
     Parameters:
@@ -124,7 +124,7 @@ def mean_absolute_error(y_true, y_pred) -> float:
     return float(np.mean(np.abs(yt - yp)))
 
 
-def root_mean_squared_error(y_true, y_pred) -> float:
+def root_mean_squared_error(y_true: np.ndarray, y_pred: np.ndarray) -> float:
     """Compute the root mean squared error (RMSE).
 
     This is simply the square root of mean_squared_error.
@@ -134,8 +134,8 @@ def root_mean_squared_error(y_true, y_pred) -> float:
 
 
 def mean_absolute_percentage_error(
-    y_true,
-    y_pred,
+    y_true: np.ndarray,
+    y_pred: np.ndarray,
     epsilon: float = 1e-12,
     *,
     ignore_zero_targets: bool = False,
@@ -165,7 +165,9 @@ def mean_absolute_percentage_error(
     return float(np.mean(np.abs((yt - yp) / denom)) * 100.0)
 
 
-def symmetric_mean_absolute_percentage_error(y_true, y_pred, epsilon: float = 1e-12) -> float:
+def symmetric_mean_absolute_percentage_error(
+    y_true: np.ndarray, y_pred: np.ndarray, epsilon: float = _EPSILON
+) -> float:
     """Compute the symmetric mean absolute percentage error (SMAPE) in percent.
 
     SMAPE = mean( 200 * |y_true - y_pred| / (|y_true| + |y_pred|) )
@@ -184,7 +186,7 @@ def symmetric_mean_absolute_percentage_error(y_true, y_pred, epsilon: float = 1e
     return float(np.mean(200.0 * np.abs(yt - yp) / denom))
 
 
-def r2_score(y_true, y_pred, epsilon: float = 1e-12) -> float:
+def r2_score(y_true: np.ndarray, y_pred: np.ndarray, epsilon: float = _EPSILON) -> float:
     """Compute the coefficient of determination R^2.
 
     R^2 = 1 - SS_res / SS_tot, where SS_res = sum((y - y_hat)^2)
@@ -202,7 +204,7 @@ def r2_score(y_true, y_pred, epsilon: float = 1e-12) -> float:
     return 1.0 - ss_res / ss_tot
 
 
-def pearson_correlation(y_true, y_pred, epsilon: float = 1e-12) -> float:
+def pearson_correlation(y_true: np.ndarray, y_pred: np.ndarray, epsilon: float = _EPSILON) -> float:
     """Compute the Pearson correlation coefficient r.
 
     Returns 0.0 when the standard deviation of either input is ~0 (undefined r).
@@ -217,7 +219,7 @@ def pearson_correlation(y_true, y_pred, epsilon: float = 1e-12) -> float:
     return num / den
 
 
-def mean_squared_logarithmic_error(y_true, y_pred) -> float:
+def mean_squared_logarithmic_error(y_true: np.ndarray, y_pred: np.ndarray) -> float:
     """Compute the mean squared logarithmic error (MSLE).
 
     Requires non-negative inputs. Uses log1p for numerical stability:
@@ -230,7 +232,7 @@ def mean_squared_logarithmic_error(y_true, y_pred) -> float:
     return float(np.mean(diff * diff))
 
 
-def explained_variance_score(y_true, y_pred, epsilon: float = _EPSILON) -> float:
+def explained_variance_score(y_true: np.ndarray, y_pred: np.ndarray, epsilon: float = _EPSILON) -> float:
     """Compute the explained variance score for regression predictions."""
     yt, yp = _coerce_regression_targets(y_true, y_pred)
     diff = yt - yp
@@ -241,19 +243,19 @@ def explained_variance_score(y_true, y_pred, epsilon: float = _EPSILON) -> float
     return 1.0 - var_residual / var_true
 
 
-def median_absolute_error(y_true, y_pred) -> float:
+def median_absolute_error(y_true: np.ndarray, y_pred: np.ndarray) -> float:
     """Return the median absolute deviation between predictions and targets."""
     yt, yp = _coerce_regression_targets(y_true, y_pred)
     return float(np.median(np.abs(yt - yp)))
 
 
-def mean_bias_error(y_true, y_pred) -> float:
+def mean_bias_error(y_true: np.ndarray, y_pred: np.ndarray) -> float:
     """Compute the mean signed error, positive when predictions overshoot."""
     yt, yp = _coerce_regression_targets(y_true, y_pred)
     return float(np.mean(yp - yt))
 
 
-def balanced_accuracy_score(y_true: ArrayLike, y_pred: ArrayLike) -> float:
+def balanced_accuracy_score(y_true: np.ndarray, y_pred: np.ndarray) -> float:
     """Return the macro-average recall, balancing performance across classes."""
     labels_true = _coerce_labels(y_true)
     labels_pred = _coerce_labels(y_pred)
@@ -328,7 +330,7 @@ def softmax(logits: np.ndarray, axis: int = -1) -> np.ndarray:
     return ez / den
 
 
-def cross_entropy(y_true, logits: np.ndarray, epsilon: float = 1e-12) -> float:
+def cross_entropy(y_true: np.ndarray, logits: np.ndarray, epsilon: float = _EPSILON) -> float:
     """Compute mean cross-entropy from integer labels or one-hot vs logits.
 
     Parameters:
@@ -366,7 +368,7 @@ def cross_entropy(y_true, logits: np.ndarray, epsilon: float = 1e-12) -> float:
     return float(np.mean(nll))
 
 
-def log_loss(y_true, y_prob: np.ndarray, epsilon: float = 1e-12) -> float:
+def log_loss(y_true: np.ndarray, y_prob: np.ndarray, epsilon: float = _EPSILON) -> float:
     """Compute mean log loss from integer/one-hot labels and probabilities."""
     P = _to_float_array(y_prob)
     P = np.clip(P, float(epsilon), 1.0)
@@ -382,7 +384,7 @@ def log_loss(y_true, y_prob: np.ndarray, epsilon: float = 1e-12) -> float:
     return float(np.mean(nll))
 
 
-def accuracy(y_true, y_pred) -> float:
+def accuracy(y_true: np.ndarray, y_pred: np.ndarray) -> float:
     """Compute accuracy from integer/one-hot labels and logits/probabilities.
 
     y_pred can be class indices (n,), logits (n,k), or probabilities (n,k).
@@ -599,7 +601,7 @@ class MetricReport:
         except KeyError as exc:
             raise AttributeError(item) from exc
 
-    def keys(self):  # pragma: no cover - simple passthrough
+    def keys(self) -> Iterable[str]:  # pragma: no cover - simple passthrough
         """Expose the metric key iterator from the backing mapping."""
         return self._values.keys()
 
