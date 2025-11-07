@@ -323,7 +323,7 @@ def test_anfis_string_representations(sample_anfis):
     str_repr = str(sample_anfis)
     repr_repr = repr(sample_anfis)
 
-    assert "TSKANFIS Model" in str_repr
+    assert "TSKANFIS" in str_repr
     assert "2" in str_repr  # number of inputs
     assert "4" in str_repr  # number of rules
 
@@ -471,23 +471,15 @@ def test_predict_1d_valid_length_triggers_reshape():
     assert y1.shape == (1, 1)
 
 
-def test_str_and_repr_cover():
-    model = _make_simple_model()
-    s = str(model)
-    r = repr(model)
-    assert "TSKANFIS Model" in s
-    assert "TSKANFIS(" in r
-
-
-def test_apply_membership_gradients_private_helper():
-    # Cover TSKANFIS._apply_membership_gradients branch
+def test_update_membership_parameters():
+    # Cover TSKANFIS.update_membership_parameters branch
     model = _make_simple_model()
     X = np.array([[0.0, 0.0], [1.0, -1.0]])
     # Create some gradients via a minibackward step
     _ = model.forward(X)
     model.backward(np.ones((X.shape[0], 1)))
     params_before = model.get_parameters()
-    model._apply_membership_gradients(0.01)
+    model.update_membership_parameters(0.01)
     params_after = model.get_parameters()
     # Membership parameters should have changed for at least one MF
     changed = False

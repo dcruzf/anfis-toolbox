@@ -71,7 +71,7 @@ class HybridTrainer(BaseTrainer):
         dL_dw = model.normalization_layer.backward(dL_dnorm_w)
         gradients = model.rule_layer.backward(dL_dw)
         model.membership_layer.backward(gradients)
-        model._apply_membership_gradients(self.learning_rate)
+        model.update_membership_parameters(self.learning_rate)
         return float(loss), state
 
     def compute_loss(self, model, X: np.ndarray, y: np.ndarray) -> float:
