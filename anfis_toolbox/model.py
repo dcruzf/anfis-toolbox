@@ -242,18 +242,36 @@ class TSKANFIS(_TSKANFISSharedMixin):
         Returns:
             np.ndarray: Output array of shape ``(batch_size, 1)``.
         """
-        # Layer 1: Fuzzification - convert crisp inputs to membership degrees
+        normalized_weights = self.forward_antecedents(x)
+        output = self.forward_consequents(x, normalized_weights)
+        return output
+
+    def forward_antecedents(self, x: np.ndarray) -> np.ndarray:
+        """Run a forward pass through the antecedent layers only.
+
+        Args:
+            x (np.ndarray): Input array of shape ``(batch_size, n_inputs)``.
+
+        Returns:
+            np.ndarray: Normalized rule weights of shape ``(batch_size, n_rules)``.
+        """
         membership_outputs = self.membership_layer.forward(x)
-
-        # Layer 2: Rule strength computation using T-norm (product)
         rule_strengths = self.rule_layer.forward(membership_outputs)
-
-        # Layer 3: Normalization - ensure rule weights sum to 1.0
         normalized_weights = self.normalization_layer.forward(rule_strengths)
+        return normalized_weights
 
-        # Layer 4: Consequent computation and final output
+    def forward_consequents(self, x: np.ndarray, normalized_weights: np.ndarray) -> np.ndarray:
+        """Run a forward pass through the consequent layer only.
+
+        Args:
+            x (np.ndarray): Input array of shape ``(batch_size, n_inputs)``.
+            normalized_weights (np.ndarray): Normalized rule weights of shape
+                ``(batch_size, n_rules)``.
+
+        Returns:
+            np.ndarray: Output array of shape ``(batch_size, 1)``.
+        """
         output = self.consequent_layer.forward(x, normalized_weights)
-
         return output
 
     def backward(self, dL_dy: np.ndarray) -> None:
