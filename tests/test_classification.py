@@ -465,7 +465,7 @@ def test_classifier_apply_membership_gradients_private_helper():
     dL_dlogits = np.ones_like(logits) / logits.shape[0]
     clf.backward(dL_dlogits)
     params_before = clf.get_parameters()
-    clf._apply_membership_gradients(learning_rate=0.01)
+    clf._apply_membership_gradients(0.01)
     params_after = clf.get_parameters()
     # Expect some membership parameter to change
     changed = False

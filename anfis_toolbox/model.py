@@ -276,31 +276,28 @@ class TSKANFIS:
 
         return gradients
 
-    def update_parameters(self, learning_rate: float) -> None:
+    def update_parameters(self, effective_learning_rate: float) -> None:
         """Apply a single gradient descent update step.
 
         Args:
-            learning_rate (float): Step size used to update parameters.
+            effective_learning_rate (float): Step size used to update parameters.
         """
         # Update consequent layer parameters
-        self.consequent_layer.parameters -= learning_rate * self.consequent_layer.gradients
+        self.consequent_layer.parameters -= effective_learning_rate * self.consequent_layer.gradients
 
         # Update membership function parameters
-        for name in self.input_names:
-            for mf in self.input_mfs[name]:
-                for param_name, gradient in mf.gradients.items():
-                    mf.parameters[param_name] -= learning_rate * gradient
+        self._apply_membership_gradients(effective_learning_rate)
 
-    def _apply_membership_gradients(self, learning_rate: float) -> None:
+    def _apply_membership_gradients(self, effective_learning_rate: float) -> None:
         """Apply gradient descent to membership function parameters only.
 
         Args:
-            learning_rate (float): Step size for MF parameters.
+            effective_learning_rate (float): Step size for MF parameters.
         """
         for name in self.input_names:
             for mf in self.input_mfs[name]:
                 for param_name, gradient in mf.gradients.items():
-                    mf.parameters[param_name] -= learning_rate * gradient
+                    mf.parameters[param_name] -= effective_learning_rate * gradient
 
     def fit(
         self,
@@ -571,35 +568,28 @@ class TSKANFISClassifier:
                 grads["membership"][name].append(mf.gradients.copy())
         return grads
 
-    def update_parameters(self, learning_rate: float) -> None:
-        """Updates the parameters of the model using gradient descent.
-
-        This method applies the specified learning rate to update both the consequent layer parameters
-        and the parameters of each membership function (MF) in the input layers. The update is performed
-        by subtracting the product of the learning rate and the corresponding gradients from each parameter.
+    def update_parameters(self, effective_learning_rate: float) -> None:
+        """Apply a single gradient descent update step.
 
         Args:
-            learning_rate (float): The step size used for updating the parameters during gradient descent.
-
-        Returns:
-            None
+            effective_learning_rate (float): Step size used to update parameters.
         """
-        self.consequent_layer.parameters -= learning_rate * self.consequent_layer.gradients
-        for name in self.input_names:
-            for mf in self.input_mfs[name]:
-                for param_name, gradient in mf.gradients.items():
-                    mf.parameters[param_name] -= learning_rate * gradient
+        # Update consequent layer parameters
+        self.consequent_layer.parameters -= effective_learning_rate * self.consequent_layer.gradients
 
-    def _apply_membership_gradients(self, learning_rate: float) -> None:
+        # Update membership function parameters
+        self._apply_membership_gradients(effective_learning_rate)
+
+    def _apply_membership_gradients(self, effective_learning_rate: float) -> None:
         """Apply gradient descent to membership function parameters only.
 
         Args:
-            learning_rate (float): Step size for MF parameters.
+            effective_learning_rate (float): Step size for MF parameters.
         """
         for name in self.input_names:
             for mf in self.input_mfs[name]:
                 for param_name, gradient in mf.gradients.items():
-                    mf.parameters[param_name] -= learning_rate * gradient
+                    mf.parameters[param_name] -= effective_learning_rate * gradient
 
     def fit(
         self,

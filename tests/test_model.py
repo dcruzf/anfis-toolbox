@@ -487,7 +487,7 @@ def test_apply_membership_gradients_private_helper():
     _ = model.forward(X)
     model.backward(np.ones((X.shape[0], 1)))
     params_before = model.get_parameters()
-    model._apply_membership_gradients(learning_rate=0.01)
+    model._apply_membership_gradients(0.01)
     params_after = model.get_parameters()
     # Membership parameters should have changed for at least one MF
     changed = False
