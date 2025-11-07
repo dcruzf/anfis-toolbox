@@ -130,7 +130,7 @@ class TSKANFIS:
 
         return output
 
-    def backward(self, dL_dy: np.ndarray):
+    def backward(self, dL_dy: np.ndarray) -> None:
         """Run a backward pass through all layers.
 
         Propagates gradients from the output back through all layers and stores
@@ -185,7 +185,7 @@ class TSKANFIS:
 
         return self.forward(x_arr)
 
-    def reset_gradients(self):
+    def reset_gradients(self) -> None:
         """Reset all accumulated gradients to zero.
 
         Call this before each optimization step to avoid mixing gradients
@@ -219,7 +219,7 @@ class TSKANFIS:
 
         return parameters
 
-    def set_parameters(self, parameters: dict[str, np.ndarray]):
+    def set_parameters(self, parameters: dict[str, np.ndarray]) -> None:
         """Load parameters into the model.
 
         Args:
@@ -262,7 +262,7 @@ class TSKANFIS:
 
         return gradients
 
-    def update_parameters(self, learning_rate: float):
+    def update_parameters(self, learning_rate: float) -> None:
         """Apply a single gradient descent update step.
 
         Args:
@@ -444,7 +444,7 @@ class TSKANFISClassifier:
         logits = self.consequent_layer.forward(x, normalized_weights)  # (b, k)
         return logits
 
-    def backward(self, dL_dlogits: np.ndarray):
+    def backward(self, dL_dlogits: np.ndarray) -> None:
         """Backpropagate gradients through all layers.
 
         Args:
@@ -495,7 +495,7 @@ class TSKANFISClassifier:
         proba = self.predict_proba(x)
         return np.argmax(proba, axis=1)
 
-    def reset_gradients(self):
+    def reset_gradients(self) -> None:
         """Reset gradients accumulated in the model layers to zero."""
         self.membership_layer.reset()
         self.consequent_layer.reset()
@@ -522,7 +522,7 @@ class TSKANFISClassifier:
         """Return the fuzzy rule definitions used by the classifier."""
         return list(self.rule_layer.rules)
 
-    def set_parameters(self, parameters: dict[str, np.ndarray]):
+    def set_parameters(self, parameters: dict[str, np.ndarray]) -> None:
         """Load parameters into the classifier.
 
         Args:
@@ -557,7 +557,7 @@ class TSKANFISClassifier:
                 grads["membership"][name].append(mf.gradients.copy())
         return grads
 
-    def update_parameters(self, learning_rate: float):
+    def update_parameters(self, learning_rate: float) -> None:
         """Updates the parameters of the model using gradient descent.
 
         This method applies the specified learning rate to update both the consequent layer parameters
