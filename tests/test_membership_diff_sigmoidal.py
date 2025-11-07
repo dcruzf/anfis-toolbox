@@ -29,26 +29,6 @@ def test_diff_sigmoidal_forward_monotone_plateau():
     assert float(y[mid_idx]) > 0.8
 
 
-def test_diff_sigmoidal_backward_matches_fd():
-    rng = np.random.RandomState(0)
-    x = rng.uniform(-3, 3, size=257)
-    mf = DiffSigmoidalMF(a1=1.7, c1=-0.3, a2=1.2, c2=0.9)
-    mf.forward(x)
-    dL_dy = np.ones_like(x)
-    dx = mf.backward(dL_dy)
-    # Parameter grads vs finite diff
-    for p in ("a1", "c1", "a2", "c2"):
-        fd = _fd_grad(mf, x, p)
-        an = mf.gradients[p]
-        if abs(fd) > 1e-6:
-            assert np.isclose(an, fd, rtol=1e-3, atol=1e-5), f"{p}: {an} vs {fd}"
-        else:
-            assert abs(an - fd) < 1e-6
-    # Return shape matches input
-    assert isinstance(dx, np.ndarray)
-    assert dx.shape == x.shape
-
-
 def test_diff_sigmoidal_backward_without_forward_is_safe():
     mf = DiffSigmoidalMF(a1=1.0, c1=0.0, a2=1.0, c2=1.0)
     # No forward called

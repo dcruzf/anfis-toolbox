@@ -6,7 +6,7 @@ model that combines all the individual layers into a unified architecture.
 
 import logging
 from collections.abc import Sequence
-from typing import Any, Protocol, TypeAlias, runtime_checkable
+from typing import Any, Protocol, TypeAlias, TypedDict, runtime_checkable
 
 import numpy as np
 
@@ -14,18 +14,32 @@ from .layers import ClassificationConsequentLayer, ConsequentLayer, MembershipLa
 from .losses import LossFunction, resolve_loss
 from .membership import MembershipFunction
 from .metrics import softmax
-from .optim.base import BaseTrainer, TrainingHistory
+
+
+class TrainingHistory(TypedDict, total=False):
+    """History of loss values collected during training."""
+
+    train: list[float]
+    val: list[float | None]
 
 
 @runtime_checkable
 class TrainerProtocol(Protocol):
     """Minimal interface required for external trainers."""
 
-    def fit(self, model: Any, X: np.ndarray, y: np.ndarray, **kwargs: Any) -> TrainingHistory:
+    def fit(
+        self,
+        model: Any,
+        X: np.ndarray,
+        y: np.ndarray,
+        *,
+        validation_data: tuple[np.ndarray, np.ndarray] | None = None,
+        validation_frequency: int = 1,
+    ) -> TrainingHistory:
         """Train ``model`` using ``X`` and ``y`` and return a history mapping."""
 
 
-TrainerLike: TypeAlias = BaseTrainer | TrainerProtocol
+TrainerLike: TypeAlias = TrainerProtocol
 
 # Setup logger for ANFIS
 logger = logging.getLogger(__name__)
@@ -130,7 +144,7 @@ class TSKANFIS:
 
         return output
 
-    def backward(self, dL_dy: np.ndarray):
+    def backward(self, dL_dy: np.ndarray) -> None:
         """Run a backward pass through all layers.
 
         Propagates gradients from the output back through all layers and stores
@@ -185,7 +199,7 @@ class TSKANFIS:
 
         return self.forward(x_arr)
 
-    def reset_gradients(self):
+    def reset_gradients(self) -> None:
         """Reset all accumulated gradients to zero.
 
         Call this before each optimization step to avoid mixing gradients
@@ -219,7 +233,7 @@ class TSKANFIS:
 
         return parameters
 
-    def set_parameters(self, parameters: dict[str, np.ndarray]):
+    def set_parameters(self, parameters: dict[str, np.ndarray]) -> None:
         """Load parameters into the model.
 
         Args:
@@ -262,31 +276,28 @@ class TSKANFIS:
 
         return gradients
 
-    def update_parameters(self, learning_rate: float):
+    def update_parameters(self, effective_learning_rate: float) -> None:
         """Apply a single gradient descent update step.
 
         Args:
-            learning_rate (float): Step size used to update parameters.
+            effective_learning_rate (float): Step size used to update parameters.
         """
         # Update consequent layer parameters
-        self.consequent_layer.parameters -= learning_rate * self.consequent_layer.gradients
+        self.consequent_layer.parameters -= effective_learning_rate * self.consequent_layer.gradients
 
         # Update membership function parameters
-        for name in self.input_names:
-            for mf in self.input_mfs[name]:
-                for param_name, gradient in mf.gradients.items():
-                    mf.parameters[param_name] -= learning_rate * gradient
+        self._apply_membership_gradients(effective_learning_rate)
 
-    def _apply_membership_gradients(self, learning_rate: float) -> None:
+    def _apply_membership_gradients(self, effective_learning_rate: float) -> None:
         """Apply gradient descent to membership function parameters only.
 
         Args:
-            learning_rate (float): Step size for MF parameters.
+            effective_learning_rate (float): Step size for MF parameters.
         """
         for name in self.input_names:
             for mf in self.input_mfs[name]:
                 for param_name, gradient in mf.gradients.items():
-                    mf.parameters[param_name] -= learning_rate * gradient
+                    mf.parameters[param_name] -= effective_learning_rate * gradient
 
     def fit(
         self,
@@ -334,7 +345,7 @@ class TSKANFIS:
             )
         else:
             trainer_instance = trainer
-            if not isinstance(trainer_instance, (BaseTrainer, TrainerProtocol)):
+            if not isinstance(trainer_instance, TrainerProtocol):
                 raise TypeError("trainer must implement fit(model, X, y)")
 
         # Delegate training to the provided or default trainer
@@ -444,7 +455,7 @@ class TSKANFISClassifier:
         logits = self.consequent_layer.forward(x, normalized_weights)  # (b, k)
         return logits
 
-    def backward(self, dL_dlogits: np.ndarray):
+    def backward(self, dL_dlogits: np.ndarray) -> None:
         """Backpropagate gradients through all layers.
 
         Args:
@@ -495,7 +506,7 @@ class TSKANFISClassifier:
         proba = self.predict_proba(x)
         return np.argmax(proba, axis=1)
 
-    def reset_gradients(self):
+    def reset_gradients(self) -> None:
         """Reset gradients accumulated in the model layers to zero."""
         self.membership_layer.reset()
         self.consequent_layer.reset()
@@ -522,7 +533,7 @@ class TSKANFISClassifier:
         """Return the fuzzy rule definitions used by the classifier."""
         return list(self.rule_layer.rules)
 
-    def set_parameters(self, parameters: dict[str, np.ndarray]):
+    def set_parameters(self, parameters: dict[str, np.ndarray]) -> None:
         """Load parameters into the classifier.
 
         Args:
@@ -557,35 +568,28 @@ class TSKANFISClassifier:
                 grads["membership"][name].append(mf.gradients.copy())
         return grads
 
-    def update_parameters(self, learning_rate: float):
-        """Updates the parameters of the model using gradient descent.
-
-        This method applies the specified learning rate to update both the consequent layer parameters
-        and the parameters of each membership function (MF) in the input layers. The update is performed
-        by subtracting the product of the learning rate and the corresponding gradients from each parameter.
+    def update_parameters(self, effective_learning_rate: float) -> None:
+        """Apply a single gradient descent update step.
 
         Args:
-            learning_rate (float): The step size used for updating the parameters during gradient descent.
-
-        Returns:
-            None
+            effective_learning_rate (float): Step size used to update parameters.
         """
-        self.consequent_layer.parameters -= learning_rate * self.consequent_layer.gradients
-        for name in self.input_names:
-            for mf in self.input_mfs[name]:
-                for param_name, gradient in mf.gradients.items():
-                    mf.parameters[param_name] -= learning_rate * gradient
+        # Update consequent layer parameters
+        self.consequent_layer.parameters -= effective_learning_rate * self.consequent_layer.gradients
 
-    def _apply_membership_gradients(self, learning_rate: float) -> None:
+        # Update membership function parameters
+        self._apply_membership_gradients(effective_learning_rate)
+
+    def _apply_membership_gradients(self, effective_learning_rate: float) -> None:
         """Apply gradient descent to membership function parameters only.
 
         Args:
-            learning_rate (float): Step size for MF parameters.
+            effective_learning_rate (float): Step size for MF parameters.
         """
         for name in self.input_names:
             for mf in self.input_mfs[name]:
                 for param_name, gradient in mf.gradients.items():
-                    mf.parameters[param_name] -= learning_rate * gradient
+                    mf.parameters[param_name] -= effective_learning_rate * gradient
 
     def fit(
         self,
@@ -634,7 +638,7 @@ class TSKANFISClassifier:
             )
         else:
             trainer_instance = trainer
-            if not isinstance(trainer_instance, (BaseTrainer, TrainerProtocol)):
+            if not isinstance(trainer_instance, TrainerProtocol):
                 raise TypeError("trainer must implement fit(model, X, y)")
             if hasattr(trainer_instance, "loss"):
                 trainer_instance.loss = resolved_loss

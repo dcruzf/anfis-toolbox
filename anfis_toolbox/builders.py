@@ -37,7 +37,7 @@ FloatArray2D: TypeAlias = NDArray[np.float64]
 class ANFISBuilder:
     """Builder class for creating ANFIS models with intuitive API."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the ANFIS builder."""
         self.input_mfs: dict[str, list[MembershipFunction]] = {}
         self.input_ranges: dict[str, tuple[float, float]] = {}

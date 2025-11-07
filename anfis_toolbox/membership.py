@@ -29,12 +29,12 @@ class MembershipFunction(ABC):
         last_output (np.ndarray): Last output computed by the function.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initializes the membership function with empty parameters and gradients."""
-        self.parameters = {}
-        self.gradients = {}
-        self.last_input = None
-        self.last_output = None
+        self.parameters: dict[str, float] = {}
+        self.gradients: dict[str, float] = {}
+        self.last_input: np.ndarray | None = None
+        self.last_output: np.ndarray | None = None
 
     @abstractmethod
     def forward(self, x: np.ndarray) -> np.ndarray:
@@ -49,7 +49,7 @@ class MembershipFunction(ABC):
         pass  # pragma: no cover
 
     @abstractmethod
-    def backward(self, dL_dy: np.ndarray):
+    def backward(self, dL_dy: np.ndarray) -> None:
         """Perform the backward pass for backpropagation.
 
         Args:
@@ -71,7 +71,7 @@ class MembershipFunction(ABC):
         """
         return self.forward(x)
 
-    def reset(self):
+    def reset(self) -> None:
         """Reset internal state and accumulated gradients.
 
         Returns:
@@ -129,7 +129,7 @@ class GaussianMF(MembershipFunction):
         self.last_output = np.exp(-((x - mean) ** 2) / (2 * sigma**2))
         return self.last_output
 
-    def backward(self, dL_dy: np.ndarray):
+    def backward(self, dL_dy: np.ndarray) -> None:
         """Compute gradients w.r.t. parameters given upstream gradient.
 
         Args:
@@ -256,7 +256,7 @@ class Gaussian2MF(MembershipFunction):
         self.last_output = y
         return y
 
-    def backward(self, dL_dy: np.ndarray):
+    def backward(self, dL_dy: np.ndarray) -> None:
         """Accumulate parameter gradients for the two-sided Gaussian.
 
         The flat middle region contributes no gradients.
@@ -394,7 +394,7 @@ class TriangularMF(MembershipFunction):
         self.last_output = output
         return output
 
-    def backward(self, dL_dy: np.ndarray):
+    def backward(self, dL_dy: np.ndarray) -> None:
         """Accumulate gradients for a, b, c given upstream gradient.
 
         Computes analytical derivatives for the rising (a, b) and falling (b, c)
@@ -537,7 +537,7 @@ class TrapezoidalMF(MembershipFunction):
         self.last_output = output
         return output
 
-    def backward(self, dL_dy: np.ndarray):
+    def backward(self, dL_dy: np.ndarray) -> None:
         """Compute gradients for parameters based on upstream loss gradient.
 
         Analytical gradients for the piecewise linear function:
@@ -689,7 +689,7 @@ class BellMF(MembershipFunction):
         self.last_output = output
         return output
 
-    def backward(self, dL_dy: np.ndarray):
+    def backward(self, dL_dy: np.ndarray) -> None:
         """Compute parameter gradients given upstream gradient.
 
         Analytical gradients:
@@ -864,7 +864,7 @@ class SigmoidalMF(MembershipFunction):
         self.last_output = output
         return output
 
-    def backward(self, dL_dy: np.ndarray):
+    def backward(self, dL_dy: np.ndarray) -> None:
         """Compute parameter gradients given upstream gradient.
 
         For μ(x) = 1/(1 + exp(-a(x-c))):
@@ -964,7 +964,7 @@ class DiffSigmoidalMF(MembershipFunction):
         self._s1, self._s2 = s1, s2  # store for backward
         return y
 
-    def backward(self, dL_dy: np.ndarray):
+    def backward(self, dL_dy: np.ndarray) -> None:
         """Compute gradients w.r.t. parameters and optionally input.
 
         Args:
@@ -995,8 +995,7 @@ class DiffSigmoidalMF(MembershipFunction):
         self.gradients["c2"] += float(np.sum(dL_dy * -ds2_dc2))
 
         # Gradient w.r.t. input (optional, for chaining)
-        dmu_dx = a1 * s1 * (1 - s1) - a2 * s2 * (1 - s2)
-        return dL_dy * dmu_dx
+        # dmu_dx = a1 * s1 * (1 - s1) - a2 * s2 * (1 - s2)
 
 
 class ProdSigmoidalMF(MembershipFunction):
@@ -1053,7 +1052,7 @@ class ProdSigmoidalMF(MembershipFunction):
         self._s1, self._s2 = s1, s2  # store for backward
         return y
 
-    def backward(self, dL_dy: np.ndarray):
+    def backward(self, dL_dy: np.ndarray) -> None:
         """Compute parameter gradients and optionally return input gradient.
 
         Args:
@@ -1084,8 +1083,7 @@ class ProdSigmoidalMF(MembershipFunction):
         self.gradients["c2"] += float(np.sum(dL_dy * s1 * ds2_dc2))
 
         # gradient w.r.t. input (optional)
-        dmu_dx = a1 * s1 * (1 - s1) * s2 + a2 * s2 * (1 - s2) * s1
-        return dL_dy * dmu_dx
+        # dmu_dx = a1 * s1 * (1 - s1) * s2 + a2 * s2 * (1 - s2) * s1
 
 
 class SShapedMF(MembershipFunction):
@@ -1155,7 +1153,7 @@ class SShapedMF(MembershipFunction):
         self.last_output = y.copy()
         return y
 
-    def backward(self, dL_dy: np.ndarray):
+    def backward(self, dL_dy: np.ndarray) -> None:
         """Accumulate gradients for a and b using analytical derivatives.
 
         Uses S(t) = 3t² - 2t³, t = (x-a)/(b-a) on the transition region.
@@ -1253,7 +1251,7 @@ class LinSShapedMF(MembershipFunction):
         self.last_output = y
         return y
 
-    def backward(self, dL_dy: np.ndarray):
+    def backward(self, dL_dy: np.ndarray) -> None:
         """Accumulate gradients for 'a' and 'b' in the ramp region.
 
         Args:
@@ -1349,7 +1347,7 @@ class ZShapedMF(MembershipFunction):
         self.last_output = y.copy()
         return y
 
-    def backward(self, dL_dy: np.ndarray):
+    def backward(self, dL_dy: np.ndarray) -> None:
         """Accumulate gradients for a and b using analytical derivatives.
 
         Uses Z(t) = 1 - (3t² - 2t³), t = (x-a)/(b-a) on the transition region.
@@ -1448,7 +1446,7 @@ class LinZShapedMF(MembershipFunction):
         self.last_output = y
         return y
 
-    def backward(self, dL_dy: np.ndarray):
+    def backward(self, dL_dy: np.ndarray) -> None:
         """Accumulate gradients for 'a' and 'b'.
 
         Args:
@@ -1597,7 +1595,7 @@ class PiMF(MembershipFunction):
         self.last_output = y.copy()
         return y
 
-    def backward(self, dL_dy: np.ndarray):
+    def backward(self, dL_dy: np.ndarray) -> None:
         """Compute gradients for backpropagation.
 
         Analytical gradients are computed by region:
