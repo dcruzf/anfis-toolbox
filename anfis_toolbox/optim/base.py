@@ -18,11 +18,15 @@ from __future__ import annotations
 
 import logging
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import Any, TypeAlias
 
 import numpy as np
 
 from ..model import TSKANFIS, TrainingHistory, TSKANFISClassifier
+
+ModelLike: TypeAlias = TSKANFIS | TSKANFISClassifier
+
+__all__ = ["BaseTrainer", "ModelLike"]
 
 
 class BaseTrainer(ABC):
@@ -30,7 +34,7 @@ class BaseTrainer(ABC):
 
     def fit(
         self,
-        model: TSKANFIS | TSKANFISClassifier,
+        model: ModelLike,
         X: np.ndarray,
         y: np.ndarray,
         *,
@@ -100,9 +104,7 @@ class BaseTrainer(ABC):
         return result
 
     @abstractmethod
-    def init_state(
-        self, model: TSKANFIS | TSKANFISClassifier, X: np.ndarray, y: np.ndarray
-    ) -> Any:  # pragma: no cover - abstract
+    def init_state(self, model: ModelLike, X: np.ndarray, y: np.ndarray) -> Any:  # pragma: no cover - abstract
         """Initialize and return any optimizer-specific state.
 
         Called once before training begins. Trainers that don't require state may
@@ -120,7 +122,7 @@ class BaseTrainer(ABC):
 
     @abstractmethod
     def train_step(
-        self, model: TSKANFIS | TSKANFISClassifier, Xb: np.ndarray, yb: np.ndarray, state: Any
+        self, model: ModelLike, Xb: np.ndarray, yb: np.ndarray, state: Any
     ) -> tuple[float, Any]:  # pragma: no cover - abstract
         """Perform a single training step on a batch and return (loss, new_state).
 
@@ -136,17 +138,13 @@ class BaseTrainer(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def compute_loss(
-        self, model: TSKANFIS | TSKANFISClassifier, X: np.ndarray, y: np.ndarray
-    ) -> float:  # pragma: no cover - abstract
+    def compute_loss(self, model: ModelLike, X: np.ndarray, y: np.ndarray) -> float:  # pragma: no cover - abstract
         """Compute loss for the provided data without mutating the model."""
 
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
-    def _prepare_training_data(
-        self, model: TSKANFIS | TSKANFISClassifier, X: np.ndarray, y: np.ndarray
-    ) -> tuple[np.ndarray, np.ndarray]:
+    def _prepare_training_data(self, model: ModelLike, X: np.ndarray, y: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         X_arr = np.asarray(X, dtype=float)
         y_arr = np.asarray(y, dtype=float)
         if y_arr.ndim == 1:
@@ -157,7 +155,7 @@ class BaseTrainer(ABC):
 
     def _prepare_validation_data(
         self,
-        model: TSKANFIS | TSKANFISClassifier,
+        model: ModelLike,
         X_val: np.ndarray,
         y_val: np.ndarray,
     ) -> tuple[np.ndarray, np.ndarray]:
