@@ -6,7 +6,7 @@ model that combines all the individual layers into a unified architecture.
 
 import logging
 from collections.abc import Sequence
-from typing import Any, Protocol, TypeAlias, runtime_checkable
+from typing import Any, Protocol, TypeAlias, TypedDict, runtime_checkable
 
 import numpy as np
 
@@ -14,18 +14,32 @@ from .layers import ClassificationConsequentLayer, ConsequentLayer, MembershipLa
 from .losses import LossFunction, resolve_loss
 from .membership import MembershipFunction
 from .metrics import softmax
-from .optim.base import BaseTrainer, TrainingHistory
+
+
+class TrainingHistory(TypedDict, total=False):
+    """History of loss values collected during training."""
+
+    train: list[float]
+    val: list[float | None]
 
 
 @runtime_checkable
 class TrainerProtocol(Protocol):
     """Minimal interface required for external trainers."""
 
-    def fit(self, model: Any, X: np.ndarray, y: np.ndarray, **kwargs: Any) -> TrainingHistory:
+    def fit(
+        self,
+        model: Any,
+        X: np.ndarray,
+        y: np.ndarray,
+        *,
+        validation_data: tuple[np.ndarray, np.ndarray] | None = None,
+        validation_frequency: int = 1,
+    ) -> TrainingHistory:
         """Train ``model`` using ``X`` and ``y`` and return a history mapping."""
 
 
-TrainerLike: TypeAlias = BaseTrainer | TrainerProtocol
+TrainerLike: TypeAlias = TrainerProtocol
 
 # Setup logger for ANFIS
 logger = logging.getLogger(__name__)
@@ -334,7 +348,7 @@ class TSKANFIS:
             )
         else:
             trainer_instance = trainer
-            if not isinstance(trainer_instance, (BaseTrainer, TrainerProtocol)):
+            if not isinstance(trainer_instance, TrainerProtocol):
                 raise TypeError("trainer must implement fit(model, X, y)")
 
         # Delegate training to the provided or default trainer
@@ -634,7 +648,7 @@ class TSKANFISClassifier:
             )
         else:
             trainer_instance = trainer
-            if not isinstance(trainer_instance, (BaseTrainer, TrainerProtocol)):
+            if not isinstance(trainer_instance, TrainerProtocol):
                 raise TypeError("trainer must implement fit(model, X, y)")
             if hasattr(trainer_instance, "loss"):
                 trainer_instance.loss = resolved_loss
