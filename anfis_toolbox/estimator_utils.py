@@ -78,7 +78,7 @@ class BaseEstimatorLike:
     # ------------------------------------------------------------------
     # scikit-learn compatibility hooks
     # ------------------------------------------------------------------
-    def __sklearn_tags__(self):
+    def __sklearn_tags__(self) -> dict[str, Any] | Any:
         """Return estimator capability tags expected by scikit-learn."""
         merged: dict[str, Any] = {}
         more_tags = getattr(self, "_more_tags", None)
@@ -127,10 +127,10 @@ class BaseEstimatorLike:
 class FittedMixin:
     """Mixin providing utility to guard against using estimators pre-fit."""
 
-    def _mark_fitted(self):
+    def _mark_fitted(self) -> None:
         self.is_fitted_ = True
 
-    def _require_is_fitted(self, attributes: Iterable[str] | None = None):
+    def _require_is_fitted(self, attributes: Iterable[str] | None = None) -> None:
         if not getattr(self, "is_fitted_", False):
             raise NotFittedError(f"{type(self).__name__} instance is not fitted yet.")
         if attributes:
@@ -141,7 +141,7 @@ class FittedMixin:
                 )
 
 
-def check_is_fitted(estimator: FittedMixin, attributes: Iterable[str] | None = None):
+def check_is_fitted(estimator: FittedMixin, attributes: Iterable[str] | None = None) -> None:
     """Check if the estimator is fitted by verifying `is_fitted_` and optional attributes."""
     estimator._require_is_fitted(attributes)
 
