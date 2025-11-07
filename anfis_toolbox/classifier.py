@@ -835,7 +835,7 @@ class ANFISClassifier(BaseEstimatorLike, FittedMixin, ClassifierMixinLike):
 
     def _encode_targets(
         self,
-        y,
+        y: np.ndarray,
         n_samples: int,
         *,
         allow_partial_classes: bool = False,
