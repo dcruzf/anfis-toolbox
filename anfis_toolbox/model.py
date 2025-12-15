@@ -5,7 +5,7 @@ model that combines all the individual layers into a unified architecture.
 """
 
 import logging
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from typing import Any, Protocol, TypeAlias, TypedDict, runtime_checkable
 
 import numpy as np
@@ -41,11 +41,138 @@ class TrainerProtocol(Protocol):
 
 TrainerLike: TypeAlias = TrainerProtocol
 
+
+MembershipSnapshot: TypeAlias = dict[str, list[dict[str, float]]]
+
+
+class ParameterState(TypedDict, total=False):
+    """Structure holding consequent and membership parameters."""
+
+    membership: MembershipSnapshot
+    consequent: np.ndarray
+
+
+class GradientState(TypedDict):
+    """Structure holding consequent and membership gradients."""
+
+    membership: MembershipSnapshot
+    consequent: np.ndarray
+
+
+ConsequentLike: TypeAlias = ConsequentLayer | ClassificationConsequentLayer
+
+
+class _TSKANFISSharedMixin:
+    """Common ANFIS utilities shared between regression and classification models."""
+
+    input_mfs: dict[str, list[MembershipFunction]]
+    input_names: list[str]
+    membership_layer: MembershipLayer
+    rule_layer: RuleLayer
+    consequent_layer: ConsequentLike
+
+    @property
+    def membership_functions(self) -> dict[str, list[MembershipFunction]]:
+        """Return the membership functions grouped by input."""
+        return self.input_mfs
+
+    @property
+    def rules(self) -> list[tuple[int, ...]]:
+        """Return the fuzzy rule definitions used by the model."""
+        return list(self.rule_layer.rules)
+
+    def reset_gradients(self) -> None:
+        """Reset all accumulated gradients to zero."""
+        self.membership_layer.reset()
+        self.consequent_layer.reset()
+
+    def get_parameters(self) -> ParameterState:
+        """Return a snapshot of all trainable parameters.
+
+        Returns:
+            ParameterState: Dictionary with ``"membership"`` and ``"consequent"`` keys.
+        """
+        membership_params: MembershipSnapshot = {
+            name: [dict(mf.parameters) for mf in self.input_mfs[name]] for name in self.input_names
+        }
+        return {
+            "membership": membership_params,
+            "consequent": self.consequent_layer.parameters.copy(),
+        }
+
+    def set_parameters(self, parameters: Mapping[str, object]) -> None:
+        """Load parameters into the model.
+
+        Args:
+            parameters: Mapping matching the structure emitted by :meth:`get_parameters`.
+        """
+        consequent = parameters.get("consequent")
+        if consequent is not None:
+            self.consequent_layer.parameters = np.array(consequent, copy=True)
+
+        membership = parameters.get("membership")
+        if not isinstance(membership, Mapping):
+            return
+
+        for name in self.input_names:
+            mf_params_list = membership.get(name)
+            if not isinstance(mf_params_list, Sequence):
+                continue
+            for mf, mf_params in zip(self.input_mfs[name], mf_params_list, strict=False):
+                mf.parameters = {key: float(value) for key, value in mf_params.items()}
+
+    def get_gradients(self) -> GradientState:
+        """Return the latest computed gradients.
+
+        Returns:
+            GradientState: Dictionary with ``"membership"`` and ``"consequent"`` entries.
+        """
+        membership_grads: MembershipSnapshot = {
+            name: [dict(mf.gradients) for mf in self.input_mfs[name]] for name in self.input_names
+        }
+        return {
+            "membership": membership_grads,
+            "consequent": self.consequent_layer.gradients.copy(),
+        }
+
+    def update_parameters(self, effective_learning_rate: float) -> None:
+        """Apply a single gradient descent update step.
+
+        Args:
+            effective_learning_rate: Step size used to update parameters.
+        """
+        self.update_consequent_parameters(effective_learning_rate)
+        self.update_membership_parameters(effective_learning_rate)
+
+    def update_consequent_parameters(self, effective_learning_rate: float) -> None:
+        """Apply gradient descent to consequent parameters only.
+
+        Args:
+            effective_learning_rate: Step size used to update parameters.
+        """
+        self.consequent_layer.parameters -= effective_learning_rate * self.consequent_layer.gradients
+
+    def update_membership_parameters(self, effective_learning_rate: float) -> None:
+        """Apply gradient descent to membership function parameters only.
+
+        Args:
+            effective_learning_rate: Step size used to update parameters.
+        """
+        for name in self.input_names:
+            for mf in self.input_mfs[name]:
+                for param_name, gradient in mf.gradients.items():
+                    mf.parameters[param_name] -= effective_learning_rate * gradient
+
+    def __str__(self) -> str:
+        """Returns string representation of the ANFIS model."""
+        return self.__repr__()
+
+
 # Setup logger for ANFIS
 logger = logging.getLogger(__name__)
 
 
-class TSKANFIS:
+class TSKANFIS(_TSKANFISSharedMixin):
     """Adaptive Neuro-Fuzzy Inference System (legacy TSK ANFIS) model.
 
     Implements the classic 4-layer ANFIS architecture:
@@ -106,21 +233,6 @@ class TSKANFIS:
         self.normalization_layer = NormalizationLayer()
         self.consequent_layer = ConsequentLayer(self.n_rules, self.n_inputs)
 
-    @property
-    def membership_functions(self) -> dict[str, list[MembershipFunction]]:
-        """Return the membership functions grouped by input.
-
-        Returns:
-            dict[str, list[MembershipFunction]]: Mapping from input name to
-            its list of membership functions.
-        """
-        return self.input_mfs
-
-    @property
-    def rules(self) -> list[tuple[int, ...]]:
-        """Return the fuzzy rule definitions used by the model."""
-        return list(self.rule_layer.rules)
-
     def forward(self, x: np.ndarray) -> np.ndarray:
         """Run a forward pass through the model.
 
@@ -130,18 +242,36 @@ class TSKANFIS:
         Returns:
             np.ndarray: Output array of shape ``(batch_size, 1)``.
         """
-        # Layer 1: Fuzzification - convert crisp inputs to membership degrees
+        normalized_weights = self.forward_antecedents(x)
+        output = self.forward_consequents(x, normalized_weights)
+        return output
+
+    def forward_antecedents(self, x: np.ndarray) -> np.ndarray:
+        """Run a forward pass through the antecedent layers only.
+
+        Args:
+            x (np.ndarray): Input array of shape ``(batch_size, n_inputs)``.
+
+        Returns:
+            np.ndarray: Normalized rule weights of shape ``(batch_size, n_rules)``.
+        """
         membership_outputs = self.membership_layer.forward(x)
-
-        # Layer 2: Rule strength computation using T-norm (product)
         rule_strengths = self.rule_layer.forward(membership_outputs)
-
-        # Layer 3: Normalization - ensure rule weights sum to 1.0
         normalized_weights = self.normalization_layer.forward(rule_strengths)
+        return normalized_weights
 
-        # Layer 4: Consequent computation and final output
+    def forward_consequents(self, x: np.ndarray, normalized_weights: np.ndarray) -> np.ndarray:
+        """Run a forward pass through the consequent layer only.
+
+        Args:
+            x (np.ndarray): Input array of shape ``(batch_size, n_inputs)``.
+            normalized_weights (np.ndarray): Normalized rule weights of shape
+                ``(batch_size, n_rules)``.
+
+        Returns:
+            np.ndarray: Output array of shape ``(batch_size, 1)``.
+        """
         output = self.consequent_layer.forward(x, normalized_weights)
-
         return output
 
     def backward(self, dL_dy: np.ndarray) -> None:
@@ -198,106 +328,6 @@ class TSKANFIS:
             raise ValueError("Expected input with shape (batch_size, n_inputs)")
 
         return self.forward(x_arr)
-
-    def reset_gradients(self) -> None:
-        """Reset all accumulated gradients to zero.
-
-        Call this before each optimization step to avoid mixing gradients
-        across iterations.
-        """
-        # Reset membership function gradients
-        self.membership_layer.reset()
-
-        # Reset consequent layer gradients
-        self.consequent_layer.reset()
-
-    def get_parameters(self) -> dict[str, np.ndarray]:
-        """Return a snapshot of all trainable parameters.
-
-        Returns:
-                dict[str, np.ndarray | dict]:
-                        Dictionary with two entries:
-
-                        - ``"membership"``: dict mapping input name to a list of MF
-                            parameter dicts (one per membership function).
-                        - ``"consequent"``: numpy array with consequent parameters.
-        """
-        parameters = {"membership": {}, "consequent": self.consequent_layer.parameters.copy()}
-
-        # Extract membership function parameters
-        for name in self.input_names:
-            parameters["membership"][name] = []
-            for mf in self.input_mfs[name]:
-                mf_params = mf.parameters.copy()
-                parameters["membership"][name].append(mf_params)
-
-        return parameters
-
-    def set_parameters(self, parameters: dict[str, np.ndarray]) -> None:
-        """Load parameters into the model.
-
-        Args:
-            parameters (dict[str, np.ndarray | dict]): Dictionary with the same
-                structure as returned by :meth:`get_parameters`.
-        """
-        # Set consequent layer parameters
-        if "consequent" in parameters:
-            self.consequent_layer.parameters = parameters["consequent"].copy()
-
-        # Set membership function parameters
-        if "membership" in parameters:
-            membership_params = parameters["membership"]
-            for name in self.input_names:
-                mf_params_list = membership_params.get(name)
-                if not mf_params_list:
-                    continue
-                # Only update up to the available MFs for this input
-                for mf, mf_params in zip(self.input_mfs[name], mf_params_list, strict=False):
-                    mf.parameters = mf_params.copy()
-
-    def get_gradients(self) -> dict[str, np.ndarray]:
-        """Return the latest computed gradients.
-
-        Returns:
-                dict[str, np.ndarray | dict]: Dictionary with two entries:
-
-                - ``"membership"``: dict mapping input name to a list of MF
-                    gradient dicts (one per membership function).
-                - ``"consequent"``: numpy array with consequent gradients.
-        """
-        gradients = {"membership": {}, "consequent": self.consequent_layer.gradients.copy()}
-
-        # Extract membership function gradients
-        for name in self.input_names:
-            gradients["membership"][name] = []
-            for mf in self.input_mfs[name]:
-                mf_grads = mf.gradients.copy()
-                gradients["membership"][name].append(mf_grads)
-
-        return gradients
-
-    def update_parameters(self, effective_learning_rate: float) -> None:
-        """Apply a single gradient descent update step.
-
-        Args:
-            effective_learning_rate (float): Step size used to update parameters.
-        """
-        # Update consequent layer parameters
-        self.consequent_layer.parameters -= effective_learning_rate * self.consequent_layer.gradients
-
-        # Update membership function parameters
-        self._apply_membership_gradients(effective_learning_rate)
-
-    def _apply_membership_gradients(self, effective_learning_rate: float) -> None:
-        """Apply gradient descent to membership function parameters only.
-
-        Args:
-            effective_learning_rate (float): Step size for MF parameters.
-        """
-        for name in self.input_names:
-            for mf in self.input_mfs[name]:
-                for param_name, gradient in mf.gradients.items():
-                    mf.parameters[param_name] -= effective_learning_rate * gradient
 
     def fit(
         self,
@@ -360,23 +390,12 @@ class TSKANFIS:
             raise TypeError("Trainer.fit must return a TrainingHistory dictionary")
         return history
 
-    def __str__(self) -> str:
-        """Returns string representation of the ANFIS model."""
-        return (
-            f"TSKANFIS Model:\n"
-            f"  - Inputs: {self.n_inputs} ({', '.join(self.input_names)})\n"
-            f"  - Rules: {self.n_rules}\n"
-            f"  - Membership Functions: {[len(mfs) for mfs in self.input_mfs.values()]}\n"
-            f"  - Parameters: \
-                    {sum(len(mfs) * 2 for mfs in self.input_mfs.values()) + self.n_rules * (self.n_inputs + 1)}"
-        )
-
     def __repr__(self) -> str:
         """Returns detailed representation of the ANFIS model."""
         return f"TSKANFIS(n_inputs={self.n_inputs}, n_rules={self.n_rules})"
 
 
-class TSKANFISClassifier:
+class TSKANFISClassifier(_TSKANFISSharedMixin):
     """Adaptive Neuro-Fuzzy classifier with a softmax head (TSK variant).
 
     Aggregates per-rule linear consequents into per-class logits and trains
@@ -429,16 +448,6 @@ class TSKANFISClassifier:
         self.consequent_layer = ClassificationConsequentLayer(
             self.n_rules, self.n_inputs, self.n_classes, random_state=random_state
         )
-
-    @property
-    def membership_functions(self) -> dict[str, list[MembershipFunction]]:
-        """Return the membership functions grouped by input.
-
-        Returns:
-            dict[str, list[MembershipFunction]]: Mapping from input name to
-            its list of membership functions.
-        """
-        return self.input_mfs
 
     def forward(self, x: np.ndarray) -> np.ndarray:
         """Run a forward pass through the classifier.
@@ -505,91 +514,6 @@ class TSKANFISClassifier:
         """
         proba = self.predict_proba(x)
         return np.argmax(proba, axis=1)
-
-    def reset_gradients(self) -> None:
-        """Reset gradients accumulated in the model layers to zero."""
-        self.membership_layer.reset()
-        self.consequent_layer.reset()
-
-    def get_parameters(self) -> dict[str, np.ndarray]:
-        """Return a snapshot of all trainable parameters.
-
-        Returns:
-                dict[str, np.ndarray | dict]: Dictionary containing:
-
-                - ``"membership"``: nested dict mapping input name to a list of MF
-                    parameter dicts.
-                - ``"consequent"``: numpy array with consequent parameters.
-        """
-        params = {"membership": {}, "consequent": self.consequent_layer.parameters.copy()}
-        for name in self.input_names:
-            params["membership"][name] = []
-            for mf in self.input_mfs[name]:
-                params["membership"][name].append(mf.parameters.copy())
-        return params
-
-    @property
-    def rules(self) -> list[tuple[int, ...]]:
-        """Return the fuzzy rule definitions used by the classifier."""
-        return list(self.rule_layer.rules)
-
-    def set_parameters(self, parameters: dict[str, np.ndarray]) -> None:
-        """Load parameters into the classifier.
-
-        Args:
-            parameters (dict[str, np.ndarray | dict]): Dictionary with the same
-                structure as returned by :meth:`get_parameters`.
-        """
-        if "consequent" in parameters:
-            self.consequent_layer.parameters = parameters["consequent"].copy()
-        if "membership" in parameters:
-            membership_params = parameters["membership"]
-            for name in self.input_names:
-                mf_params_list = membership_params.get(name)
-                if not mf_params_list:
-                    continue
-                for mf, mf_params in zip(self.input_mfs[name], mf_params_list, strict=False):
-                    mf.parameters = mf_params.copy()
-
-    def get_gradients(self) -> dict[str, np.ndarray]:
-        """Return the latest computed gradients.
-
-        Returns:
-                dict[str, np.ndarray | dict]: Dictionary containing:
-
-                - ``"membership"``: nested dict mapping input name to a list of MF
-                    gradient dicts.
-                - ``"consequent"``: numpy array with consequent gradients.
-        """
-        grads = {"membership": {}, "consequent": self.consequent_layer.gradients.copy()}
-        for name in self.input_names:
-            grads["membership"][name] = []
-            for mf in self.input_mfs[name]:
-                grads["membership"][name].append(mf.gradients.copy())
-        return grads
-
-    def update_parameters(self, effective_learning_rate: float) -> None:
-        """Apply a single gradient descent update step.
-
-        Args:
-            effective_learning_rate (float): Step size used to update parameters.
-        """
-        # Update consequent layer parameters
-        self.consequent_layer.parameters -= effective_learning_rate * self.consequent_layer.gradients
-
-        # Update membership function parameters
-        self._apply_membership_gradients(effective_learning_rate)
-
-    def _apply_membership_gradients(self, effective_learning_rate: float) -> None:
-        """Apply gradient descent to membership function parameters only.
-
-        Args:
-            effective_learning_rate (float): Step size for MF parameters.
-        """
-        for name in self.input_names:
-            for mf in self.input_mfs[name]:
-                for param_name, gradient in mf.gradients.items():
-                    mf.parameters[param_name] -= effective_learning_rate * gradient
 
     def fit(
         self,
