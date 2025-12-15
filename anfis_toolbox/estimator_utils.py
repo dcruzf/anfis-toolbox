@@ -11,17 +11,18 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from copy import deepcopy
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from typing import Any
 
 import numpy as np
 
 try:  # pragma: no cover - optional dependency
-    from sklearn.utils._tags import default_tags as _sklearn_default_tags
+    from sklearn.utils._tags import Tags, TargetTags
 
     _SKLEARN_TAGS_AVAILABLE = True
 except Exception:  # pragma: no cover - sklearn not installed
-    _sklearn_default_tags = None
+    Tags = None
+    TargetTags = None
     _SKLEARN_TAGS_AVAILABLE = False
 
 __all__ = [
@@ -89,22 +90,25 @@ class BaseEstimatorLike:
             merged.update(extra_tags)
 
         if _SKLEARN_TAGS_AVAILABLE:
-            tags = _sklearn_default_tags(self)
+            # Construct a Tags object with proper defaults
+            estimator_type = merged.pop("estimator_type", None)
+            non_deterministic = merged.pop("non_deterministic", False)
+            requires_fit = merged.pop("requires_fit", True)
+            requires_y = merged.pop("requires_y", True)
 
-            direct_updates = {}
-            if "estimator_type" in merged:
-                direct_updates["estimator_type"] = merged.pop("estimator_type")
-            if "non_deterministic" in merged:
-                direct_updates["non_deterministic"] = merged.pop("non_deterministic")
-            if "requires_fit" in merged:
-                direct_updates["requires_fit"] = merged.pop("requires_fit")
-            if direct_updates:
-                tags = replace(tags, **direct_updates)
+            # Create target_tags
+            target_tags = TargetTags(required=requires_y)
 
-            if "requires_y" in merged:
-                required = bool(merged.pop("requires_y"))
-                target_tags = replace(tags.target_tags, required=required)
-                tags = replace(tags, target_tags=target_tags)
+            # Create Tags object
+            tags = Tags(
+                estimator_type=estimator_type,
+                target_tags=target_tags,
+                transformer_tags=None,
+                classifier_tags=None,
+                regressor_tags=None,
+                non_deterministic=non_deterministic,
+                requires_fit=requires_fit,
+            )
 
             # Remaining keys are not recognised by the public Tags API; ignore gracefully.
             return tags
