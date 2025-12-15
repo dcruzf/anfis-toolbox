@@ -202,10 +202,11 @@ def test_classifier_mixin_score_validation_behaviour():
 def test_base_estimator_sklearn_tags_with_tags_api(monkeypatch):
     monkeypatch.setattr(estimator_utils, "_SKLEARN_TAGS_AVAILABLE", True, raising=False)
 
-    def dummy_default_tags(_self: BaseEstimatorLike) -> DummyTags:
-        return DummyTags()
+    # Import actual sklearn Tags and TargetTags
+    from sklearn.utils._tags import Tags, TargetTags
 
-    monkeypatch.setattr(estimator_utils, "_sklearn_default_tags", dummy_default_tags, raising=False)
+    monkeypatch.setattr(estimator_utils, "Tags", Tags, raising=False)
+    monkeypatch.setattr(estimator_utils, "TargetTags", TargetTags, raising=False)
 
     class TaggedEstimator(BaseEstimatorLike):
         def _more_tags(self):
@@ -220,7 +221,7 @@ def test_base_estimator_sklearn_tags_with_tags_api(monkeypatch):
 
     tags = est.__sklearn_tags__()
 
-    assert isinstance(tags, DummyTags)
+    assert isinstance(tags, Tags)
     assert tags.estimator_type == "classifier"
     assert tags.non_deterministic is True
     assert tags.requires_fit is False
@@ -230,10 +231,11 @@ def test_base_estimator_sklearn_tags_with_tags_api(monkeypatch):
 def test_base_estimator_sklearn_tags_with_tags_api_no_overrides(monkeypatch):
     monkeypatch.setattr(estimator_utils, "_SKLEARN_TAGS_AVAILABLE", True, raising=False)
 
-    def dummy_default_tags(_self: BaseEstimatorLike) -> DummyTags:
-        return DummyTags()
+    # Import actual sklearn Tags and TargetTags
+    from sklearn.utils._tags import Tags, TargetTags
 
-    monkeypatch.setattr(estimator_utils, "_sklearn_default_tags", dummy_default_tags, raising=False)
+    monkeypatch.setattr(estimator_utils, "Tags", Tags, raising=False)
+    monkeypatch.setattr(estimator_utils, "TargetTags", TargetTags, raising=False)
 
     class PlainEstimator(BaseEstimatorLike):
         pass
@@ -242,8 +244,11 @@ def test_base_estimator_sklearn_tags_with_tags_api_no_overrides(monkeypatch):
 
     tags = est.__sklearn_tags__()
 
-    assert isinstance(tags, DummyTags)
-    assert tags == DummyTags()
+    assert isinstance(tags, Tags)
+    assert tags.estimator_type is None
+    assert tags.non_deterministic is False
+    assert tags.requires_fit is True
+    assert tags.target_tags.required is True  # Default in our implementation
 
 
 def test_base_estimator_sklearn_tags_without_sklearn(monkeypatch):
