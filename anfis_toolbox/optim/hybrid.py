@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from ..losses import mse_grad, mse_loss
+from ..losses import MSELoss
 from .base import BaseTrainer
 
 
@@ -22,6 +22,7 @@ class HybridTrainer(BaseTrainer):
     learning_rate: float = 0.01
     epochs: int = 100
     verbose: bool = False
+    _loss_fn: MSELoss = MSELoss()
 
     def _prepare_training_data(self, model, X: np.ndarray, y: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         return self._prepare_data(X, y)
@@ -65,8 +66,8 @@ class HybridTrainer(BaseTrainer):
 
         # Loss and backward for antecedents only
         y_pred = model.consequent_layer.forward(Xb, normalized_weights)
-        loss = mse_loss(yb, y_pred)
-        dL_dy = mse_grad(yb, y_pred)
+        loss = self._loss_fn.loss(yb, y_pred)
+        dL_dy = self._loss_fn.gradient(yb, y_pred)
         dL_dnorm_w, _ = model.consequent_layer.backward(dL_dy)
         dL_dw = model.normalization_layer.backward(dL_dnorm_w)
         gradients = model.rule_layer.backward(dL_dw)
@@ -81,7 +82,7 @@ class HybridTrainer(BaseTrainer):
         rule_strengths = model.rule_layer.forward(membership_outputs)
         normalized_weights = model.normalization_layer.forward(rule_strengths)
         preds = model.consequent_layer.forward(X_arr, normalized_weights)
-        return float(mse_loss(y_arr, preds))
+        return float(self._loss_fn.loss(y_arr, preds))
 
     @staticmethod
     def _prepare_data(X: np.ndarray, y: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
