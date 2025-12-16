@@ -8,12 +8,8 @@ from typing import Any, cast
 import numpy as np
 
 from ..losses import MSELoss
-from .adam import _zeros_like_structure
+from ._utils import iterate_membership_params_with_state, update_membership_param, zeros_like_structure
 from .base import BaseTrainer
-from .parameter_utils import (
-    iterate_membership_params_with_state,
-    update_membership_param,
-)
 
 
 @dataclass
@@ -37,7 +33,7 @@ class HybridAdamTrainer(BaseTrainer):
     def init_state(self, model: Any, X: np.ndarray, y: np.ndarray) -> dict[str, Any]:
         """Initialize Adam moment tensors for membership parameters."""
         params = model.get_parameters()
-        zero_struct = _zeros_like_structure(params)["membership"]
+        zero_struct = zeros_like_structure(params)["membership"]
         return {"m": deepcopy(zero_struct), "v": deepcopy(zero_struct), "t": 0}
 
     def train_step(

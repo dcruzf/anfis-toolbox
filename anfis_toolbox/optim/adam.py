@@ -6,26 +6,12 @@ from typing import Any, cast
 import numpy as np
 
 from ..losses import LossFunction
-from .base import BaseTrainer
-from .parameter_utils import (
+from ._utils import (
     iterate_membership_params_with_state,
     update_membership_param,
+    zeros_like_structure,
 )
-
-
-def _zeros_like_structure(params: dict[str, Any]) -> dict[str, Any]:
-    """Create a zero-structure matching model.get_parameters() format.
-
-    Returns a dict with:
-      - 'consequent': np.zeros_like(params['consequent'])
-      - 'membership': { name: [ {param_name: 0.0, ...} ] }
-    """
-    out: dict[str, Any] = {"consequent": np.zeros_like(params["consequent"]), "membership": {}}
-    for name, mf_list in params["membership"].items():
-        out["membership"][name] = []
-        for mf_params in mf_list:
-            out["membership"][name].append(dict.fromkeys(mf_params.keys(), 0.0))
-    return out
+from .base import BaseTrainer
 
 
 def _adam_update(
@@ -86,8 +72,8 @@ class AdamTrainer(BaseTrainer):
         params = model.get_parameters()
         return {
             "params": params,
-            "m": _zeros_like_structure(params),
-            "v": _zeros_like_structure(params),
+            "m": zeros_like_structure(params),
+            "v": zeros_like_structure(params),
             "t": 0,
         }
 

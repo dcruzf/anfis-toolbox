@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from anfis_toolbox.optim.parameter_utils import (
+from anfis_toolbox.optim._utils import (
     flatten_membership_params,
     get_membership_param,
     iterate_membership_params,
