@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Generator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from typing import Any, TypedDict
@@ -96,19 +97,19 @@ class PSOTrainer(BaseTrainer):
     loss: LossFunction | str | None = None
     _loss_fn: LossFunction = field(init=False, repr=False)
 
-    def _prepare_training_data(self, model, X: np.ndarray, y: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    def _prepare_training_data(self, model: Any, X: np.ndarray, y: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         self._loss_fn = resolve_loss(self.loss)
         return self._prepare_batch(X, y, model)
 
     def _prepare_validation_data(
         self,
-        model,
+        model: Any,
         X_val: np.ndarray,
         y_val: np.ndarray,
     ) -> tuple[np.ndarray, np.ndarray]:
         return self._prepare_batch(X_val, y_val, model)
 
-    def init_state(self, model, X: np.ndarray, y: np.ndarray):
+    def init_state(self, model: Any, X: np.ndarray, y: np.ndarray) -> dict[str, Any]:
         """Initialize PSO swarm state and return as a dict."""
         X = np.asarray(X, dtype=float)
         y = np.asarray(y, dtype=float)
@@ -140,7 +141,9 @@ class PSOTrainer(BaseTrainer):
             "rng": rng,
         }
 
-    def train_step(self, model, Xb: np.ndarray, yb: np.ndarray, state):
+    def train_step(
+        self, model: Any, Xb: np.ndarray, yb: np.ndarray, state: dict[str, Any]
+    ) -> tuple[float, dict[str, Any]]:
         """Perform one PSO iteration over the swarm on a batch and return (best_loss, state)."""
         positions = state["positions"]
         velocities = state["velocities"]
@@ -194,7 +197,7 @@ class PSOTrainer(BaseTrainer):
         return float(global_best_val), state
 
     @contextmanager
-    def _temporary_parameters(self, model, params):
+    def _temporary_parameters(self, model: Any, params: dict[str, Any]) -> Generator[None, None, None]:
         original = model.get_parameters()
         model.set_parameters(params)
         try:
@@ -202,7 +205,7 @@ class PSOTrainer(BaseTrainer):
         finally:
             model.set_parameters(original)
 
-    def _prepare_batch(self, X: np.ndarray, y: np.ndarray, model) -> tuple[np.ndarray, np.ndarray]:
+    def _prepare_batch(self, X: np.ndarray, y: np.ndarray, model: Any) -> tuple[np.ndarray, np.ndarray]:
         loss_fn = self._ensure_loss_fn()
         X_arr = np.asarray(X, dtype=float)
         y_arr = loss_fn.prepare_targets(y, model=model)
@@ -210,11 +213,11 @@ class PSOTrainer(BaseTrainer):
             raise ValueError("Target array must have same number of rows as X")
         return X_arr, y_arr
 
-    def _evaluate_loss(self, model, X: np.ndarray, y: np.ndarray) -> float:
+    def _evaluate_loss(self, model: Any, X: np.ndarray, y: np.ndarray) -> float:
         preds = model.forward(X)
         return float(self._loss_fn.loss(y, preds))
 
-    def compute_loss(self, model, X: np.ndarray, y: np.ndarray) -> float:
+    def compute_loss(self, model: Any, X: np.ndarray, y: np.ndarray) -> float:
         """Evaluate the swarm's current parameters on ``(X, y)`` without mutation."""
         return self._evaluate_loss(model, X, y)
 
