@@ -1,21 +1,26 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import Any, cast
 
 import numpy as np
 
 from ..losses import LossFunction, resolve_loss
 from .base import BaseTrainer
+from .parameter_utils import (
+    iterate_membership_params_with_state,
+    update_membership_param,
+)
 
 
-def _zeros_like_structure(params):
+def _zeros_like_structure(params: dict[str, Any]) -> dict[str, Any]:
     """Create a zero-structure matching model.get_parameters() format.
 
     Returns a dict with:
       - 'consequent': np.zeros_like(params['consequent'])
       - 'membership': { name: [ {param_name: 0.0, ...} ] }
     """
-    out = {"consequent": np.zeros_like(params["consequent"]), "membership": {}}
+    out: dict[str, Any] = {"consequent": np.zeros_like(params["consequent"]), "membership": {}}
     for name, mf_list in params["membership"].items():
         out["membership"][name] = []
         for mf_params in mf_list:
@@ -52,7 +57,7 @@ class RMSPropTrainer(BaseTrainer):
     loss: LossFunction | str | None = None
     _loss_fn: LossFunction = field(init=False, repr=False)
 
-    def _prepare_training_data(self, model, X: np.ndarray, y: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    def _prepare_training_data(self, model: Any, X: np.ndarray, y: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         self._loss_fn = resolve_loss(self.loss)
         X_arr = np.asarray(X, dtype=float)
         y_arr = self._loss_fn.prepare_targets(y, model=model)
@@ -62,7 +67,7 @@ class RMSPropTrainer(BaseTrainer):
 
     def _prepare_validation_data(
         self,
-        model,
+        model: Any,
         X_val: np.ndarray,
         y_val: np.ndarray,
     ) -> tuple[np.ndarray, np.ndarray]:
@@ -72,18 +77,20 @@ class RMSPropTrainer(BaseTrainer):
             raise ValueError("Validation targets must match input rows")
         return X_arr, y_arr
 
-    def init_state(self, model, X: np.ndarray, y: np.ndarray):
+    def init_state(self, model: Any, X: np.ndarray, y: np.ndarray) -> dict[str, Any]:
         """Initialize RMSProp caches for consequents and membership scalars."""
         params = model.get_parameters()
         return {"params": params, "cache": _zeros_like_structure(params)}
 
-    def train_step(self, model, Xb: np.ndarray, yb: np.ndarray, state):
+    def train_step(
+        self, model: Any, Xb: np.ndarray, yb: np.ndarray, state: dict[str, Any]
+    ) -> tuple[float, dict[str, Any]]:
         """One RMSProp step on a batch; returns (loss, updated_state)."""
         loss, grads = self._compute_loss_and_grads(model, Xb, yb)
         self._apply_rmsprop_step(model, state["params"], state["cache"], grads)
         return loss, state
 
-    def _compute_loss_and_grads(self, model, Xb: np.ndarray, yb: np.ndarray) -> tuple[float, dict]:
+    def _compute_loss_and_grads(self, model: Any, Xb: np.ndarray, yb: np.ndarray) -> tuple[float, dict[str, Any]]:
         """Forward pass, MSE loss, backward pass, and gradients for a batch.
 
         Returns (loss, grads) where grads follows model.get_gradients() structure.
@@ -98,10 +105,10 @@ class RMSPropTrainer(BaseTrainer):
 
     def _apply_rmsprop_step(
         self,
-        model,
-        params: dict,
-        cache: dict,
-        grads: dict,
+        model: Any,
+        params: dict[str, Any],
+        cache: dict[str, Any],
+        grads: dict[str, Any],
     ) -> None:
         """Apply one RMSProp update to params using grads and caches.
 
@@ -113,21 +120,19 @@ class RMSPropTrainer(BaseTrainer):
         c[:] = self.rho * c + (1.0 - self.rho) * (g * g)
         params["consequent"] = params["consequent"] - self.learning_rate * g / (np.sqrt(c) + self.epsilon)
 
-        # Membership are scalars in nested dicts
-        for name in params["membership"].keys():
-            for i in range(len(params["membership"][name])):
-                for key in params["membership"][name][i].keys():
-                    gk = float(grads["membership"][name][i][key])
-                    ck = cache["membership"][name][i][key]
-                    ck = self.rho * ck + (1.0 - self.rho) * (gk * gk)
-                    step = self.learning_rate * gk / (np.sqrt(ck) + self.epsilon)
-                    params["membership"][name][i][key] -= float(step)
-                    cache["membership"][name][i][key] = ck
+        # Membership parameters (scalars in nested dicts)
+        for path, param_val, cache_val, grad in iterate_membership_params_with_state(params, cache, grads):
+            grad = cast(float, grad)  # grads_dict is provided in this context
+            cache_val = self.rho * cache_val + (1.0 - self.rho) * (grad * grad)
+            step = self.learning_rate * grad / (np.sqrt(cache_val) + self.epsilon)
+            new_param = param_val - step
+            update_membership_param(params, path, new_param)
+            cache["membership"][path[0]][path[1]][path[2]] = cache_val
 
         # Push updated params back into the model
         model.set_parameters(params)
 
-    def compute_loss(self, model, X: np.ndarray, y: np.ndarray) -> float:
+    def compute_loss(self, model: Any, X: np.ndarray, y: np.ndarray) -> float:
         """Return the current loss value for ``(X, y)`` without modifying state."""
         preds = model.forward(X)
         return float(self._loss_fn.loss(y, preds))
