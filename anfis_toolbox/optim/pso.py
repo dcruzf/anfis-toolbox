@@ -7,7 +7,7 @@ from typing import Any, TypedDict
 
 import numpy as np
 
-from ..losses import LossFunction, resolve_loss
+from ..losses import LossFunction
 from .base import BaseTrainer
 
 
@@ -96,18 +96,6 @@ class PSOTrainer(BaseTrainer):
     verbose: bool = False
     loss: LossFunction | str | None = None
     _loss_fn: LossFunction = field(init=False, repr=False)
-
-    def _prepare_training_data(self, model: Any, X: np.ndarray, y: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-        self._loss_fn = resolve_loss(self.loss)
-        return self._prepare_batch(X, y, model)
-
-    def _prepare_validation_data(
-        self,
-        model: Any,
-        X_val: np.ndarray,
-        y_val: np.ndarray,
-    ) -> tuple[np.ndarray, np.ndarray]:
-        return self._prepare_batch(X_val, y_val, model)
 
     def init_state(self, model: Any, X: np.ndarray, y: np.ndarray) -> dict[str, Any]:
         """Initialize PSO swarm state and return as a dict."""
@@ -205,23 +193,11 @@ class PSOTrainer(BaseTrainer):
         finally:
             model.set_parameters(original)
 
-    def _prepare_batch(self, X: np.ndarray, y: np.ndarray, model: Any) -> tuple[np.ndarray, np.ndarray]:
-        loss_fn = self._ensure_loss_fn()
-        X_arr = np.asarray(X, dtype=float)
-        y_arr = loss_fn.prepare_targets(y, model=model)
-        if y_arr.shape[0] != X_arr.shape[0]:
-            raise ValueError("Target array must have same number of rows as X")
-        return X_arr, y_arr
-
     def _evaluate_loss(self, model: Any, X: np.ndarray, y: np.ndarray) -> float:
+        loss_fn = self._get_loss_fn()
         preds = model.forward(X)
-        return float(self._loss_fn.loss(y, preds))
+        return float(loss_fn.loss(y, preds))
 
     def compute_loss(self, model: Any, X: np.ndarray, y: np.ndarray) -> float:
         """Evaluate the swarm's current parameters on ``(X, y)`` without mutation."""
         return self._evaluate_loss(model, X, y)
-
-    def _ensure_loss_fn(self) -> LossFunction:
-        if not hasattr(self, "_loss_fn"):
-            self._loss_fn = resolve_loss(self.loss)
-        return self._loss_fn

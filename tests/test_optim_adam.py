@@ -227,5 +227,5 @@ def test_adam_prepare_validation_data_checks_rows():
     assert X_val_prepared.shape == (2, 2)
     assert y_val_prepared.shape == (2, 1)
 
-    with pytest.raises(ValueError, match="Validation targets must match input rows"):
+    with pytest.raises(ValueError, match="Target array must have same number of rows"):
         trainer._prepare_validation_data(model, X_val, y)

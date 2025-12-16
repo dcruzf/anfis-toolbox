@@ -5,7 +5,7 @@ from typing import Any, cast
 
 import numpy as np
 
-from ..losses import LossFunction, resolve_loss
+from ..losses import LossFunction
 from .base import BaseTrainer
 from .parameter_utils import (
     iterate_membership_params_with_state,
@@ -78,26 +78,6 @@ class AdamTrainer(BaseTrainer):
     loss: LossFunction | str | None = None
     _loss_fn: LossFunction = field(init=False, repr=False)
 
-    def _prepare_training_data(self, model: Any, X: np.ndarray, y: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-        self._loss_fn = resolve_loss(self.loss)
-        X_arr = np.asarray(X, dtype=float)
-        y_arr = self._loss_fn.prepare_targets(y, model=model)
-        if y_arr.shape[0] != X_arr.shape[0]:
-            raise ValueError("Target array must have same number of rows as X")
-        return X_arr, y_arr
-
-    def _prepare_validation_data(
-        self,
-        model: Any,
-        X_val: np.ndarray,
-        y_val: np.ndarray,
-    ) -> tuple[np.ndarray, np.ndarray]:
-        X_arr = np.asarray(X_val, dtype=float)
-        y_arr = self._loss_fn.prepare_targets(y_val, model=model)
-        if y_arr.shape[0] != X_arr.shape[0]:
-            raise ValueError("Validation targets must match input rows")
-        return X_arr, y_arr
-
     def init_state(self, model: Any, X: np.ndarray, y: np.ndarray) -> dict[str, Any]:
         """Initialize Adam's first and second moments and time step.
 
@@ -126,10 +106,11 @@ class AdamTrainer(BaseTrainer):
 
         Returns (loss, grads) where grads follows model.get_gradients() structure.
         """
+        loss_fn = self._get_loss_fn()
         model.reset_gradients()
         y_pred = model.forward(Xb)
-        loss = self._loss_fn.loss(yb, y_pred)
-        dL_dy = self._loss_fn.gradient(yb, y_pred)
+        loss = loss_fn.loss(yb, y_pred)
+        dL_dy = loss_fn.gradient(yb, y_pred)
         model.backward(dL_dy)
         grads = model.get_gradients()
         return loss, grads
@@ -179,5 +160,6 @@ class AdamTrainer(BaseTrainer):
 
     def compute_loss(self, model: Any, X: np.ndarray, y: np.ndarray) -> float:
         """Evaluate the configured loss on ``(X, y)`` without updating parameters."""
+        loss_fn = self._get_loss_fn()
         preds = model.forward(X)
-        return float(self._loss_fn.loss(y, preds))
+        return float(loss_fn.loss(y, preds))

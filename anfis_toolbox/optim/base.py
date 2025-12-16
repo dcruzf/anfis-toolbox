@@ -22,6 +22,7 @@ from typing import Any, TypeAlias
 
 import numpy as np
 
+from ..losses import LossFunction, resolve_loss
 from ..model import TSKANFIS, TrainingHistory, TSKANFISClassifier
 
 ModelLike: TypeAlias = TSKANFIS | TSKANFISClassifier
@@ -145,10 +146,10 @@ class BaseTrainer(ABC):
     # Helpers
     # ------------------------------------------------------------------
     def _prepare_training_data(self, model: ModelLike, X: np.ndarray, y: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        """Prepare training data by converting to arrays and using loss function."""
+        loss_fn = self._get_loss_fn()
         X_arr = np.asarray(X, dtype=float)
-        y_arr = np.asarray(y, dtype=float)
-        if y_arr.ndim == 1:
-            y_arr = y_arr.reshape(-1, 1)
+        y_arr = loss_fn.prepare_targets(y, model=model)
         if y_arr.shape[0] != X_arr.shape[0]:
             raise ValueError("Target array must have same number of rows as X")
         return X_arr, y_arr
@@ -159,7 +160,26 @@ class BaseTrainer(ABC):
         X_val: np.ndarray,
         y_val: np.ndarray,
     ) -> tuple[np.ndarray, np.ndarray]:
-        return self._prepare_training_data(model, X_val, y_val)
+        """Prepare validation data using the same logic as training data."""
+        loss_fn = self._get_loss_fn()
+        X_arr = np.asarray(X_val, dtype=float)
+        y_arr = loss_fn.prepare_targets(y_val, model=model)
+        if y_arr.shape[0] != X_arr.shape[0]:
+            raise ValueError("Target array must have same number of rows as X")
+        return X_arr, y_arr
+
+    def _get_loss_fn(self) -> LossFunction:
+        """Get or initialize the loss function (always returns a valid LossFunction)."""
+        if hasattr(self, "__dataclass_fields__") and "_loss_fn" in self.__dataclass_fields__:
+            # For dataclass trainers with _loss_fn field, initialize it once
+            if not hasattr(self, "_loss_fn"):
+                loss_attr = getattr(self, "loss", None)
+                self._loss_fn = resolve_loss(loss_attr)
+            return self._loss_fn
+        else:
+            # For non-dataclass trainers, resolve on the fly
+            loss_attr = getattr(self, "loss", None)
+            return resolve_loss(loss_attr)
 
     def _log_epoch(
         self,

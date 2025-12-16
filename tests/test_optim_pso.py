@@ -188,13 +188,13 @@ def test_pso_prepare_validation_data_matches_training_batch():
     np.testing.assert_array_equal(y_val, y_train)
 
 
-def test_pso_compute_loss_and_ensure_loss_fn_initializes():
+def test_pso_compute_loss_and_get_loss_fn_initializes():
     trainer = PSOTrainer(swarm_size=4, epochs=1, random_state=1, verbose=False)
     model = _make_regression_model(n_inputs=1)
     X = np.array([[0.5], [-0.5]], dtype=float)
     y = (0.3 * X[:, 0]).reshape(-1, 1)
 
-    loss_fn = trainer._ensure_loss_fn()
+    loss_fn = trainer._get_loss_fn()
     assert loss_fn is trainer._loss_fn
 
     trainer._prepare_training_data(model, X, y)

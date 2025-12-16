@@ -235,7 +235,7 @@ def test_sgd_prepare_validation_data_checks_rows():
     loss_value = trainer.compute_loss(model, X_train, y_train)
     assert loss_value >= 0
 
-    with pytest.raises(ValueError, match="Validation targets must match input rows"):
+    with pytest.raises(ValueError, match="Target array must have same number of rows"):
         trainer._prepare_validation_data(model, X_val, y)
 
 
