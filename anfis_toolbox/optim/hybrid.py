@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
+from typing import Any
 
 import numpy as np
 
@@ -24,22 +25,22 @@ class HybridTrainer(BaseTrainer):
     verbose: bool = False
     _loss_fn: MSELoss = MSELoss()
 
-    def _prepare_training_data(self, model, X: np.ndarray, y: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    def _prepare_training_data(self, model: Any, X: np.ndarray, y: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         return self._prepare_data(X, y)
 
     def _prepare_validation_data(
         self,
-        model,
+        model: Any,
         X_val: np.ndarray,
         y_val: np.ndarray,
     ) -> tuple[np.ndarray, np.ndarray]:
         return self._prepare_data(X_val, y_val)
 
-    def init_state(self, model, X: np.ndarray, y: np.ndarray):
+    def init_state(self, model: Any, X: np.ndarray, y: np.ndarray) -> None:
         """Hybrid trainer doesn't maintain optimizer state; returns None."""
         return None
 
-    def train_step(self, model, Xb: np.ndarray, yb: np.ndarray, state):
+    def train_step(self, model: Any, Xb: np.ndarray, yb: np.ndarray, state: None) -> tuple[float, None]:
         """Perform one hybrid step on a batch and return (loss, state).
 
         Equivalent to one iteration of the hybrid algorithm on the given batch.
@@ -75,7 +76,7 @@ class HybridTrainer(BaseTrainer):
         model.update_membership_parameters(self.learning_rate)
         return float(loss), state
 
-    def compute_loss(self, model, X: np.ndarray, y: np.ndarray) -> float:
+    def compute_loss(self, model: Any, X: np.ndarray, y: np.ndarray) -> float:
         """Compute the hybrid MSE loss on prepared data without side effects."""
         X_arr, y_arr = self._prepare_data(X, y)
         membership_outputs = model.membership_layer.forward(X_arr)
