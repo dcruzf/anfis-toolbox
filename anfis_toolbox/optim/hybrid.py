@@ -25,17 +25,6 @@ class HybridTrainer(BaseTrainer):
     verbose: bool = False
     _loss_fn: MSELoss = MSELoss()
 
-    def _prepare_training_data(self, model: Any, X: np.ndarray, y: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-        return self._prepare_data(X, y)
-
-    def _prepare_validation_data(
-        self,
-        model: Any,
-        X_val: np.ndarray,
-        y_val: np.ndarray,
-    ) -> tuple[np.ndarray, np.ndarray]:
-        return self._prepare_data(X_val, y_val)
-
     def init_state(self, model: Any, X: np.ndarray, y: np.ndarray) -> None:
         """Hybrid trainer doesn't maintain optimizer state; returns None."""
         return None
@@ -45,7 +34,7 @@ class HybridTrainer(BaseTrainer):
 
         Equivalent to one iteration of the hybrid algorithm on the given batch.
         """
-        Xb, yb = self._prepare_data(Xb, yb)
+        Xb, yb = self._prepare_training_data(model, Xb, yb)
         # Forward to get normalized weights
         membership_outputs = model.membership_layer.forward(Xb)
         rule_strengths = model.rule_layer.forward(membership_outputs)
@@ -78,18 +67,9 @@ class HybridTrainer(BaseTrainer):
 
     def compute_loss(self, model: Any, X: np.ndarray, y: np.ndarray) -> float:
         """Compute the hybrid MSE loss on prepared data without side effects."""
-        X_arr, y_arr = self._prepare_data(X, y)
+        X_arr, y_arr = self._prepare_validation_data(model, X, y)
         membership_outputs = model.membership_layer.forward(X_arr)
         rule_strengths = model.rule_layer.forward(membership_outputs)
         normalized_weights = model.normalization_layer.forward(rule_strengths)
         preds = model.consequent_layer.forward(X_arr, normalized_weights)
         return float(self._loss_fn.loss(y_arr, preds))
-
-    @staticmethod
-    def _prepare_data(X: np.ndarray, y: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-        """Ensure X, y are float arrays and y is 2D (n, 1) if originally 1D."""
-        X = np.asarray(X, dtype=float)
-        y = np.asarray(y, dtype=float)
-        if y.ndim == 1:
-            y = y.reshape(-1, 1)
-        return X, y

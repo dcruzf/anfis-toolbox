@@ -104,6 +104,6 @@ def test_hybrid_adam_prepare_data_reshapes_1d_targets():
     trainer = HybridAdamTrainer()
     X = np.array([[0.0], [1.0]], dtype=float)
     y = np.array([0.5, -0.2], dtype=float)
-    X_prep, y_prep = trainer._prepare_data(X, y)
+    X_prep, y_prep = trainer._prepare_training_data(None, X, y)
     assert X_prep.shape == (2, 1)
     assert y_prep.shape == (2, 1)
