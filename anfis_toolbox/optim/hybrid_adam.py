@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 from copy import deepcopy
 from dataclasses import dataclass
+from typing import Any
 
 import numpy as np
 
@@ -29,13 +30,15 @@ class HybridAdamTrainer(BaseTrainer):
     verbose: bool = False
     _loss_fn: MSELoss = MSELoss()
 
-    def init_state(self, model, X: np.ndarray, y: np.ndarray):
+    def init_state(self, model: Any, X: np.ndarray, y: np.ndarray) -> dict[str, Any]:
         """Initialize Adam moment tensors for membership parameters."""
         params = model.get_parameters()
         zero_struct = _zeros_like_structure(params)["membership"]
         return {"m": deepcopy(zero_struct), "v": deepcopy(zero_struct), "t": 0}
 
-    def train_step(self, model, Xb: np.ndarray, yb: np.ndarray, state):
+    def train_step(
+        self, model: Any, Xb: np.ndarray, yb: np.ndarray, state: dict[str, Any]
+    ) -> tuple[float, dict[str, Any]]:
         """Execute one hybrid iteration combining LSM and Adam updates."""
         model.reset_gradients()
         Xb, yb = self._prepare_data(Xb, yb)
@@ -66,7 +69,7 @@ class HybridAdamTrainer(BaseTrainer):
         self._apply_adam_update(model, grad_struct, state)
         return float(loss), state
 
-    def _apply_adam_update(self, model, grad_struct, state):
+    def _apply_adam_update(self, model: Any, grad_struct: dict[str, Any], state: dict[str, Any]) -> None:
         params = model.get_parameters()
         m = state["m"]
         v = state["v"]
@@ -83,7 +86,7 @@ class HybridAdamTrainer(BaseTrainer):
                     params["membership"][name][i][key] -= step
         model.set_parameters(params)
 
-    def compute_loss(self, model, X: np.ndarray, y: np.ndarray) -> float:
+    def compute_loss(self, model: Any, X: np.ndarray, y: np.ndarray) -> float:
         """Evaluate mean squared error on provided data without updates."""
         X_arr, y_arr = self._prepare_data(X, y)
         membership_outputs = model.membership_layer.forward(X_arr)
