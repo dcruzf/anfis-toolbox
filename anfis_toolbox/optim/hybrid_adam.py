@@ -3,13 +3,17 @@ from __future__ import annotations
 import logging
 from copy import deepcopy
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 
 from ..losses import MSELoss
 from .adam import _zeros_like_structure
 from .base import BaseTrainer
+from .parameter_utils import (
+    iterate_membership_params_with_state,
+    update_membership_param,
+)
 
 
 @dataclass
@@ -71,19 +75,21 @@ class HybridAdamTrainer(BaseTrainer):
 
     def _apply_adam_update(self, model: Any, grad_struct: dict[str, Any], state: dict[str, Any]) -> None:
         params = model.get_parameters()
-        m = state["m"]
-        v = state["v"]
+        m = {"membership": state["m"]}
+        v = {"membership": state["v"]}
         t = state["t"] = state["t"] + 1
-        for name in params["membership"]:
-            for i, mf_params in enumerate(params["membership"][name]):
-                for key in mf_params:
-                    g = float(grad_struct["membership"][name][i][key])
-                    m_val = m[name][i][key] = self.beta1 * m[name][i][key] + (1.0 - self.beta1) * g
-                    v_val = v[name][i][key] = self.beta2 * v[name][i][key] + (1.0 - self.beta2) * (g * g)
-                    m_hat = m_val / (1.0 - self.beta1**t)
-                    v_hat = v_val / (1.0 - self.beta2**t)
-                    step = self.learning_rate * m_hat / (np.sqrt(v_hat) + self.epsilon)
-                    params["membership"][name][i][key] -= step
+        for path, param_val, m_val, grad in iterate_membership_params_with_state(params, m, grad_struct):
+            grad = cast(float, grad)
+            m_val = self.beta1 * m_val + (1.0 - self.beta1) * grad
+            v_val = v["membership"][path[0]][path[1]][path[2]]
+            v_val = self.beta2 * v_val + (1.0 - self.beta2) * (grad * grad)
+            m_hat = m_val / (1.0 - self.beta1**t)
+            v_hat = v_val / (1.0 - self.beta2**t)
+            step = self.learning_rate * m_hat / (np.sqrt(v_hat) + self.epsilon)
+            new_param = param_val - step
+            update_membership_param(params, path, new_param)
+            m["membership"][path[0]][path[1]][path[2]] = m_val
+            v["membership"][path[0]][path[1]][path[2]] = v_val
         model.set_parameters(params)
 
     def compute_loss(self, model: Any, X: np.ndarray, y: np.ndarray) -> float:
