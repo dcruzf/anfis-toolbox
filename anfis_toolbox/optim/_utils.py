@@ -6,7 +6,7 @@ from typing import Any
 import numpy as np
 
 
-def zeros_like_structure(params: dict[str, Any]) -> dict[str, Any]:
+def zeros_like_structure(params: Any) -> dict[str, Any]:
     """Create a zero-structure matching model.get_parameters() format.
 
     Returns a dict with:
@@ -22,8 +22,8 @@ def zeros_like_structure(params: dict[str, Any]) -> dict[str, Any]:
 
 
 def iterate_membership_params(
-    params_dict: dict[str, Any],
-    grads_dict: dict[str, Any] | None = None,
+    params_dict: Any,
+    grads_dict: Any | None = None,
 ) -> Iterator[tuple[tuple[str, int, str], float, float | None]]:
     """Iterate over membership parameters with their gradients.
 
@@ -40,9 +40,9 @@ def iterate_membership_params(
 
 
 def iterate_membership_params_with_state(
-    params_dict: dict[str, Any],
-    state_dict: dict[str, Any],
-    grads_dict: dict[str, Any] | None = None,
+    params_dict: Any,
+    state_dict: Any,
+    grads_dict: Any | None = None,
 ) -> Iterator[tuple[tuple[str, int, str], float, float, float | None]]:
     """Iterate over membership parameters with state (for momentum-based optimizers)."""
     for name in params_dict["membership"].keys():
@@ -57,7 +57,7 @@ def iterate_membership_params_with_state(
 
 
 def update_membership_param(
-    params_dict: dict[str, Any],
+    params_dict: Any,
     path: tuple[str, int, str],
     value: float,
 ) -> None:
@@ -66,14 +66,14 @@ def update_membership_param(
 
 
 def get_membership_param(
-    params_dict: dict[str, Any],
+    params_dict: Any,
     path: tuple[str, int, str],
 ) -> float:
     name, i, key = path
     return float(params_dict["membership"][name][i][key])
 
 
-def flatten_membership_params(params_dict: dict[str, Any]) -> tuple[np.ndarray, list[tuple[str, int, str]]]:
+def flatten_membership_params(params_dict: Any) -> tuple[np.ndarray, list[tuple[str, int, str]]]:
     paths: list[tuple[str, int, str]] = []
     values: list[float] = []
     for name in params_dict["membership"].keys():
@@ -87,7 +87,7 @@ def flatten_membership_params(params_dict: dict[str, Any]) -> tuple[np.ndarray, 
 def unflatten_membership_params(
     flat_array: np.ndarray,
     paths: list[tuple[str, int, str]],
-    params_dict: dict[str, Any],
+    params_dict: Any,
 ) -> None:
     for idx, (name, i, key) in enumerate(paths):
         params_dict["membership"][name][i][key] = float(flat_array[idx])

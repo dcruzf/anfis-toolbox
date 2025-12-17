@@ -8,7 +8,7 @@ from typing import Any, TypedDict
 import numpy as np
 
 from ..losses import LossFunction
-from .base import BaseTrainer
+from .base import BaseTrainer, ModelLike
 
 
 class _FlattenMeta(TypedDict):
@@ -17,7 +17,7 @@ class _FlattenMeta(TypedDict):
     membership_info: list[tuple[str, int, str]]
 
 
-def _flatten_params(params: dict[str, Any]) -> tuple[np.ndarray, _FlattenMeta]:
+def _flatten_params(params: Any) -> tuple[np.ndarray, _FlattenMeta]:
     """Flatten model parameters into a 1D vector and return meta for reconstruction.
 
     The expected structure matches model.get_parameters():
@@ -44,7 +44,7 @@ def _flatten_params(params: dict[str, Any]) -> tuple[np.ndarray, _FlattenMeta]:
     return theta, meta
 
 
-def _unflatten_params(theta: np.ndarray, meta: _FlattenMeta, template: dict[str, Any]) -> dict[str, Any]:
+def _unflatten_params(theta: np.ndarray, meta: _FlattenMeta, template: Any) -> dict[str, Any]:
     """Reconstruct parameter dictionary from theta using meta and template structure."""
     n_cons = meta["n_consequent"]
     cons = theta[:n_cons].reshape(meta["consequent_shape"])
@@ -97,7 +97,7 @@ class PSOTrainer(BaseTrainer):
     loss: LossFunction | str | None = None
     _loss_fn: LossFunction = field(init=False, repr=False)
 
-    def init_state(self, model: Any, X: np.ndarray, y: np.ndarray) -> dict[str, Any]:
+    def init_state(self, model: ModelLike, X: np.ndarray, y: np.ndarray) -> dict[str, Any]:
         """Initialize PSO swarm state and return as a dict."""
         X = np.asarray(X, dtype=float)
         y = np.asarray(y, dtype=float)
@@ -130,7 +130,7 @@ class PSOTrainer(BaseTrainer):
         }
 
     def train_step(
-        self, model: Any, Xb: np.ndarray, yb: np.ndarray, state: dict[str, Any]
+        self, model: ModelLike, Xb: np.ndarray, yb: np.ndarray, state: dict[str, Any]
     ) -> tuple[float, dict[str, Any]]:
         """Perform one PSO iteration over the swarm on a batch and return (best_loss, state)."""
         positions = state["positions"]

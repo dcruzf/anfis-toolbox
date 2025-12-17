@@ -11,7 +11,7 @@ from ._utils import (
     update_membership_param,
     zeros_like_structure,
 )
-from .base import BaseTrainer
+from .base import BaseTrainer, ModelLike
 
 
 @dataclass
@@ -43,20 +43,20 @@ class RMSPropTrainer(BaseTrainer):
     loss: LossFunction | str | None = None
     _loss_fn: LossFunction = field(init=False, repr=False)
 
-    def init_state(self, model: Any, X: np.ndarray, y: np.ndarray) -> dict[str, Any]:
+    def init_state(self, model: ModelLike, X: np.ndarray, y: np.ndarray) -> dict[str, Any]:
         """Initialize RMSProp caches for consequents and membership scalars."""
         params = model.get_parameters()
         return {"params": params, "cache": zeros_like_structure(params)}
 
     def train_step(
-        self, model: Any, Xb: np.ndarray, yb: np.ndarray, state: dict[str, Any]
+        self, model: ModelLike, Xb: np.ndarray, yb: np.ndarray, state: dict[str, Any]
     ) -> tuple[float, dict[str, Any]]:
         """One RMSProp step on a batch; returns (loss, updated_state)."""
         loss, grads = self._compute_loss_and_grads(model, Xb, yb)
         self._apply_rmsprop_step(model, state["params"], state["cache"], grads)
         return loss, state
 
-    def _compute_loss_and_grads(self, model: Any, Xb: np.ndarray, yb: np.ndarray) -> tuple[float, dict[str, Any]]:
+    def _compute_loss_and_grads(self, model: ModelLike, Xb: np.ndarray, yb: np.ndarray) -> tuple[float, Any]:
         """Forward pass, MSE loss, backward pass, and gradients for a batch.
 
         Returns (loss, grads) where grads follows model.get_gradients() structure.
@@ -72,7 +72,7 @@ class RMSPropTrainer(BaseTrainer):
 
     def _apply_rmsprop_step(
         self,
-        model: Any,
+        model: ModelLike,
         params: dict[str, Any],
         cache: dict[str, Any],
         grads: dict[str, Any],
@@ -99,7 +99,7 @@ class RMSPropTrainer(BaseTrainer):
         # Push updated params back into the model
         model.set_parameters(params)
 
-    def compute_loss(self, model: Any, X: np.ndarray, y: np.ndarray) -> float:
+    def compute_loss(self, model: ModelLike, X: np.ndarray, y: np.ndarray) -> float:
         """Return the current loss value for ``(X, y)`` without modifying state."""
         loss_fn = self._get_loss_fn()
         preds = model.forward(X)

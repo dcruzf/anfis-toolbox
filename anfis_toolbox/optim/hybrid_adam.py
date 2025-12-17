@@ -3,13 +3,14 @@ from __future__ import annotations
 import logging
 from copy import deepcopy
 from dataclasses import dataclass
-from typing import Any, cast
+from typing import Any
 
 import numpy as np
 
 from ..losses import MSELoss
+from ..model import TSKANFIS
 from ._utils import iterate_membership_params_with_state, update_membership_param, zeros_like_structure
-from .base import BaseTrainer
+from .base import BaseTrainer, ModelLike
 
 
 @dataclass
@@ -30,21 +31,22 @@ class HybridAdamTrainer(BaseTrainer):
     verbose: bool = False
     _loss_fn: MSELoss = MSELoss()
 
-    def init_state(self, model: Any, X: np.ndarray, y: np.ndarray) -> dict[str, Any]:
+    def init_state(self, model: ModelLike, X: np.ndarray, y: np.ndarray) -> dict[str, Any]:
         """Initialize Adam moment tensors for membership parameters."""
+        model = self._require_regression_model(model)
         params = model.get_parameters()
         zero_struct = zeros_like_structure(params)["membership"]
         return {"m": deepcopy(zero_struct), "v": deepcopy(zero_struct), "t": 0}
 
     def train_step(
-        self, model: Any, Xb: np.ndarray, yb: np.ndarray, state: dict[str, Any]
+        self, model: ModelLike, Xb: np.ndarray, yb: np.ndarray, state: dict[str, Any]
     ) -> tuple[float, dict[str, Any]]:
         """Execute one hybrid iteration combining LSM and Adam updates."""
+        model = self._require_regression_model(model)
         model.reset_gradients()
         Xb, yb = self._prepare_training_data(model, Xb, yb)
-        membership_outputs = model.membership_layer.forward(Xb)
-        rule_strengths = model.rule_layer.forward(membership_outputs)
-        normalized_weights = model.normalization_layer.forward(rule_strengths)
+        normalized_weights = model.forward_antecedents(Xb)
+        # LSM for consequents
         ones_col = np.ones((Xb.shape[0], 1), dtype=float)
         x_bar = np.concatenate([Xb, ones_col], axis=1)
         A_blocks = [normalized_weights[:, j : j + 1] * x_bar for j in range(model.n_rules)]
@@ -69,13 +71,16 @@ class HybridAdamTrainer(BaseTrainer):
         self._apply_adam_update(model, grad_struct, state)
         return float(loss), state
 
-    def _apply_adam_update(self, model: Any, grad_struct: dict[str, Any], state: dict[str, Any]) -> None:
+    def _apply_adam_update(self, model: ModelLike, grad_struct: dict[str, Any], state: dict[str, Any]) -> None:
+        model = self._require_regression_model(model)
         params = model.get_parameters()
         m = {"membership": state["m"]}
         v = {"membership": state["v"]}
         t = state["t"] = state["t"] + 1
         for path, param_val, m_val, grad in iterate_membership_params_with_state(params, m, grad_struct):
-            grad = cast(float, grad)
+            if grad is None:
+                continue
+            grad = float(grad)
             m_val = self.beta1 * m_val + (1.0 - self.beta1) * grad
             v_val = v["membership"][path[0]][path[1]][path[2]]
             v_val = self.beta2 * v_val + (1.0 - self.beta2) * (grad * grad)
@@ -88,11 +93,16 @@ class HybridAdamTrainer(BaseTrainer):
             v["membership"][path[0]][path[1]][path[2]] = v_val
         model.set_parameters(params)
 
-    def compute_loss(self, model: Any, X: np.ndarray, y: np.ndarray) -> float:
+    def compute_loss(self, model: ModelLike, X: np.ndarray, y: np.ndarray) -> float:
         """Evaluate mean squared error on provided data without updates."""
+        model = self._require_regression_model(model)
         X_arr, y_arr = self._prepare_validation_data(model, X, y)
-        membership_outputs = model.membership_layer.forward(X_arr)
-        rule_strengths = model.rule_layer.forward(membership_outputs)
-        normalized_weights = model.normalization_layer.forward(rule_strengths)
+        normalized_weights = model.forward_antecedents(X_arr)
         preds = model.consequent_layer.forward(X_arr, normalized_weights)
         return float(self._loss_fn.loss(y_arr, preds))
+
+    @staticmethod
+    def _require_regression_model(model: ModelLike) -> TSKANFIS:
+        if not isinstance(model, TSKANFIS):
+            raise TypeError("HybridAdamTrainer supports TSKANFIS regression models only")
+        return model

@@ -11,7 +11,7 @@ from ._utils import (
     update_membership_param,
     zeros_like_structure,
 )
-from .base import BaseTrainer
+from .base import BaseTrainer, ModelLike
 
 
 def _adam_update(
@@ -64,7 +64,7 @@ class AdamTrainer(BaseTrainer):
     loss: LossFunction | str | None = None
     _loss_fn: LossFunction = field(init=False, repr=False)
 
-    def init_state(self, model: Any, X: np.ndarray, y: np.ndarray) -> dict[str, Any]:
+    def init_state(self, model: ModelLike, X: np.ndarray, y: np.ndarray) -> dict[str, Any]:
         """Initialize Adam's first and second moments and time step.
 
         Returns a dict with keys: params, m, v, t.
@@ -78,7 +78,7 @@ class AdamTrainer(BaseTrainer):
         }
 
     def train_step(
-        self, model: Any, Xb: np.ndarray, yb: np.ndarray, state: dict[str, Any]
+        self, model: ModelLike, Xb: np.ndarray, yb: np.ndarray, state: dict[str, Any]
     ) -> tuple[float, dict[str, Any]]:
         """One Adam step on a batch; returns (loss, updated_state)."""
         loss, grads = self._compute_loss_and_grads(model, Xb, yb)
@@ -87,7 +87,7 @@ class AdamTrainer(BaseTrainer):
         state["t"] = t_new
         return loss, state
 
-    def _compute_loss_and_grads(self, model: Any, Xb: np.ndarray, yb: np.ndarray) -> tuple[float, dict[str, Any]]:
+    def _compute_loss_and_grads(self, model: ModelLike, Xb: np.ndarray, yb: np.ndarray) -> tuple[float, Any]:
         """Forward pass, MSE loss, backward pass, and gradients for a batch.
 
         Returns (loss, grads) where grads follows model.get_gradients() structure.
@@ -144,7 +144,7 @@ class AdamTrainer(BaseTrainer):
         model.set_parameters(params)
         return t
 
-    def compute_loss(self, model: Any, X: np.ndarray, y: np.ndarray) -> float:
+    def compute_loss(self, model: ModelLike, X: np.ndarray, y: np.ndarray) -> float:
         """Evaluate the configured loss on ``(X, y)`` without updating parameters."""
         loss_fn = self._get_loss_fn()
         preds = model.forward(X)
