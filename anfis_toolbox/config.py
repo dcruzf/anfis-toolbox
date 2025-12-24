@@ -3,26 +3,65 @@
 import json
 import logging
 import pickle  # nosec B403
+from collections.abc import Mapping, Sequence
 from copy import deepcopy
 from pathlib import Path
-from typing import Any, TypedDict, cast
+from typing import Any, Protocol, TypedDict, cast
 
 from .builders import ANFISBuilder
 from .model import TSKANFIS
 
 
+class _InputConfig(TypedDict):
+    range_min: float
+    range_max: float
+    n_mfs: int
+    mf_type: str
+    overlap: float
+
+
+class _TrainingConfigRequired(TypedDict):
+    method: str
+    epochs: int
+    learning_rate: float
+
+
+class _TrainingConfigOptional(TypedDict, total=False):
+    verbose: bool
+
+
+class _TrainingConfig(_TrainingConfigRequired, _TrainingConfigOptional):
+    pass
+
+
+class _ConfigDict(TypedDict):
+    inputs: dict[str, _InputConfig]
+    training: _TrainingConfig
+    model_params: dict[str, Any]
+
+
 class _PresetConfig(TypedDict):
     description: str
-    inputs: dict[str, dict[str, Any]]
-    training: dict[str, Any]
+    inputs: dict[str, _InputConfig]
+    training: _TrainingConfig
+
+
+class _SupportsParameters(Protocol):
+    @property
+    def parameters(self) -> dict[str, Any]:  # pragma: no cover - protocol definition
+        """Return membership function parameters."""
+        ...
+
+
+_MembershipConfig = dict[str, list[dict[str, Any]]]
 
 
 class ANFISConfig:
     """Configuration manager for ANFIS models."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize configuration manager."""
-        self.config = {
+        self.config: _ConfigDict = {
             "inputs": {},
             "training": {"method": "hybrid", "epochs": 50, "learning_rate": 0.01, "verbose": False},
             "model_params": {},
@@ -89,7 +128,7 @@ class ANFISConfig:
 
         builder = ANFISBuilder()
 
-        inputs = cast(dict[str, dict[str, Any]], self.config["inputs"])
+        inputs = self.config["inputs"]
 
         for name, params in inputs.items():
             builder.add_input(
@@ -103,7 +142,7 @@ class ANFISConfig:
 
         return builder.build()
 
-    def save(self, filepath: str | Path):
+    def save(self, filepath: str | Path) -> None:
         """Save configuration to JSON file.
 
         Parameters:
@@ -129,10 +168,10 @@ class ANFISConfig:
             config_data = json.load(f)
 
         config = cls()
-        config.config = config_data
+        config.config = cast(_ConfigDict, config_data)
         return config
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self) -> _ConfigDict:
         """Convert configuration to dictionary.
 
         Returns:
@@ -142,7 +181,7 @@ class ANFISConfig:
 
     def __repr__(self) -> str:
         """String representation of configuration."""
-        inputs = cast(dict[str, dict[str, Any]], self.config["inputs"])
+        inputs = self.config["inputs"]
         n_inputs = len(inputs)
         total_mfs = sum(int(inp["n_mfs"]) for inp in inputs.values())
 
@@ -153,7 +192,7 @@ class ANFISModelManager:
     """Model management utilities for saving/loading trained ANFIS models."""
 
     @staticmethod
-    def save_model(model: TSKANFIS, filepath: str | Path, include_config: bool = True):
+    def save_model(model: TSKANFIS, filepath: str | Path, include_config: bool = True) -> None:
         """Save trained ANFIS model to file.
 
         Parameters:
@@ -189,7 +228,7 @@ class ANFISModelManager:
             Loaded ANFIS model
         """
         with open(filepath, "rb") as f:
-            model = pickle.load(f)  # nosec B301
+            model: TSKANFIS = pickle.load(f)  # nosec B301
 
         return model
 
@@ -204,10 +243,10 @@ class ANFISModelManager:
             Model configuration dictionary
         """
         # Use standardized interface: both model and membership_layer have membership_functions property
-        membership_functions = model.membership_functions
+        membership_functions: Mapping[str, Sequence[_SupportsParameters]] = model.membership_functions
         input_names = model.input_names
 
-        membership_config: dict[str, list[dict[str, Any]]] = {}
+        membership_config: _MembershipConfig = {}
         config: dict[str, Any] = {
             "model_info": {
                 "n_inputs": int(model.n_inputs),
@@ -217,13 +256,13 @@ class ANFISModelManager:
             "membership_functions": membership_config,
         }
 
-        # Extract MF information
+        # Extract MF information from each input channel
         for input_name, mfs in membership_functions.items():
             membership_config[input_name] = []
 
             for _i, mf in enumerate(mfs):
-                # Get parameters and convert numpy types to native Python types for JSON serialization
-                parameters = mf.parameters.copy()
+                # Convert numpy scalars to native Python types for JSON serialization
+                parameters: dict[str, Any] = mf.parameters.copy()
                 for key, value in parameters.items():
                     if hasattr(value, "item"):
                         parameters[key] = value.item()

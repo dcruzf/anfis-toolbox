@@ -457,7 +457,7 @@ def _make_simple_clf(n_inputs: int = 1, n_mfs: int = 2, n_classes: int = 2) -> T
     return TSKANFISClassifier(input_mfs, n_classes=n_classes, random_state=0)
 
 
-def test_classifier_apply_membership_gradients_private_helper():
+def test_classifier_update_membership_parameters():
     clf = _make_simple_clf(n_inputs=1, n_mfs=2, n_classes=2)
     X = np.array([[-0.5], [0.7]])
     # Create gradients by simulating a backward step with dummy dL/dlogits
@@ -465,7 +465,7 @@ def test_classifier_apply_membership_gradients_private_helper():
     dL_dlogits = np.ones_like(logits) / logits.shape[0]
     clf.backward(dL_dlogits)
     params_before = clf.get_parameters()
-    clf._apply_membership_gradients(learning_rate=0.01)
+    clf.update_membership_parameters(0.01)
     params_after = clf.get_parameters()
     # Expect some membership parameter to change
     changed = False

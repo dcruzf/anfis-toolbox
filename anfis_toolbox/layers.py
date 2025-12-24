@@ -4,6 +4,8 @@ from typing import Any
 
 import numpy as np
 
+from .membership import MembershipFunction
+
 
 class MembershipLayer:
     """Membership layer for ANFIS (Adaptive Neuro-Fuzzy Inference System).
@@ -23,7 +25,7 @@ class MembershipLayer:
         last (dict): Cache of last forward pass computations for backward pass.
     """
 
-    def __init__(self, input_mfs: dict):
+    def __init__(self, input_mfs: dict[str, list[MembershipFunction]]) -> None:
         """Initializes the membership layer with input membership functions.
 
         Parameters:
@@ -37,7 +39,7 @@ class MembershipLayer:
         self.last: dict[str, Any] = {}
 
     @property
-    def membership_functions(self) -> dict:
+    def membership_functions(self) -> dict[str, list[MembershipFunction]]:
         """Alias for input_mfs to provide a standardized interface.
 
         Returns:
@@ -45,7 +47,7 @@ class MembershipLayer:
         """
         return self.input_mfs
 
-    def forward(self, x: np.ndarray) -> dict:
+    def forward(self, x: np.ndarray) -> dict[str, np.ndarray]:
         """Performs forward pass to compute membership degrees for all inputs.
 
         Parameters:
@@ -75,7 +77,7 @@ class MembershipLayer:
 
         return membership_outputs
 
-    def backward(self, gradients: dict) -> dict:
+    def backward(self, gradients: dict[str, np.ndarray]) -> dict[str, dict[str, list[dict[str, float]]]]:
         """Performs backward pass to compute gradients for membership functions.
 
         Parameters:
@@ -104,7 +106,7 @@ class MembershipLayer:
 
         return {"membership": param_grads}
 
-    def reset(self):
+    def reset(self) -> None:
         """Resets all membership functions to their initial state.
 
         Returns:
@@ -136,8 +138,8 @@ class RuleLayer:
 
     def __init__(
         self,
-        input_names: list,
-        mf_per_input: list,
+        input_names: list[str],
+        mf_per_input: list[int],
         rules: Sequence[Sequence[int]] | None = None,
     ):
         """Initializes the rule layer with input configuration.
@@ -183,7 +185,7 @@ class RuleLayer:
 
         self.last: dict[str, Any] = {}
 
-    def forward(self, membership_outputs: dict) -> np.ndarray:
+    def forward(self, membership_outputs: dict[str, np.ndarray]) -> np.ndarray:
         """Performs forward pass to compute rule strengths.
 
         Parameters:
@@ -219,7 +221,7 @@ class RuleLayer:
 
         return rule_activations
 
-    def backward(self, dL_dw: np.ndarray) -> dict:
+    def backward(self, dL_dw: np.ndarray) -> dict[str, np.ndarray]:
         """Performs backward pass to compute gradients for membership functions.
 
         Parameters:
@@ -274,7 +276,7 @@ class NormalizationLayer:
         last (dict): Cache of last forward pass computations for backward pass.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initializes the normalization layer."""
         self.last: dict[str, Any] = {}
 
@@ -385,7 +387,7 @@ class ConsequentLayer:
 
         return y_hat
 
-    def backward(self, dL_dy: np.ndarray):
+    def backward(self, dL_dy: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         """Performs backward pass to compute gradients for parameters and inputs.
 
         Parameters:
@@ -425,7 +427,7 @@ class ConsequentLayer:
 
         return dL_dnorm_w, dL_dx
 
-    def reset(self):
+    def reset(self) -> None:
         """Resets gradients and cached values.
 
         Returns:
@@ -484,7 +486,7 @@ class ClassificationConsequentLayer:
         self.last = {"X_aug": X_aug, "norm_w": norm_w, "f": f}
         return logits
 
-    def backward(self, dL_dlogits: np.ndarray):
+    def backward(self, dL_dlogits: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         """Computes the backward pass for the classification consequent layer."""
         X_aug = self.last["X_aug"]  # (b, d+1)
         norm_w = self.last["norm_w"]  # (b, r)
@@ -505,7 +507,7 @@ class ClassificationConsequentLayer:
         dL_dx = np.einsum("bk,br,rkd->bd", dL_dlogits, norm_w, W)
         return dL_dnorm_w, dL_dx
 
-    def reset(self):
+    def reset(self) -> None:
         """Resets the gradients and cached values."""
         self.gradients = np.zeros_like(self.parameters)
         self.last = {}

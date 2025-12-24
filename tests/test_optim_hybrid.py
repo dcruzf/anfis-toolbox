@@ -1,4 +1,7 @@
+from copy import deepcopy
+
 import numpy as np
+import pytest
 
 from anfis_toolbox.membership import GaussianMF
 from anfis_toolbox.model import TSKANFIS
@@ -104,6 +107,52 @@ def test_hybrid_adam_prepare_data_reshapes_1d_targets():
     trainer = HybridAdamTrainer()
     X = np.array([[0.0], [1.0]], dtype=float)
     y = np.array([0.5, -0.2], dtype=float)
-    X_prep, y_prep = trainer._prepare_data(X, y)
+    X_prep, y_prep = trainer._prepare_training_data(None, X, y)
     assert X_prep.shape == (2, 1)
     assert y_prep.shape == (2, 1)
+
+
+def test_hybrid_rejects_non_regression_model():
+    trainer = HybridTrainer()
+
+    class DummyModel:
+        pass
+
+    with pytest.raises(TypeError, match="supports TSKANFIS regression models only"):
+        trainer.compute_loss(DummyModel(), np.zeros((1, 1)), np.zeros((1, 1)))
+
+
+def test_hybrid_adam_train_step_rejects_non_regression_model():
+    trainer = HybridAdamTrainer()
+
+    class DummyModel:
+        pass
+
+    with pytest.raises(TypeError, match="supports TSKANFIS regression models only"):
+        trainer.train_step(DummyModel(), np.zeros((1, 1)), np.zeros((1, 1)), {"m": {}, "v": {}, "t": 0})
+
+
+def test_hybrid_adam_apply_update_rejects_non_regression_model():
+    trainer = HybridAdamTrainer()
+
+    class DummyModel:
+        pass
+
+    with pytest.raises(TypeError, match="supports TSKANFIS regression models only"):
+        trainer._apply_adam_update(DummyModel(), {}, {"m": {}, "v": {}, "t": 0})
+
+
+def test_hybrid_adam_apply_update_skips_none_gradients():
+    model = _make_regression_model(n_inputs=1)
+    trainer = HybridAdamTrainer()
+    params = model.get_parameters()
+
+    membership_template = {
+        name: [dict.fromkeys(mf.keys(), 0.0) for mf in mf_list] for name, mf_list in params["membership"].items()
+    }
+    state = {"m": deepcopy(membership_template), "v": deepcopy(membership_template), "t": 0}
+    trainer._apply_adam_update(model, None, state)
+
+    updated = model.get_parameters()["membership"]
+    assert updated == params["membership"]  # no updates applied
+    assert state["t"] == 1  # time step still increments

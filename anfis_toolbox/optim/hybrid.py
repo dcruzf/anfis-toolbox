@@ -5,8 +5,9 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from ..losses import mse_grad, mse_loss
-from .base import BaseTrainer
+from ..losses import MSELoss
+from ..model import TSKANFIS
+from .base import BaseTrainer, ModelLike
 
 
 @dataclass
@@ -22,32 +23,22 @@ class HybridTrainer(BaseTrainer):
     learning_rate: float = 0.01
     epochs: int = 100
     verbose: bool = False
+    _loss_fn: MSELoss = MSELoss()
 
-    def _prepare_training_data(self, model, X: np.ndarray, y: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-        return self._prepare_data(X, y)
-
-    def _prepare_validation_data(
-        self,
-        model,
-        X_val: np.ndarray,
-        y_val: np.ndarray,
-    ) -> tuple[np.ndarray, np.ndarray]:
-        return self._prepare_data(X_val, y_val)
-
-    def init_state(self, model, X: np.ndarray, y: np.ndarray):
+    def init_state(self, model: ModelLike, X: np.ndarray, y: np.ndarray) -> None:
         """Hybrid trainer doesn't maintain optimizer state; returns None."""
+        self._require_regression_model(model)
         return None
 
-    def train_step(self, model, Xb: np.ndarray, yb: np.ndarray, state):
+    def train_step(self, model: ModelLike, Xb: np.ndarray, yb: np.ndarray, state: None) -> tuple[float, None]:
         """Perform one hybrid step on a batch and return (loss, state).
 
         Equivalent to one iteration of the hybrid algorithm on the given batch.
         """
-        Xb, yb = self._prepare_data(Xb, yb)
+        model = self._require_regression_model(model)
+        Xb, yb = self._prepare_training_data(model, Xb, yb)
         # Forward to get normalized weights
-        membership_outputs = model.membership_layer.forward(Xb)
-        rule_strengths = model.rule_layer.forward(membership_outputs)
-        normalized_weights = model.normalization_layer.forward(rule_strengths)
+        normalized_weights = model.forward_antecedents(Xb)
 
         # Build LSM system for batch
         ones_col = np.ones((Xb.shape[0], 1), dtype=float)
@@ -65,29 +56,25 @@ class HybridTrainer(BaseTrainer):
 
         # Loss and backward for antecedents only
         y_pred = model.consequent_layer.forward(Xb, normalized_weights)
-        loss = mse_loss(yb, y_pred)
-        dL_dy = mse_grad(yb, y_pred)
+        loss = self._loss_fn.loss(yb, y_pred)
+        dL_dy = self._loss_fn.gradient(yb, y_pred)
         dL_dnorm_w, _ = model.consequent_layer.backward(dL_dy)
         dL_dw = model.normalization_layer.backward(dL_dnorm_w)
         gradients = model.rule_layer.backward(dL_dw)
         model.membership_layer.backward(gradients)
-        model._apply_membership_gradients(self.learning_rate)
+        model.update_membership_parameters(self.learning_rate)
         return float(loss), state
 
-    def compute_loss(self, model, X: np.ndarray, y: np.ndarray) -> float:
+    def compute_loss(self, model: ModelLike, X: np.ndarray, y: np.ndarray) -> float:
         """Compute the hybrid MSE loss on prepared data without side effects."""
-        X_arr, y_arr = self._prepare_data(X, y)
-        membership_outputs = model.membership_layer.forward(X_arr)
-        rule_strengths = model.rule_layer.forward(membership_outputs)
-        normalized_weights = model.normalization_layer.forward(rule_strengths)
+        model = self._require_regression_model(model)
+        X_arr, y_arr = self._prepare_validation_data(model, X, y)
+        normalized_weights = model.forward_antecedents(X_arr)
         preds = model.consequent_layer.forward(X_arr, normalized_weights)
-        return float(mse_loss(y_arr, preds))
+        return float(self._loss_fn.loss(y_arr, preds))
 
     @staticmethod
-    def _prepare_data(X: np.ndarray, y: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-        """Ensure X, y are float arrays and y is 2D (n, 1) if originally 1D."""
-        X = np.asarray(X, dtype=float)
-        y = np.asarray(y, dtype=float)
-        if y.ndim == 1:
-            y = y.reshape(-1, 1)
-        return X, y
+    def _require_regression_model(model: ModelLike) -> TSKANFIS:
+        if not isinstance(model, TSKANFIS):
+            raise TypeError("HybridTrainer supports TSKANFIS regression models only")
+        return model

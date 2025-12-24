@@ -1,26 +1,17 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import Any, cast
 
 import numpy as np
 
-from ..losses import LossFunction, resolve_loss
-from .base import BaseTrainer
-
-
-def _zeros_like_structure(params):
-    """Create a zero-structure matching model.get_parameters() format.
-
-    Returns a dict with:
-      - 'consequent': np.zeros_like(params['consequent'])
-      - 'membership': { name: [ {param_name: 0.0, ...} ] }
-    """
-    out = {"consequent": np.zeros_like(params["consequent"]), "membership": {}}
-    for name, mf_list in params["membership"].items():
-        out["membership"][name] = []
-        for mf_params in mf_list:
-            out["membership"][name].append(dict.fromkeys(mf_params.keys(), 0.0))
-    return out
+from ..losses import LossFunction
+from ._utils import (
+    iterate_membership_params_with_state,
+    update_membership_param,
+    zeros_like_structure,
+)
+from .base import BaseTrainer, ModelLike
 
 
 @dataclass
@@ -52,56 +43,39 @@ class RMSPropTrainer(BaseTrainer):
     loss: LossFunction | str | None = None
     _loss_fn: LossFunction = field(init=False, repr=False)
 
-    def _prepare_training_data(self, model, X: np.ndarray, y: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-        self._loss_fn = resolve_loss(self.loss)
-        X_arr = np.asarray(X, dtype=float)
-        y_arr = self._loss_fn.prepare_targets(y, model=model)
-        if y_arr.shape[0] != X_arr.shape[0]:
-            raise ValueError("Target array must have same number of rows as X")
-        return X_arr, y_arr
-
-    def _prepare_validation_data(
-        self,
-        model,
-        X_val: np.ndarray,
-        y_val: np.ndarray,
-    ) -> tuple[np.ndarray, np.ndarray]:
-        X_arr = np.asarray(X_val, dtype=float)
-        y_arr = self._loss_fn.prepare_targets(y_val, model=model)
-        if y_arr.shape[0] != X_arr.shape[0]:
-            raise ValueError("Validation targets must match input rows")
-        return X_arr, y_arr
-
-    def init_state(self, model, X: np.ndarray, y: np.ndarray):
+    def init_state(self, model: ModelLike, X: np.ndarray, y: np.ndarray) -> dict[str, Any]:
         """Initialize RMSProp caches for consequents and membership scalars."""
         params = model.get_parameters()
-        return {"params": params, "cache": _zeros_like_structure(params)}
+        return {"params": params, "cache": zeros_like_structure(params)}
 
-    def train_step(self, model, Xb: np.ndarray, yb: np.ndarray, state):
+    def train_step(
+        self, model: ModelLike, Xb: np.ndarray, yb: np.ndarray, state: dict[str, Any]
+    ) -> tuple[float, dict[str, Any]]:
         """One RMSProp step on a batch; returns (loss, updated_state)."""
         loss, grads = self._compute_loss_and_grads(model, Xb, yb)
         self._apply_rmsprop_step(model, state["params"], state["cache"], grads)
         return loss, state
 
-    def _compute_loss_and_grads(self, model, Xb: np.ndarray, yb: np.ndarray) -> tuple[float, dict]:
+    def _compute_loss_and_grads(self, model: ModelLike, Xb: np.ndarray, yb: np.ndarray) -> tuple[float, Any]:
         """Forward pass, MSE loss, backward pass, and gradients for a batch.
 
         Returns (loss, grads) where grads follows model.get_gradients() structure.
         """
+        loss_fn = self._get_loss_fn()
         model.reset_gradients()
         y_pred = model.forward(Xb)
-        loss = self._loss_fn.loss(yb, y_pred)
-        dL_dy = self._loss_fn.gradient(yb, y_pred)
+        loss = loss_fn.loss(yb, y_pred)
+        dL_dy = loss_fn.gradient(yb, y_pred)
         model.backward(dL_dy)
         grads = model.get_gradients()
         return loss, grads
 
     def _apply_rmsprop_step(
         self,
-        model,
-        params: dict,
-        cache: dict,
-        grads: dict,
+        model: ModelLike,
+        params: dict[str, Any],
+        cache: dict[str, Any],
+        grads: dict[str, Any],
     ) -> None:
         """Apply one RMSProp update to params using grads and caches.
 
@@ -113,26 +87,20 @@ class RMSPropTrainer(BaseTrainer):
         c[:] = self.rho * c + (1.0 - self.rho) * (g * g)
         params["consequent"] = params["consequent"] - self.learning_rate * g / (np.sqrt(c) + self.epsilon)
 
-        # Membership are scalars in nested dicts
-        for name in params["membership"].keys():
-            for i in range(len(params["membership"][name])):
-                for key in params["membership"][name][i].keys():
-                    gk = float(grads["membership"][name][i][key])
-                    ck = cache["membership"][name][i][key]
-                    ck = self.rho * ck + (1.0 - self.rho) * (gk * gk)
-                    step = self.learning_rate * gk / (np.sqrt(ck) + self.epsilon)
-                    params["membership"][name][i][key] -= float(step)
-                    cache["membership"][name][i][key] = ck
+        # Membership parameters (scalars in nested dicts)
+        for path, param_val, cache_val, grad in iterate_membership_params_with_state(params, cache, grads):
+            grad = cast(float, grad)  # grads_dict is provided in this context
+            cache_val = self.rho * cache_val + (1.0 - self.rho) * (grad * grad)
+            step = self.learning_rate * grad / (np.sqrt(cache_val) + self.epsilon)
+            new_param = param_val - step
+            update_membership_param(params, path, new_param)
+            cache["membership"][path[0]][path[1]][path[2]] = cache_val
 
         # Push updated params back into the model
         model.set_parameters(params)
 
-    def compute_loss(self, model, X: np.ndarray, y: np.ndarray) -> float:
+    def compute_loss(self, model: ModelLike, X: np.ndarray, y: np.ndarray) -> float:
         """Return the current loss value for ``(X, y)`` without modifying state."""
+        loss_fn = self._get_loss_fn()
         preds = model.forward(X)
-        return float(self._loss_fn.loss(y, preds))
-
-    def _ensure_loss_fn(self) -> LossFunction:
-        if not hasattr(self, "_loss_fn"):
-            self._loss_fn = resolve_loss(self.loss)
-        return self._loss_fn
+        return float(loss_fn.loss(y, preds))

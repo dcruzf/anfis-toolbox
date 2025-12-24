@@ -31,7 +31,7 @@ from .logging_config import enable_training_logs
 from .losses import LossFunction
 from .membership import MembershipFunction
 from .metrics import ANFISMetrics, MetricValue
-from .model import TSKANFISClassifier
+from .model import TrainingHistory, TSKANFISClassifier
 from .optim import (
     AdamTrainer,
     BaseTrainer,
@@ -45,7 +45,6 @@ from .optim import (
 from .optim import (
     HybridTrainer as _HybridTrainer,
 )
-from .optim.base import TrainingHistory
 
 InputConfigValue: TypeAlias = Mapping[str, Any] | Sequence[Any] | MembershipFunction | str | int | None
 NormalizedInputSpec: TypeAlias = dict[str, Any]
@@ -835,7 +834,7 @@ class ANFISClassifier(BaseEstimatorLike, FittedMixin, ClassifierMixinLike):
 
     def _encode_targets(
         self,
-        y,
+        y: np.ndarray,
         n_samples: int,
         *,
         allow_partial_classes: bool = False,
