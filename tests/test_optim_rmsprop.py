@@ -165,9 +165,9 @@ def test_rmsprop_apply_step_updates_membership_and_cache():
     X = np.array([[0.0], [1.0]], dtype=float)
     y = np.zeros((2, 1), dtype=float)
 
-    loss_fn = trainer._ensure_loss_fn()
+    loss_fn = trainer._get_loss_fn()
     assert loss_fn is not None
-    assert trainer._ensure_loss_fn() is loss_fn
+    assert trainer._get_loss_fn() is loss_fn
 
     trainer._prepare_training_data(model, X, y)
     state = trainer.init_state(model, X, y)
@@ -228,5 +228,5 @@ def test_rmsprop_prepare_validation_data_checks_rows():
     assert X_val_prepared.shape == (2, 2)
     assert y_val_prepared.shape == (2, 1)
 
-    with pytest.raises(ValueError, match="Validation targets must match input rows"):
+    with pytest.raises(ValueError, match="Target array must have same number of rows"):
         trainer._prepare_validation_data(model, X_val, y)

@@ -1,29 +1,30 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import Any, cast
 
 import numpy as np
 
-from ..losses import LossFunction, resolve_loss
-from .base import BaseTrainer
+from ..losses import LossFunction
+from ._utils import (
+    iterate_membership_params_with_state,
+    update_membership_param,
+    zeros_like_structure,
+)
+from .base import BaseTrainer, ModelLike
 
 
-def _zeros_like_structure(params):
-    """Create a zero-structure matching model.get_parameters() format.
-
-    Returns a dict with:
-      - 'consequent': np.zeros_like(params['consequent'])
-      - 'membership': { name: [ {param_name: 0.0, ...} ] }
-    """
-    out = {"consequent": np.zeros_like(params["consequent"]), "membership": {}}
-    for name, mf_list in params["membership"].items():
-        out["membership"][name] = []
-        for mf_params in mf_list:
-            out["membership"][name].append(dict.fromkeys(mf_params.keys(), 0.0))
-    return out
-
-
-def _adam_update(param, grad, m, v, lr, beta1, beta2, eps, t):
+def _adam_update(
+    param: np.ndarray,
+    grad: np.ndarray,
+    m: np.ndarray,
+    v: np.ndarray,
+    lr: float,
+    beta1: float,
+    beta2: float,
+    eps: float,
+    t: int,
+) -> None:
     """Compute Adam update for numpy arrays (param, grad, m, v)."""
     m[:] = beta1 * m + (1.0 - beta1) * grad
     v[:] = beta2 * v + (1.0 - beta2) * (grad * grad)
@@ -63,27 +64,7 @@ class AdamTrainer(BaseTrainer):
     loss: LossFunction | str | None = None
     _loss_fn: LossFunction = field(init=False, repr=False)
 
-    def _prepare_training_data(self, model, X: np.ndarray, y: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-        self._loss_fn = resolve_loss(self.loss)
-        X_arr = np.asarray(X, dtype=float)
-        y_arr = self._loss_fn.prepare_targets(y, model=model)
-        if y_arr.shape[0] != X_arr.shape[0]:
-            raise ValueError("Target array must have same number of rows as X")
-        return X_arr, y_arr
-
-    def _prepare_validation_data(
-        self,
-        model,
-        X_val: np.ndarray,
-        y_val: np.ndarray,
-    ) -> tuple[np.ndarray, np.ndarray]:
-        X_arr = np.asarray(X_val, dtype=float)
-        y_arr = self._loss_fn.prepare_targets(y_val, model=model)
-        if y_arr.shape[0] != X_arr.shape[0]:
-            raise ValueError("Validation targets must match input rows")
-        return X_arr, y_arr
-
-    def init_state(self, model, X: np.ndarray, y: np.ndarray):
+    def init_state(self, model: ModelLike, X: np.ndarray, y: np.ndarray) -> dict[str, Any]:
         """Initialize Adam's first and second moments and time step.
 
         Returns a dict with keys: params, m, v, t.
@@ -91,38 +72,42 @@ class AdamTrainer(BaseTrainer):
         params = model.get_parameters()
         return {
             "params": params,
-            "m": _zeros_like_structure(params),
-            "v": _zeros_like_structure(params),
+            "m": zeros_like_structure(params),
+            "v": zeros_like_structure(params),
             "t": 0,
         }
 
-    def train_step(self, model, Xb: np.ndarray, yb: np.ndarray, state):
+    def train_step(
+        self, model: ModelLike, Xb: np.ndarray, yb: np.ndarray, state: dict[str, Any]
+    ) -> tuple[float, dict[str, Any]]:
         """One Adam step on a batch; returns (loss, updated_state)."""
         loss, grads = self._compute_loss_and_grads(model, Xb, yb)
-        t_new = self._apply_adam_step(model, state["params"], grads, state["m"], state["v"], state["t"])
+        t_val = cast(int, state["t"])
+        t_new = self._apply_adam_step(model, state["params"], grads, state["m"], state["v"], t_val)
         state["t"] = t_new
         return loss, state
 
-    def _compute_loss_and_grads(self, model, Xb: np.ndarray, yb: np.ndarray) -> tuple[float, dict]:
+    def _compute_loss_and_grads(self, model: ModelLike, Xb: np.ndarray, yb: np.ndarray) -> tuple[float, Any]:
         """Forward pass, MSE loss, backward pass, and gradients for a batch.
 
         Returns (loss, grads) where grads follows model.get_gradients() structure.
         """
+        loss_fn = self._get_loss_fn()
         model.reset_gradients()
         y_pred = model.forward(Xb)
-        loss = self._loss_fn.loss(yb, y_pred)
-        dL_dy = self._loss_fn.gradient(yb, y_pred)
+        loss = loss_fn.loss(yb, y_pred)
+        dL_dy = loss_fn.gradient(yb, y_pred)
         model.backward(dL_dy)
         grads = model.get_gradients()
         return loss, grads
 
     def _apply_adam_step(
         self,
-        model,
-        params: dict,
-        grads: dict,
-        m: dict,
-        v: dict,
+        model: Any,
+        params: dict[str, Any],
+        grads: dict[str, Any],
+        m: dict[str, Any],
+        v: dict[str, Any],
         t: int,
     ) -> int:
         """Apply one Adam update to params using grads and moments; returns new time step.
@@ -141,27 +126,26 @@ class AdamTrainer(BaseTrainer):
             self.epsilon,
             t,
         )
-        # Membership (nested scalars)
-        for name in params["membership"].keys():
-            for i in range(len(params["membership"][name])):
-                for key in params["membership"][name][i].keys():
-                    g = float(grads["membership"][name][i][key])
-                    m_val = m["membership"][name][i][key]
-                    v_val = v["membership"][name][i][key]
-                    m_val = self.beta1 * m_val + (1.0 - self.beta1) * g
-                    v_val = self.beta2 * v_val + (1.0 - self.beta2) * (g * g)
-                    m_hat = m_val / (1.0 - self.beta1**t)
-                    v_hat = v_val / (1.0 - self.beta2**t)
-                    step = self.learning_rate * m_hat / (np.sqrt(v_hat) + self.epsilon)
-                    params["membership"][name][i][key] -= float(step)
-                    m["membership"][name][i][key] = m_val
-                    v["membership"][name][i][key] = v_val
+        # Membership parameters (scalars in nested dicts)
+        for path, param_val, m_val, grad in iterate_membership_params_with_state(params, m, grads):
+            grad = cast(float, grad)  # grads_dict is provided in this context
+            m_val = self.beta1 * m_val + (1.0 - self.beta1) * grad
+            v_val = v["membership"][path[0]][path[1]][path[2]]
+            v_val = self.beta2 * v_val + (1.0 - self.beta2) * (grad * grad)
+            m_hat = m_val / (1.0 - self.beta1**t)
+            v_hat = v_val / (1.0 - self.beta2**t)
+            step = self.learning_rate * m_hat / (np.sqrt(v_hat) + self.epsilon)
+            new_param = param_val - step
+            update_membership_param(params, path, new_param)
+            m["membership"][path[0]][path[1]][path[2]] = m_val
+            v["membership"][path[0]][path[1]][path[2]] = v_val
 
         # Push updated params back into the model
         model.set_parameters(params)
         return t
 
-    def compute_loss(self, model, X: np.ndarray, y: np.ndarray) -> float:
+    def compute_loss(self, model: ModelLike, X: np.ndarray, y: np.ndarray) -> float:
         """Evaluate the configured loss on ``(X, y)`` without updating parameters."""
+        loss_fn = self._get_loss_fn()
         preds = model.forward(X)
-        return float(self._loss_fn.loss(y, preds))
+        return float(loss_fn.loss(y, preds))

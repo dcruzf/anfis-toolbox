@@ -5,7 +5,7 @@ from typing import Any
 
 import numpy as np
 
-from ..losses import LossFunction, resolve_loss
+from ..losses import LossFunction
 from .base import BaseTrainer, ModelLike
 
 
@@ -35,26 +35,6 @@ class SGDTrainer(BaseTrainer):
     loss: LossFunction | str | None = None
     _loss_fn: LossFunction = field(init=False, repr=False)
 
-    def _prepare_training_data(self, model: ModelLike, X: np.ndarray, y: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-        self._loss_fn = resolve_loss(self.loss)
-        X_arr = np.asarray(X, dtype=float)
-        y_arr = self._loss_fn.prepare_targets(y, model=model)
-        if y_arr.shape[0] != X_arr.shape[0]:
-            raise ValueError("Target array must have same number of rows as X")
-        return X_arr, y_arr
-
-    def _prepare_validation_data(
-        self,
-        model: ModelLike,
-        X_val: np.ndarray,
-        y_val: np.ndarray,
-    ) -> tuple[np.ndarray, np.ndarray]:
-        X_arr = np.asarray(X_val, dtype=float)
-        y_arr = self._loss_fn.prepare_targets(y_val, model=model)
-        if y_arr.shape[0] != X_arr.shape[0]:
-            raise ValueError("Validation targets must match input rows")
-        return X_arr, y_arr
-
     def init_state(self, model: ModelLike, X: np.ndarray, y: np.ndarray) -> None:
         """SGD has no persistent optimizer state; returns None."""
         return None
@@ -66,15 +46,17 @@ class SGDTrainer(BaseTrainer):
 
     def _compute_loss_backward_and_update(self, model: ModelLike, Xb: np.ndarray, yb: np.ndarray) -> float:
         """Forward -> MSE -> backward -> update parameters; returns loss."""
+        loss_fn = self._get_loss_fn()
         model.reset_gradients()
         y_pred = model.forward(Xb)
-        loss = self._loss_fn.loss(yb, y_pred)
-        dL_dy = self._loss_fn.gradient(yb, y_pred)
+        loss = loss_fn.loss(yb, y_pred)
+        dL_dy = loss_fn.gradient(yb, y_pred)
         model.backward(dL_dy)
         model.update_parameters(self.learning_rate)
         return loss
 
     def compute_loss(self, model: ModelLike, X: np.ndarray, y: np.ndarray) -> float:
         """Return the loss for ``(X, y)`` without mutating ``model``."""
+        loss_fn = self._get_loss_fn()
         preds = model.forward(X)
-        return float(self._loss_fn.loss(y, preds))
+        return float(loss_fn.loss(y, preds))

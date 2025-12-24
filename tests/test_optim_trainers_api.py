@@ -235,7 +235,7 @@ def test_sgd_prepare_validation_data_checks_rows():
     loss_value = trainer.compute_loss(model, X_train, y_train)
     assert loss_value >= 0
 
-    with pytest.raises(ValueError, match="Validation targets must match input rows"):
+    with pytest.raises(ValueError, match="Target array must have same number of rows"):
         trainer._prepare_validation_data(model, X_val, y)
 
 
@@ -286,7 +286,8 @@ def test_hybrid_prepare_data_reshapes_1d():
     rng = np.random.default_rng(14)
     X = rng.normal(size=(5, 2))
     y = X[:, 0] - X[:, 1]  # 1D
-    Xp, yp = HybridTrainer._prepare_data(X, y)
+    trainer = HybridTrainer()
+    Xp, yp = trainer._prepare_training_data(None, X, y)
     assert Xp.shape == X.shape
     assert yp.shape == (5, 1)
 
