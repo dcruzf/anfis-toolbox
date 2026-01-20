@@ -110,6 +110,7 @@ dev = [
     "scikit-learn>=1.7.2",
     "mypy>=1.10.0",
     "bandit>=1.7.9",
+    "hatch>=1.16.2",
 ]
 
 [tool.mypy]
