@@ -91,6 +91,33 @@ metrics = model.evaluate(X, y)
 
 ## 🧪 Testing & quality
 
+### Developer setup
+
+To run tests, you need to install the development dependencies. This project uses [uv](https://docs.astral.sh/uv/) and [hatch](https://hatch.pypa.io/) for environment management.
+
+**Option 1: Using `make install` (recommended)**
+
+```bash
+make install
+```
+
+This will install `uv`, `hatch`, sync dependencies, and set up pre-commit hooks.
+
+**Option 2: Manual setup**
+
+```bash
+# Install uv (if not already installed)
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Install hatch
+uv tool install hatch
+
+# Sync dependencies
+uv sync
+```
+
+### Running tests
+
 Run the full suite (pytest + coverage):
 
 ```bash
