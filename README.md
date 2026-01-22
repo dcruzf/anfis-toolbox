@@ -91,7 +91,17 @@ metrics = model.evaluate(X, y)
 
 ## 🧪 Testing & quality
 
-Run the full suite (pytest + coverage):
+The commands below require the development dependencies.
+
+### Developer installation
+
+Install the project in editable mode with the `dev` dependency group:
+
+```bash
+pip install -e . --group dev
+```
+
+### Run the full suite (pytest + coverage):
 
 ```bash
 make test
