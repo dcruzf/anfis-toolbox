@@ -144,8 +144,8 @@ class GaussianMF(MembershipFunction):
         if self.last_input is None or self.last_output is None:
             raise RuntimeError("forward must be called before backward.")
 
-        x = cast(np.ndarray, self.last_input)
-        y = cast(np.ndarray, self.last_output)
+        x = self.last_input
+        y = self.last_output
 
         z = (x - mean) / sigma
 
@@ -389,7 +389,7 @@ class TriangularMF(MembershipFunction):
             output[right_mask] = (c - x[right_mask]) / (c - b)
 
         # Clip for numerical stability
-        output = np.clip(output, 0.0, 1.0)
+        output = cast(np.ndarray, np.clip(output, 0.0, 1.0))
 
         self.last_output = output
         return output
@@ -710,8 +710,8 @@ class BellMF(MembershipFunction):
         if self.last_input is None or self.last_output is None:
             raise RuntimeError("forward must be called before backward.")
 
-        x = cast(np.ndarray, self.last_input)
-        y = cast(np.ndarray, self.last_output)  # This is μ(x)
+        x = self.last_input
+        y = self.last_output  # This is μ(x)
 
         # Intermediate calculations
         normalized = (x - c) / a
@@ -883,8 +883,8 @@ class SigmoidalMF(MembershipFunction):
         if self.last_input is None or self.last_output is None:
             raise RuntimeError("forward must be called before backward.")
 
-        x = cast(np.ndarray, self.last_input)
-        y = cast(np.ndarray, self.last_output)  # This is μ(x)
+        x = self.last_input
+        y = self.last_output  # This is μ(x)
 
         # For sigmoid: ∂μ/∂z = μ(1-μ) where z = -a(x-c)
         # This is a fundamental property of the sigmoid function

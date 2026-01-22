@@ -6,7 +6,7 @@ model that combines all the individual layers into a unified architecture.
 
 import logging
 from collections.abc import Mapping, Sequence
-from typing import Any, Protocol, TypeAlias, TypedDict, runtime_checkable
+from typing import Any, Protocol, TypeAlias, TypedDict, cast, runtime_checkable
 
 import numpy as np
 
@@ -513,7 +513,7 @@ class TSKANFISClassifier(_TSKANFISSharedMixin):
             np.ndarray: Predicted labels of shape ``(batch_size,)``.
         """
         proba = self.predict_proba(x)
-        return np.argmax(proba, axis=1)
+        return cast(np.ndarray, np.argmax(proba, axis=1))
 
     def fit(
         self,
