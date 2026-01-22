@@ -43,6 +43,23 @@ path = 'anfis_toolbox/__init__.py'
 [tool.hatch.envs.default]
 installer = "uv"
 
+[tool.hatch.envs.quality]
+dependencies = [
+  "ruff",
+  "bandit[toml]",
+  "mypy",
+]
+
+[tool.hatch.envs.quality.scripts]
+lint = "ruff check --fix anfis_toolbox"
+security = "bandit -c pyproject.toml -r anfis_toolbox/"
+typing = "mypy anfis_toolbox"
+all = [
+  "ruff check anfis_toolbox",
+  "mypy anfis_toolbox",
+  "bandit -c pyproject.toml -r anfis_toolbox/",
+]
+
 [tool.hatch.build]
 include = ["docs/assets/logo.svg", "LICENSE"]
 
@@ -131,4 +148,5 @@ module = ["tests.*"]
 ignore_errors = true
 
 [tool.bandit]
+recursive = true
 targets = ["anfis_toolbox"]
