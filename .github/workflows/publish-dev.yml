@@ -29,13 +29,13 @@ jobs:
         fetch-depth: 0
 
     - name: Install uv
-      uses: astral-sh/setup-uv@v6
+      uses: astral-sh/setup-uv@v7
 
     - name: Test
-      run: make test
+      run: uvx hatch test --all -c
 
     - name: Build project
-      run: make build
+      run: uvx hatch build
 
     - name: Publish
-      run: make publish
+      run: uvx hatch publish
