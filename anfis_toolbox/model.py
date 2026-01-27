@@ -214,8 +214,8 @@ class TSKANFIS(_TSKANFISSharedMixin):
         Examples:
             >>> from anfis_toolbox.membership import GaussianMF
             >>> input_mfs = {
-            ...     'x1': [GaussianMF(0, 1), GaussianMF(1, 1)],
-            ...     'x2': [GaussianMF(0, 1), GaussianMF(1, 1)]
+            ...     "x1": [GaussianMF(0, 1), GaussianMF(1, 1)],
+            ...     "x2": [GaussianMF(0, 1), GaussianMF(1, 1)],
             ... }
             >>> model = ANFIS(input_mfs)
         """

@@ -42,24 +42,18 @@ path = 'anfis_toolbox/__init__.py'
 
 [tool.hatch.envs.default]
 installer = "uv"
-
-[tool.hatch.envs.quality]
 dependencies = [
   "ruff",
   "bandit[toml]",
   "mypy",
+  "pre-commit",
 ]
-
-[tool.hatch.envs.quality.scripts]
-lint = "ruff check --fix anfis_toolbox"
-format = "ruff format anfis_toolbox"
+[tool.hatch.envs.default.scripts]
 security = "bandit -c pyproject.toml -r anfis_toolbox/"
 typing = "mypy anfis_toolbox"
+install = "pre-commit install && pre-commit autoupdate"
 all = [
-  "ruff check anfis_toolbox",
-  "mypy anfis_toolbox",
-  "bandit -c pyproject.toml -r anfis_toolbox/",
-  "ruff format anfis_toolbox",
+    "pre-commit run --all-files",
 ]
 
 [tool.hatch.build]
@@ -70,7 +64,6 @@ only-include = ["anfis_toolbox", "docs/assets/logo.svg", "LICENSE"]
 
 [tool.hatch.build.targets.sdist]
 include = ["/README.md", "/Makefile", "/anfis_toolbox", "/tests", "/docs/assets/logo.svg", "/LICENSE"]
-
 
 [tool.hatch.envs.hatch-test]
 installer = "uv"
@@ -92,6 +85,7 @@ cov-report = "coverage report -m"
 
 [tool.ruff]
 line-length = 120
+extend-exclude =["docs/**"]
 
 [tool.ruff.lint]
 select = [

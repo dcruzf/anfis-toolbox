@@ -133,36 +133,25 @@ This project is tested on Python 3.10 | 3.11 | 3.12 | 3.13 | 3.14 across Linux, 
 
 ### Linting & Formatting
 
-Run the linter:
+Run the linter and format the codebase:
 ```bash
-hatch run quality:lint
-```
-
-Format the codebase:
-```bash
-hatch run quality:format
+hatch fmt
 ```
 
 ### Typing
 
 Run static type checks:
 ```bash
-hatch run quality:typing
+hatch run typing
 ```
 
 ### Security
 
 Run security checks with Bandit:
 ```bash
-hatch run quality:security
+hatch run security
 ```
 
-### Run all quality checks
-
-Execute lint, typing, and security checks in one go:
-```bash
-hatch run quality:all
-```
 
 ## 🤝 Contributing
 
