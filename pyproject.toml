@@ -52,12 +52,14 @@ dependencies = [
 
 [tool.hatch.envs.quality.scripts]
 lint = "ruff check --fix anfis_toolbox"
+format = "ruff format anfis_toolbox"
 security = "bandit -c pyproject.toml -r anfis_toolbox/"
 typing = "mypy anfis_toolbox"
 all = [
   "ruff check anfis_toolbox",
   "mypy anfis_toolbox",
   "bandit -c pyproject.toml -r anfis_toolbox/",
+  "ruff format anfis_toolbox",
 ]
 
 [tool.hatch.build]

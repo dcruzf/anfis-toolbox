@@ -131,11 +131,16 @@ hatch test -c --all
 ```
 This project is tested on Python 3.10 | 3.11 | 3.12 | 3.13 | 3.14 across Linux, Windows and macOS.
 
-### Linting
+### Linting & Formatting
 
 Run the linter:
 ```bash
 hatch run quality:lint
+```
+
+Format the codebase:
+```bash
+hatch run quality:format
 ```
 
 ### Typing
