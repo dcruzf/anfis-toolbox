@@ -143,17 +143,6 @@ source = ['anfis_toolbox']
 branch = true
 relative_files = true
 
-[dependency-groups]
-dev = [
-    "pytest>=8.4.1",
-    "scikit-learn>=1.7.2",
-    "mypy>=1.10.0",
-    "bandit>=1.7.9",
-    "hatch>=1.16.2",
-    "pre-commit",
-    "ruff",
-]
-
 [tool.mypy]
 python_version = "3.10"
 files = ["anfis_toolbox", "tests"]
