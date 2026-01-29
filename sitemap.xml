@@ -2,146 +2,154 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://dcruzf.github.io/anfis-toolbox/</loc>
-         <lastmod>2025-12-24</lastmod>
+         <lastmod>2026-01-29</lastmod>
+    </url>
+    <url>
+         <loc>https://dcruzf.github.io/anfis-toolbox/contributing/</loc>
+         <lastmod>2026-01-29</lastmod>
     </url>
     <url>
          <loc>https://dcruzf.github.io/anfis-toolbox/guide/</loc>
-         <lastmod>2025-12-24</lastmod>
+         <lastmod>2026-01-29</lastmod>
     </url>
     <url>
          <loc>https://dcruzf.github.io/anfis-toolbox/api/</loc>
-         <lastmod>2025-12-24</lastmod>
+         <lastmod>2026-01-29</lastmod>
     </url>
     <url>
          <loc>https://dcruzf.github.io/anfis-toolbox/api/builders/</loc>
-         <lastmod>2025-12-24</lastmod>
+         <lastmod>2026-01-29</lastmod>
     </url>
     <url>
          <loc>https://dcruzf.github.io/anfis-toolbox/api/classifier/</loc>
-         <lastmod>2025-12-24</lastmod>
+         <lastmod>2026-01-29</lastmod>
     </url>
     <url>
          <loc>https://dcruzf.github.io/anfis-toolbox/api/clustering/</loc>
-         <lastmod>2025-12-24</lastmod>
+         <lastmod>2026-01-29</lastmod>
     </url>
     <url>
          <loc>https://dcruzf.github.io/anfis-toolbox/api/config/</loc>
-         <lastmod>2025-12-24</lastmod>
+         <lastmod>2026-01-29</lastmod>
     </url>
     <url>
          <loc>https://dcruzf.github.io/anfis-toolbox/api/layers/</loc>
-         <lastmod>2025-12-24</lastmod>
+         <lastmod>2026-01-29</lastmod>
     </url>
     <url>
          <loc>https://dcruzf.github.io/anfis-toolbox/api/logging/</loc>
-         <lastmod>2025-12-24</lastmod>
+         <lastmod>2026-01-29</lastmod>
     </url>
     <url>
          <loc>https://dcruzf.github.io/anfis-toolbox/api/losses/</loc>
-         <lastmod>2025-12-24</lastmod>
+         <lastmod>2026-01-29</lastmod>
     </url>
     <url>
          <loc>https://dcruzf.github.io/anfis-toolbox/api/membership-functions/</loc>
-         <lastmod>2025-12-24</lastmod>
+         <lastmod>2026-01-29</lastmod>
     </url>
     <url>
          <loc>https://dcruzf.github.io/anfis-toolbox/api/metrics/</loc>
-         <lastmod>2025-12-24</lastmod>
+         <lastmod>2026-01-29</lastmod>
     </url>
     <url>
          <loc>https://dcruzf.github.io/anfis-toolbox/api/models/</loc>
-         <lastmod>2025-12-24</lastmod>
+         <lastmod>2026-01-29</lastmod>
     </url>
     <url>
          <loc>https://dcruzf.github.io/anfis-toolbox/api/optim/</loc>
-         <lastmod>2025-12-24</lastmod>
+         <lastmod>2026-01-29</lastmod>
     </url>
     <url>
          <loc>https://dcruzf.github.io/anfis-toolbox/api/regressor/</loc>
-         <lastmod>2025-12-24</lastmod>
+         <lastmod>2026-01-29</lastmod>
     </url>
     <url>
          <loc>https://dcruzf.github.io/anfis-toolbox/estimators/anfis-classifier/</loc>
-         <lastmod>2025-12-24</lastmod>
+         <lastmod>2026-01-29</lastmod>
     </url>
     <url>
          <loc>https://dcruzf.github.io/anfis-toolbox/estimators/anfis-regressor/</loc>
-         <lastmod>2025-12-24</lastmod>
+         <lastmod>2026-01-29</lastmod>
     </url>
     <url>
          <loc>https://dcruzf.github.io/anfis-toolbox/examples/classifier_basic/</loc>
-         <lastmod>2025-12-24</lastmod>
+         <lastmod>2026-01-29</lastmod>
     </url>
     <url>
          <loc>https://dcruzf.github.io/anfis-toolbox/examples/classifier_iris/</loc>
-         <lastmod>2025-12-24</lastmod>
+         <lastmod>2026-01-29</lastmod>
     </url>
     <url>
          <loc>https://dcruzf.github.io/anfis-toolbox/examples/function_approximation/</loc>
-         <lastmod>2025-12-24</lastmod>
+         <lastmod>2026-01-29</lastmod>
     </url>
     <url>
          <loc>https://dcruzf.github.io/anfis-toolbox/examples/regression_basic/</loc>
-         <lastmod>2025-12-24</lastmod>
+         <lastmod>2026-01-29</lastmod>
     </url>
     <url>
          <loc>https://dcruzf.github.io/anfis-toolbox/examples/time_series/</loc>
-         <lastmod>2025-12-24</lastmod>
+         <lastmod>2026-01-29</lastmod>
+    </url>
+    <url>
+         <loc>https://dcruzf.github.io/anfis-toolbox/guide/contributing/</loc>
+         <lastmod>2026-01-29</lastmod>
     </url>
     <url>
          <loc>https://dcruzf.github.io/anfis-toolbox/hooks/test_hook/</loc>
-         <lastmod>2025-12-24</lastmod>
+         <lastmod>2026-01-29</lastmod>
     </url>
     <url>
          <loc>https://dcruzf.github.io/anfis-toolbox/membership_functions/bell/</loc>
-         <lastmod>2025-12-24</lastmod>
+         <lastmod>2026-01-29</lastmod>
     </url>
     <url>
          <loc>https://dcruzf.github.io/anfis-toolbox/membership_functions/gaussian-combination/</loc>
-         <lastmod>2025-12-24</lastmod>
+         <lastmod>2026-01-29</lastmod>
     </url>
     <url>
          <loc>https://dcruzf.github.io/anfis-toolbox/membership_functions/gaussian/</loc>
-         <lastmod>2025-12-24</lastmod>
+         <lastmod>2026-01-29</lastmod>
     </url>
     <url>
          <loc>https://dcruzf.github.io/anfis-toolbox/membership_functions/pi/</loc>
-         <lastmod>2025-12-24</lastmod>
+         <lastmod>2026-01-29</lastmod>
     </url>
     <url>
          <loc>https://dcruzf.github.io/anfis-toolbox/membership_functions/sigmoidal-difference/</loc>
-         <lastmod>2025-12-24</lastmod>
+         <lastmod>2026-01-29</lastmod>
     </url>
     <url>
          <loc>https://dcruzf.github.io/anfis-toolbox/membership_functions/sigmoidal-product/</loc>
-         <lastmod>2025-12-24</lastmod>
+         <lastmod>2026-01-29</lastmod>
     </url>
     <url>
          <loc>https://dcruzf.github.io/anfis-toolbox/membership_functions/sigmoidal/</loc>
-         <lastmod>2025-12-24</lastmod>
+         <lastmod>2026-01-29</lastmod>
     </url>
     <url>
          <loc>https://dcruzf.github.io/anfis-toolbox/membership_functions/sshaped-linear/</loc>
-         <lastmod>2025-12-24</lastmod>
+         <lastmod>2026-01-29</lastmod>
     </url>
     <url>
          <loc>https://dcruzf.github.io/anfis-toolbox/membership_functions/sshaped/</loc>
-         <lastmod>2025-12-24</lastmod>
+         <lastmod>2026-01-29</lastmod>
     </url>
     <url>
          <loc>https://dcruzf.github.io/anfis-toolbox/membership_functions/trapezoidal/</loc>
-         <lastmod>2025-12-24</lastmod>
+         <lastmod>2026-01-29</lastmod>
     </url>
     <url>
          <loc>https://dcruzf.github.io/anfis-toolbox/membership_functions/triangular/</loc>
-         <lastmod>2025-12-24</lastmod>
+         <lastmod>2026-01-29</lastmod>
     </url>
     <url>
          <loc>https://dcruzf.github.io/anfis-toolbox/membership_functions/zshaped-linear/</loc>
-         <lastmod>2025-12-24</lastmod>
+         <lastmod>2026-01-29</lastmod>
     </url>
     <url>
          <loc>https://dcruzf.github.io/anfis-toolbox/membership_functions/zshaped/</loc>
-         <lastmod>2025-12-24</lastmod>
+         <lastmod>2026-01-29</lastmod>
     </url>
 </urlset>
