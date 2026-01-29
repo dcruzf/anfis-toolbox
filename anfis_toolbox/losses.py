@@ -7,7 +7,7 @@ the chosen loss is clear in one place.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 
@@ -101,7 +101,7 @@ class MSELoss(LossFunction):
         yt = np.asarray(y_true, dtype=float)
         yp = np.asarray(y_pred, dtype=float)
         n = max(1, yt.shape[0])
-        return 2.0 * (yp - yt) / float(n)
+        return cast(np.ndarray, 2.0 * (yp - yt) / float(n))
 
 
 class CrossEntropyLoss(LossFunction):
@@ -141,7 +141,7 @@ class CrossEntropyLoss(LossFunction):
         """
         zmax = np.max(x, axis=axis, keepdims=True)
         exp_x = np.exp(x - zmax)
-        return exp_x / np.sum(exp_x, axis=axis, keepdims=True)
+        return cast(np.ndarray, exp_x / np.sum(exp_x, axis=axis, keepdims=True))
 
     def prepare_targets(self, y: Any, *, model: Any | None = None) -> np.ndarray:
         """Convert labels or one-hot encodings into dense float matrices.
@@ -260,7 +260,7 @@ class CrossEntropyLoss(LossFunction):
             yt = yt.astype(float)
         # probs
         probs = self._stable_softmax(logits, axis=1)
-        return (probs - yt) / float(n)
+        return cast(np.ndarray, (probs - yt) / float(n))
 
 
 LOSS_REGISTRY: dict[str, type[LossFunction]] = {

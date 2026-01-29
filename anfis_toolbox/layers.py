@@ -1,6 +1,6 @@
 from collections.abc import Sequence
 from itertools import product
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 
@@ -204,7 +204,7 @@ class RuleLayer:
         _batch_size = mu.shape[0]
 
         # Compute rule activations (firing strengths)
-        rule_activations = []
+        rule_activations_list: list[np.ndarray] = []
         for rule in self.rules:
             rule_mu = []
             # Get membership degree for each input in this rule
@@ -212,9 +212,9 @@ class RuleLayer:
                 rule_mu.append(mu[:, input_idx, mf_idx])  # (batch_size,)
             # Apply T-norm (product) to get rule strength
             rule_strength = np.prod(rule_mu, axis=0)  # (batch_size,)
-            rule_activations.append(rule_strength)
+            rule_activations_list.append(rule_strength)
 
-        rule_activations = np.stack(rule_activations, axis=1)  # (batch_size, n_rules)
+        rule_activations = np.stack(rule_activations_list, axis=1)  # (batch_size, n_rules)
 
         # Cache values for backward pass
         self.last = {"membership_outputs": membership_outputs, "mu": mu, "rule_activations": rule_activations}
@@ -296,7 +296,7 @@ class NormalizationLayer:
 
         # Cache values for backward pass
         self.last = {"w": w, "sum_w": sum_w, "norm_w": norm_w}
-        return norm_w
+        return cast(np.ndarray, norm_w)
 
     def backward(self, dL_dnorm_w: np.ndarray) -> np.ndarray:
         """Performs backward pass to compute gradients for original rule weights.
@@ -324,7 +324,7 @@ class NormalizationLayer:
         gw_dot = np.sum(g * w, axis=1, keepdims=True)  # (batch_size, 1)
         dL_dw = (s * g - gw_dot) / (s**2)  # (batch_size, n_rules)
 
-        return dL_dw
+        return cast(np.ndarray, dL_dw)
 
 
 class ConsequentLayer:
@@ -385,7 +385,7 @@ class ConsequentLayer:
         # Cache values for backward pass
         self.last = {"X_aug": X_aug, "norm_w": norm_w, "f": f}
 
-        return y_hat
+        return cast(np.ndarray, y_hat)
 
     def backward(self, dL_dy: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         """Performs backward pass to compute gradients for parameters and inputs.
@@ -484,7 +484,7 @@ class ClassificationConsequentLayer:
         # Weighted sum over rules -> logits (b, k)
         logits = np.einsum("br,brk->bk", norm_w, f)
         self.last = {"X_aug": X_aug, "norm_w": norm_w, "f": f}
-        return logits
+        return cast(np.ndarray, logits)
 
     def backward(self, dL_dlogits: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         """Computes the backward pass for the classification consequent layer."""

@@ -30,6 +30,17 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Mathematics",
 ]
 
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.4.1",
+    "scikit-learn>=1.7.2",
+    "mypy>=1.10.0",
+    "bandit>=1.7.9",
+    "hatch>=1.16.2",
+    "pre-commit",
+    "ruff",
+]
+
 [project.urls]
 Homepage = "https://github.com/dcruzf/anfis-toolbox"
 Documentation = "https://dcruzf.github.io/anfis-toolbox/"
@@ -42,6 +53,34 @@ path = 'anfis_toolbox/__init__.py'
 
 [tool.hatch.envs.default]
 installer = "uv"
+dependencies = [
+  "ruff",
+  "bandit[toml]",
+  "mypy",
+  "pre-commit",
+]
+[tool.hatch.envs.default.scripts]
+security = "bandit -c pyproject.toml -r anfis_toolbox/"
+typing = "mypy anfis_toolbox"
+install = "pre-commit install && pre-commit autoupdate"
+all = [
+    "pre-commit run --all-files",
+]
+[tool.hatch.envs.docs]
+installer = "uv"
+dependencies = [
+  "mkdocs-material",
+  "mkdocstrings",
+  "mkdocstrings-python",
+  "mkdocs-awesome-pages-plugin",
+  "mkdocs-git-revision-date-localized-plugin",
+  "mkdocs-jupyter",
+  "ruff",
+]
+[tool.hatch.envs.docs.scripts]
+build = "mkdocs build"
+serve = "mkdocs serve"
+deploy = "mkdocs gh-deploy -b docs"
 
 [tool.hatch.build]
 include = ["docs/assets/logo.svg", "LICENSE"]
@@ -51,7 +90,6 @@ only-include = ["anfis_toolbox", "docs/assets/logo.svg", "LICENSE"]
 
 [tool.hatch.build.targets.sdist]
 include = ["/README.md", "/Makefile", "/anfis_toolbox", "/tests", "/docs/assets/logo.svg", "/LICENSE"]
-
 
 [tool.hatch.envs.hatch-test]
 installer = "uv"
@@ -73,6 +111,7 @@ cov-report = "coverage report -m"
 
 [tool.ruff]
 line-length = 120
+extend-exclude =["docs/**"]
 
 [tool.ruff.lint]
 select = [
@@ -104,14 +143,6 @@ source = ['anfis_toolbox']
 branch = true
 relative_files = true
 
-[dependency-groups]
-dev = [
-    "pytest>=8.4.1",
-    "scikit-learn>=1.7.2",
-    "mypy>=1.10.0",
-    "bandit>=1.7.9",
-]
-
 [tool.mypy]
 python_version = "3.10"
 files = ["anfis_toolbox", "tests"]
@@ -130,4 +161,5 @@ module = ["tests.*"]
 ignore_errors = true
 
 [tool.bandit]
+recursive = true
 targets = ["anfis_toolbox"]

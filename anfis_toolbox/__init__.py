@@ -1,6 +1,6 @@
 """ANFIS Toolbox - A Python toolbox for Adaptive Neuro-Fuzzy Inference Systems."""
 
-__version__ = "0.2.0"
+__version__ = "0.2.1"
 
 # Expose high-level estimators
 from .classifier import ANFISClassifier

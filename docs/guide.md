@@ -42,7 +42,7 @@ tests/                    # Pytest suite with full coverage
 2. **Builders** translate estimator configuration into the low-level model by
 	 creating membership functions, calculating rule combinations, and producing
 	 an object the trainers can consume.
-3. **Low-level model** (`model.ANFIS`, `model.TSKANFISClassifier`) implements
+3. **Low-level model** (`model.TSKANFIS`, `model.TSKANFISClassifier`) implements
 	 the forward pass, rule firing strengths, normalization, and consequent
 	 evaluation.
 4. **Optimizers** (`optim.*`) encapsulate training strategies such as Hybrid
@@ -63,7 +63,7 @@ User code -> ANFISRegressor.fit ------------------------------.
 							v                    v             |
 				builders.ANFISBuilder  optim.<Trainer>         |
 							|                    |             |
-							'------> model.ANFIS <-------------'
+							'----> model.TSKANFIS <-------------'
                                                                |
 															   v
 														 Training loop
@@ -88,8 +88,8 @@ lower-level computational graph defined in `anfis_toolbox.model` and `anfis_tool
 	Jacobian-vector product in its `backward` method so that trainers can work directly with batched gradients.
 - **Consequents** are implemented by `ConsequentLayer` (regression) and `ClassificationConsequentLayer` (classification).
 	Both layers augment the input batch with biases, compute per-rule linear consequents, and aggregate them using the
-	normalised firing strengths. The classification flavour maps the weighted outputs to logits, and integrates with the
-	built-in softmax helper in `metrics.py`.
+	normalised firing strengths. The classification layer outputs logits; `TSKANFISClassifier.predict_proba` converts them
+	to probabilities via the built-in softmax helper in `metrics.py`.
 - **Model orchestration** happens in `TSKANFIS` and `TSKANFISClassifier`. Each model wires the layers, exposes forward and
 	backward passes, persists gradient buffers, and implements `get_parameters`, `set_parameters`, and `update_parameters` so
 	optimizers can operate without needing to understand layer internals.
@@ -97,11 +97,12 @@ lower-level computational graph defined in `anfis_toolbox.model` and `anfis_tool
 ### Builder and configuration layer (`builders.py`, `config.py`)
 
 - `ANFISBuilder` encapsulates membership-function synthesis. It centralises creation strategies (grid, FCM, random) and maps
-	human-readable names (``"gaussian"``, ``"bell"``) to concrete membership classes. The builder also normalises explicit rule
-	sets via `set_rules` and exposes a `build()` factory that returns a fully wired `TSKANFIS` instance.
-- `ANFISConfig` provides a serialisable description of inputs and training defaults. It can emit builders, write JSON
-	configurations, and round-trip through `ANFISModelManager` alongside pickled models. This enables reproducible deployments
-	or experiment tracking without shipping raw Python objects.
+	human-readable names (``"gaussian"``, ``"bell"``) to concrete membership classes. The builder normalises explicit rule
+	sets via `set_rules` and exposes a `build()` factory that returns a fully wired `TSKANFIS` instance. The classifier facade
+	uses the builder to assemble membership functions before instantiating `TSKANFISClassifier` directly.
+- `ANFISConfig` provides a serialisable description of inputs and training defaults. It can build a `TSKANFIS` instance,
+	write JSON configurations, and round-trip through `ANFISModelManager` alongside pickled models. This enables reproducible
+	deployments or experiment tracking without shipping raw Python objects.
 - Membership families (e.g. `GaussianMF`, `PiMF`, `DiffSigmoidalMF`) live under `membership.py`. Each object exposes a
 	`parameters`/`gradients` interface so the layers can mutate them generically during backpropagation.
 
@@ -120,22 +121,23 @@ lower-level computational graph defined in `anfis_toolbox.model` and `anfis_tool
 
 ### Training infrastructure (`optim/`)
 
-- `BaseTrainer` defines the contract (`fit`, `evaluate`, metric tracking) and shared utilities like batching, progress
-	reporting, and validation scheduling.
-- Gradient-based trainers (`HybridTrainer`, `HybridAdamTrainer`, `AdamTrainer`, `RMSPropTrainer`, `SGDTrainer`) call the
-	model's `forward`, `backward`, `update_parameters`, and `reset_gradients` methods directly. Hybrid variants alternate
-	between closed-form least-squares updates for consequents and gradient descent for membership parameters to accelerate
-	convergence on regression tasks.
-- `PSOTrainer` diverges from gradient descent by optimising consequent coefficients with particle swarm optimisation while
-	refreshing membership parameters less aggressively, making it suitable for noisy or non-differentiable objectives.
-- All trainers populate a `TrainingHistory` mapping (defined in `optim.base`) that captures per-epoch losses and optional
-	validation metrics, facilitating visualisation or early-stopping criteria implemented outside the core package.
+- `BaseTrainer` defines the contract (`fit`, `init_state`, `train_step`, `compute_loss`) and shared utilities like batching,
+	progress reporting, and validation scheduling.
+- Gradient-based trainers (`SGDTrainer`, `AdamTrainer`, `RMSPropTrainer`) call the model's `forward`, `backward`,
+	`reset_gradients`, and `update_parameters` methods directly. Hybrid variants (`HybridTrainer`, `HybridAdamTrainer`)
+	combine closed-form least-squares updates for consequents with gradient-based updates for membership parameters and are
+	limited to regression models.
+- `PSOTrainer` performs gradient-free search over both consequent and membership parameters by flattening
+	`model.get_parameters()` and pushing candidates back through `model.set_parameters()`.
+- All trainers populate a `TrainingHistory` mapping (defined in `model.TrainingHistory`) that captures per-epoch losses and
+	optional validation metrics, facilitating visualisation or early-stopping criteria implemented outside the core package.
 
 ### Variants and extension points
 
 - **Regression vs. classification**: `ANFISRegressor` wraps `TSKANFIS`, using mean-squared-error-style losses by default and
 	exposing regression metrics. `ANFISClassifier` wraps `TSKANFISClassifier`, instantiates a multi-class consequent layer,
-	and defaults to cross-entropy losses with probability calibration via `predict_proba`.
+	defaults to cross-entropy losses with probability calibration via `predict_proba`, and rejects hybrid trainers that
+	require least-squares regression heads.
 - **Membership variants**: Users can mix automatic generation (`n_mfs`, `mf_type`, `init`, `overlap`, `margin`) with explicit
 	`MembershipFunction` instances per feature. Builders preserve the order in which inputs are added so the resulting rule
 	indices remain deterministic.
@@ -180,7 +182,7 @@ classDiagram
 	class TSKANFISClassifier {
 		+forward(X)
 		+backward(dL)
-		+predict_logits(X)
+		+predict_proba(X)
 		+get_parameters()
 	}
 	class MembershipLayer {
@@ -217,7 +219,7 @@ classDiagram
 	ANFISRegressor --> ANFISBuilder : configures
 	ANFISClassifier --> ANFISBuilder : configures
 	ANFISBuilder --> TSKANFIS : builds
-	ANFISBuilder --> TSKANFISClassifier : builds
+	ANFISClassifier --> TSKANFISClassifier : builds
 	TSKANFIS --> MembershipLayer : composes
 	TSKANFIS --> RuleLayer
 	TSKANFIS --> NormalizationLayer
@@ -283,9 +285,9 @@ Optimizers live under `anfis_toolbox/optim/` and share a common interface:
 - `BaseTrainer.fit(model, X, y, **kwargs)` drives epochs, batching, shuffling,
 	and validation.
 - Hybrid trainers combine gradient descent with ordinary least squares rule
-	consequent updates, delivering fast convergence on regression tasks.
+	consequent updates, delivering fast convergence on regression tasks (not supported by the classifier).
 - Adam, RMSProp, and SGD offer familiar gradient-based alternatives.
-- PSO provides a population-based search when gradient information is noisy.
+- PSO provides a population-based search over both consequent and membership parameters when gradient information is noisy.
 - Trainers expose hooks for learning rate, epochs, batch size, shuffle, and
 	optional loss overrides.
 
@@ -303,16 +305,18 @@ Optimizers live under `anfis_toolbox/optim/` and share a common interface:
 - Explore the `docs/examples/` notebooks for step-by-step tutorials covering
 	regression, classification, time series, and membership customization.
 - The MkDocs site (`mkdocs.yml`) assembles the `docs/` directory into a hosted
-	documentation portal. Run `make docs` to build locally and serve via
-	`mkdocs serve`.
+	documentation portal. Run `hatch run docs:serve` to build locally and serve
+	via `mkdocs serve`.
 
 ## Development Workflow
 
-1. **Install dependencies**: `make install`
-2. **Run tests**: `make test`
-3. **Lint**: `make lint`
-4. **Format (optional)**: `make format`
-5. **Docs preview**: `make docs`
+1. **Install dependencies**: `pip install -e .[dev]`
+2. **Install pre-commit hooks**: `hatch run install`
+3. **Run tests**: `hatch test -c --all`
+4. **Lint/format**: `hatch fmt` (format) and `hatch run all` (pre-commit checks)
+5. **Typing**: `hatch run typing`
+6. **Security**: `hatch run security`
+7. **Docs preview**: `hatch run docs:serve`
 
 Tests cover membership functions, optimizers, estimators, and integration with
 scikit-learn-like patterns. New features should include corresponding tests.
@@ -322,7 +326,7 @@ scikit-learn-like patterns. New features should include corresponding tests.
 - Fork the repository and create a feature branch.
 - Keep pull requests focused; tie them to an issue when possible.
 - Update or add documentation (including this guide) when behavior changes.
-- Ensure `make test` and `make lint` pass before submitting.
+- Ensure `hatch test -c --all` and `hatch run all` pass before submitting.
 - Include demo snippets or notebooks if the feature benefits from examples.
 
 Thanks for contributing to ANFIS Toolbox! If you have questions, open a

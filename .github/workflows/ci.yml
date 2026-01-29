@@ -25,18 +25,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v5
 
-      - name: Install uv
-        uses: astral-sh/setup-uv@v6
+      - name: Install Hatch
+        uses: pypa/hatch@install
 
-      - name: Sync project dependencies
-        run: uv sync
-
-      - name: Install hatch
-        run: uv tool install hatch
-
-      - name: Run linting
+      - name: Run pre-commit hooks
         if: runner.os == 'Linux'
-        run: uvx pre-commit run --all-files
-
+        run: hatch run all
       - name: Run tests
-        run: uv tool run hatch test --all -c
+        run: hatch test --all -c

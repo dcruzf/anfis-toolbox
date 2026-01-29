@@ -25,14 +25,14 @@ jobs:
       with:
         fetch-depth: 0
 
-    - name: Install uv
-      uses: astral-sh/setup-uv@v6
+    - name: Install Hatch
+      uses: pypa/hatch@install
 
     - name: Test
-      run: make test
+      run: hatch test --all -c
 
     - name: Build project
-      run: make build
+      run: hatch build
 
     - name: Publish
-      run: make publish
+      run: hatch publish
