@@ -91,19 +91,67 @@ metrics = model.evaluate(X, y)
 
 ## 🧪 Testing & quality
 
-Run the full suite (pytest + coverage):
+### Local setup
+
+Clone the repository:
 
 ```bash
-make test
+git clone https://github.com/dcruzf/anfis-toolbox.git
+cd anfis-toolbox
 ```
 
-Additional targets:
+Create a virtual environment:
 
-- `make lint` — Run Ruff linting
-- `make docs` — Build the MkDocs site locally
-- `make help` — Show all available targets with their help messages
+```bash
+python -m venv .venv
+```
+Activate it:
 
+**Linux / macOS**
+```
+source .venv/bin/activate
+```
+**Windows (PowerShell)**
+
+```powershell
+.venv\Scripts\Activate.ps1
+```
+
+Install the project in editable mode with development dependencies
+(this includes Hatch and all test tools):
+
+```bash
+pip install -e .[dev]
+```
+### Running tests
+
+Run the full test suite with coverage:
+```bash
+hatch test -c --all
+```
 This project is tested on Python 3.10 | 3.11 | 3.12 | 3.13 | 3.14 across Linux, Windows and macOS.
+
+### Linting & Formatting
+
+Run the linter and format the codebase:
+```bash
+hatch fmt
+```
+
+### Typing
+
+Run static type checks:
+```bash
+hatch run typing
+```
+
+### Security
+
+Run security checks with Bandit:
+```bash
+hatch run security
+```
+
 
 ## 🤝 Contributing
 

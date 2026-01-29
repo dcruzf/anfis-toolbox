@@ -357,7 +357,7 @@ class ANFISClassifier(BaseEstimatorLike, FittedMixin, ClassifierMixinLike):
         if model is None or classes is None:
             raise RuntimeError("Model must be fitted before calling predict.")
         encoded = np.asarray(model.predict(X_arr), dtype=int)
-        return np.asarray(classes)[encoded]
+        return cast(np.ndarray, np.asarray(classes)[encoded])
 
     def predict_proba(self, X: npt.ArrayLike) -> np.ndarray:
         """Predict class probabilities for the provided samples.
@@ -834,7 +834,7 @@ class ANFISClassifier(BaseEstimatorLike, FittedMixin, ClassifierMixinLike):
 
     def _encode_targets(
         self,
-        y: np.ndarray,
+        y: npt.ArrayLike,
         n_samples: int,
         *,
         allow_partial_classes: bool = False,

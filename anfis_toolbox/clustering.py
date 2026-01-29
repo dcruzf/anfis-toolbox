@@ -5,6 +5,8 @@ Currently includes Fuzzy C-Means (FCM).
 
 from __future__ import annotations
 
+from typing import cast
+
 import numpy as np
 
 from .metrics import classification_entropy as _ce
@@ -41,8 +43,8 @@ class FuzzyCMeans:
         self.max_iter = int(max_iter)
         self.tol = float(tol)
         self.random_state = random_state
-        self.cluster_centers_ = None
-        self.membership_ = None
+        self.cluster_centers_: np.ndarray | None = None
+        self.membership_: np.ndarray | None = None
 
     # ---------------------
     # Helpers
@@ -67,7 +69,7 @@ class FuzzyCMeans:
     @staticmethod
     def _pairwise_sq_dists(X: np.ndarray, C: np.ndarray) -> np.ndarray:
         # (n,d) vs (k,d) -> (n,k)
-        return ((X[:, None, :] - C[None, :, :]) ** 2).sum(axis=2)
+        return cast(np.ndarray, ((X[:, None, :] - C[None, :, :]) ** 2).sum(axis=2))
 
     # ---------------------
     # Public API
@@ -87,7 +89,7 @@ class FuzzyCMeans:
         def update_centers(Um: np.ndarray) -> np.ndarray:
             num = Um.T @ X  # (k,d)
             den = np.maximum(Um.sum(axis=0)[:, None], 1e-12)
-            return num / den
+            return cast(np.ndarray, num / den)
 
         Um = U**m
         C = update_centers(Um)
@@ -113,7 +115,7 @@ class FuzzyCMeans:
     def predict(self, X: np.ndarray) -> np.ndarray:
         """Return hard labels via argmax of predict_proba."""
         U = self.predict_proba(X)
-        return np.argmax(U, axis=1)
+        return cast(np.ndarray, np.argmax(U, axis=1))
 
     def predict_proba(self, X: np.ndarray) -> np.ndarray:
         """Return membership degrees for samples to clusters (rows sum to 1)."""
@@ -124,7 +126,7 @@ class FuzzyCMeans:
         m = self.m
         d2 = np.maximum(self._pairwise_sq_dists(X, C), 1e-12)
         inv = d2 ** (-1.0 / (m - 1.0))
-        return inv / np.sum(inv, axis=1, keepdims=True)
+        return cast(np.ndarray, inv / np.sum(inv, axis=1, keepdims=True))
 
     def transform(self, X: np.ndarray) -> np.ndarray:
         """Alias for predict_proba."""

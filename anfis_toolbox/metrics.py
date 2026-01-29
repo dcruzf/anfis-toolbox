@@ -53,10 +53,10 @@ def _flatten_float(values: ArrayLike) -> np.ndarray:
 def _coerce_labels(y_true: ArrayLike) -> np.ndarray:
     labels = np.asarray(y_true)
     if labels.ndim == 0:
-        return labels.reshape(1).astype(int)
+        return cast(np.ndarray, labels.reshape(1).astype(int))
     if labels.ndim == 2:
-        return np.argmax(labels, axis=1).astype(int)
-    return labels.reshape(-1).astype(int)
+        return cast(np.ndarray, np.argmax(labels, axis=1).astype(int))
+    return cast(np.ndarray, labels.reshape(-1).astype(int))
 
 
 def _ensure_probabilities(y_prob: ArrayLike) -> np.ndarray:
@@ -69,7 +69,7 @@ def _ensure_probabilities(y_prob: ArrayLike) -> np.ndarray:
     proba = proba / row_sums
     proba = np.clip(proba, _EPSILON, 1.0)
     proba = proba / np.sum(proba, axis=1, keepdims=True)
-    return proba
+    return cast(np.ndarray, proba)
 
 
 def _confusion_matrix(y_true: np.ndarray, y_pred: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
@@ -327,7 +327,7 @@ def softmax(logits: np.ndarray, axis: int = -1) -> np.ndarray:
     ez = np.exp(z - zmax)
     den = np.sum(ez, axis=axis, keepdims=True)
     den = np.clip(den, _EPSILON, None)
-    return ez / den
+    return cast(np.ndarray, ez / den)
 
 
 def cross_entropy(y_true: np.ndarray, logits: np.ndarray, epsilon: float = _EPSILON) -> float:
@@ -494,7 +494,7 @@ def xie_beni_index(
     return num / (float(X.shape[0]) * den)
 
 
-def _regression_metrics_dict(y_true: ArrayLike, y_pred: ArrayLike) -> dict[str, float]:
+def _regression_metrics_dict(y_true: ArrayLike, y_pred: ArrayLike) -> dict[str, MetricValue]:
     yt, yp = _coerce_regression_targets(y_true, y_pred)
     residuals = yt - yp
     mse = float(np.mean(residuals * residuals)) if residuals.size else 0.0
