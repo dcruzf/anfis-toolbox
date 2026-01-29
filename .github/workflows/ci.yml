@@ -30,7 +30,7 @@ jobs:
 
       - name: Run pre-commit hooks
         if: runner.os == 'Linux'
-        run: uvx pre-commit run --all-files
+        run: uvx hatch run all
 
       - name: Run tests
         run: uvx hatch test --all -c
