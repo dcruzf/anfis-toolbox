@@ -3,9 +3,9 @@
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <title>Coverage for anfis_toolbox/layers.py: 100%</title>
-    <link rel="icon" sizes="32x32" href="favicon_32_cb_58284776.png">
-    <link rel="stylesheet" href="style_cb_a5a05ca4.css" type="text/css">
-    <script src="coverage_html_cb_bcae5fc4.js" defer></script>
+    <link rel="icon" sizes="32x32" href="favicon_32_cb_c827f16f.png">
+    <link rel="stylesheet" href="style_cb_9ff733b0.css" type="text/css">
+    <script src="coverage_html_cb_dd2e7eb5.js" defer></script>
 </head>
 <body class="pyfile">
 <header>
@@ -17,7 +17,7 @@
         <aside id="help_panel_wrapper">
             <input id="help_panel_state" type="checkbox">
             <label for="help_panel_state">
-                <img id="keyboard_icon" src="keybd_closed_cb_ce680311.png" alt="Show/hide keyboard shortcuts">
+                <img id="keyboard_icon" src="keybd_closed_cb_900cfef5.png" alt="Show/hide keyboard shortcuts">
             </label>
             <div id="help_panel">
                 <p class="legend">Shortcuts on this page</p>
@@ -66,8 +66,8 @@
             <a id="indexLink" class="nav" href="index.html">&Hat; index</a> &nbsp; &nbsp;
             <a id="nextFileLink" class="nav" href="z_3e1e53d9a7a383e4_logging_config_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
-            <a class="nav" href="https://coverage.readthedocs.io/en/7.13.0">coverage.py v7.13.0</a>,
-            created at 2025-12-24 00:58 +0000
+            <a class="nav" href="https://coverage.readthedocs.io/en/7.13.3">coverage.py v7.13.3</a>,
+            created at 2026-02-04 14:15 +0000
         </p>
         <aside class="hidden">
             <button type="button" class="button_next_chunk" data-shortcut="j"></button>
@@ -84,7 +84,7 @@
 <main id="source">
     <p class="run"><span class="n"><a id="t1" href="#t1">1</a></span><span class="t"><span class="key">from</span> <span class="nam">collections</span><span class="op">.</span><span class="nam">abc</span> <span class="key">import</span> <span class="nam">Sequence</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t2" href="#t2">2</a></span><span class="t"><span class="key">from</span> <span class="nam">itertools</span> <span class="key">import</span> <span class="nam">product</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t3" href="#t3">3</a></span><span class="t"><span class="key">from</span> <span class="nam">typing</span> <span class="key">import</span> <span class="nam">Any</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t3" href="#t3">3</a></span><span class="t"><span class="key">from</span> <span class="nam">typing</span> <span class="key">import</span> <span class="nam">Any</span><span class="op">,</span> <span class="nam">cast</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t4" href="#t4">4</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t5" href="#t5">5</a></span><span class="t"><span class="key">import</span> <span class="nam">numpy</span> <span class="key">as</span> <span class="nam">np</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t6" href="#t6">6</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
@@ -288,7 +288,7 @@
     <p class="run"><span class="n"><a id="t204" href="#t204">204</a></span><span class="t">        <span class="nam">_batch_size</span> <span class="op">=</span> <span class="nam">mu</span><span class="op">.</span><span class="nam">shape</span><span class="op">[</span><span class="num">0</span><span class="op">]</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t205" href="#t205">205</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t206" href="#t206">206</a></span><span class="t">        <span class="com"># Compute rule activations (firing strengths)</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t207" href="#t207">207</a></span><span class="t">        <span class="nam">rule_activations</span> <span class="op">=</span> <span class="op">[</span><span class="op">]</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t207" href="#t207">207</a></span><span class="t">        <span class="nam">rule_activations_list</span><span class="op">:</span> <span class="nam">list</span><span class="op">[</span><span class="nam">np</span><span class="op">.</span><span class="nam">ndarray</span><span class="op">]</span> <span class="op">=</span> <span class="op">[</span><span class="op">]</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t208" href="#t208">208</a></span><span class="t">        <span class="key">for</span> <span class="nam">rule</span> <span class="key">in</span> <span class="nam">self</span><span class="op">.</span><span class="nam">rules</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t209" href="#t209">209</a></span><span class="t">            <span class="nam">rule_mu</span> <span class="op">=</span> <span class="op">[</span><span class="op">]</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t210" href="#t210">210</a></span><span class="t">            <span class="com"># Get membership degree for each input in this rule</span>&nbsp;</span><span class="r"></span></p>
@@ -296,9 +296,9 @@
     <p class="run"><span class="n"><a id="t212" href="#t212">212</a></span><span class="t">                <span class="nam">rule_mu</span><span class="op">.</span><span class="nam">append</span><span class="op">(</span><span class="nam">mu</span><span class="op">[</span><span class="op">:</span><span class="op">,</span> <span class="nam">input_idx</span><span class="op">,</span> <span class="nam">mf_idx</span><span class="op">]</span><span class="op">)</span>  <span class="com"># (batch_size,)</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t213" href="#t213">213</a></span><span class="t">            <span class="com"># Apply T-norm (product) to get rule strength</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t214" href="#t214">214</a></span><span class="t">            <span class="nam">rule_strength</span> <span class="op">=</span> <span class="nam">np</span><span class="op">.</span><span class="nam">prod</span><span class="op">(</span><span class="nam">rule_mu</span><span class="op">,</span> <span class="nam">axis</span><span class="op">=</span><span class="num">0</span><span class="op">)</span>  <span class="com"># (batch_size,)</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t215" href="#t215">215</a></span><span class="t">            <span class="nam">rule_activations</span><span class="op">.</span><span class="nam">append</span><span class="op">(</span><span class="nam">rule_strength</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t215" href="#t215">215</a></span><span class="t">            <span class="nam">rule_activations_list</span><span class="op">.</span><span class="nam">append</span><span class="op">(</span><span class="nam">rule_strength</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t216" href="#t216">216</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t217" href="#t217">217</a></span><span class="t">        <span class="nam">rule_activations</span> <span class="op">=</span> <span class="nam">np</span><span class="op">.</span><span class="nam">stack</span><span class="op">(</span><span class="nam">rule_activations</span><span class="op">,</span> <span class="nam">axis</span><span class="op">=</span><span class="num">1</span><span class="op">)</span>  <span class="com"># (batch_size, n_rules)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t217" href="#t217">217</a></span><span class="t">        <span class="nam">rule_activations</span> <span class="op">=</span> <span class="nam">np</span><span class="op">.</span><span class="nam">stack</span><span class="op">(</span><span class="nam">rule_activations_list</span><span class="op">,</span> <span class="nam">axis</span><span class="op">=</span><span class="num">1</span><span class="op">)</span>  <span class="com"># (batch_size, n_rules)</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t218" href="#t218">218</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t219" href="#t219">219</a></span><span class="t">        <span class="com"># Cache values for backward pass</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t220" href="#t220">220</a></span><span class="t">        <span class="nam">self</span><span class="op">.</span><span class="nam">last</span> <span class="op">=</span> <span class="op">{</span><span class="str">"membership_outputs"</span><span class="op">:</span> <span class="nam">membership_outputs</span><span class="op">,</span> <span class="str">"mu"</span><span class="op">:</span> <span class="nam">mu</span><span class="op">,</span> <span class="str">"rule_activations"</span><span class="op">:</span> <span class="nam">rule_activations</span><span class="op">}</span>&nbsp;</span><span class="r"></span></p>
@@ -380,7 +380,7 @@
     <p class="pln"><span class="n"><a id="t296" href="#t296">296</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t297" href="#t297">297</a></span><span class="t">        <span class="com"># Cache values for backward pass</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t298" href="#t298">298</a></span><span class="t">        <span class="nam">self</span><span class="op">.</span><span class="nam">last</span> <span class="op">=</span> <span class="op">{</span><span class="str">"w"</span><span class="op">:</span> <span class="nam">w</span><span class="op">,</span> <span class="str">"sum_w"</span><span class="op">:</span> <span class="nam">sum_w</span><span class="op">,</span> <span class="str">"norm_w"</span><span class="op">:</span> <span class="nam">norm_w</span><span class="op">}</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t299" href="#t299">299</a></span><span class="t">        <span class="key">return</span> <span class="nam">norm_w</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t299" href="#t299">299</a></span><span class="t">        <span class="key">return</span> <span class="nam">cast</span><span class="op">(</span><span class="nam">np</span><span class="op">.</span><span class="nam">ndarray</span><span class="op">,</span> <span class="nam">norm_w</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t300" href="#t300">300</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t301" href="#t301">301</a></span><span class="t">    <span class="key">def</span> <span class="nam">backward</span><span class="op">(</span><span class="nam">self</span><span class="op">,</span> <span class="nam">dL_dnorm_w</span><span class="op">:</span> <span class="nam">np</span><span class="op">.</span><span class="nam">ndarray</span><span class="op">)</span> <span class="op">-></span> <span class="nam">np</span><span class="op">.</span><span class="nam">ndarray</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t302" href="#t302">302</a></span><span class="t">        <span class="str">"""Performs backward pass to compute gradients for original rule weights.</span>&nbsp;</span><span class="r"></span></p>
@@ -408,7 +408,7 @@
     <p class="run"><span class="n"><a id="t324" href="#t324">324</a></span><span class="t">        <span class="nam">gw_dot</span> <span class="op">=</span> <span class="nam">np</span><span class="op">.</span><span class="nam">sum</span><span class="op">(</span><span class="nam">g</span> <span class="op">*</span> <span class="nam">w</span><span class="op">,</span> <span class="nam">axis</span><span class="op">=</span><span class="num">1</span><span class="op">,</span> <span class="nam">keepdims</span><span class="op">=</span><span class="key">True</span><span class="op">)</span>  <span class="com"># (batch_size, 1)</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t325" href="#t325">325</a></span><span class="t">        <span class="nam">dL_dw</span> <span class="op">=</span> <span class="op">(</span><span class="nam">s</span> <span class="op">*</span> <span class="nam">g</span> <span class="op">-</span> <span class="nam">gw_dot</span><span class="op">)</span> <span class="op">/</span> <span class="op">(</span><span class="nam">s</span><span class="op">**</span><span class="num">2</span><span class="op">)</span>  <span class="com"># (batch_size, n_rules)</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t326" href="#t326">326</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t327" href="#t327">327</a></span><span class="t">        <span class="key">return</span> <span class="nam">dL_dw</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t327" href="#t327">327</a></span><span class="t">        <span class="key">return</span> <span class="nam">cast</span><span class="op">(</span><span class="nam">np</span><span class="op">.</span><span class="nam">ndarray</span><span class="op">,</span> <span class="nam">dL_dw</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t328" href="#t328">328</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t329" href="#t329">329</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t330" href="#t330">330</a></span><span class="t"><span class="key">class</span> <span class="nam">ConsequentLayer</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
@@ -469,7 +469,7 @@
     <p class="pln"><span class="n"><a id="t385" href="#t385">385</a></span><span class="t">        <span class="com"># Cache values for backward pass</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t386" href="#t386">386</a></span><span class="t">        <span class="nam">self</span><span class="op">.</span><span class="nam">last</span> <span class="op">=</span> <span class="op">{</span><span class="str">"X_aug"</span><span class="op">:</span> <span class="nam">X_aug</span><span class="op">,</span> <span class="str">"norm_w"</span><span class="op">:</span> <span class="nam">norm_w</span><span class="op">,</span> <span class="str">"f"</span><span class="op">:</span> <span class="nam">f</span><span class="op">}</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t387" href="#t387">387</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t388" href="#t388">388</a></span><span class="t">        <span class="key">return</span> <span class="nam">y_hat</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t388" href="#t388">388</a></span><span class="t">        <span class="key">return</span> <span class="nam">cast</span><span class="op">(</span><span class="nam">np</span><span class="op">.</span><span class="nam">ndarray</span><span class="op">,</span> <span class="nam">y_hat</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t389" href="#t389">389</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t390" href="#t390">390</a></span><span class="t">    <span class="key">def</span> <span class="nam">backward</span><span class="op">(</span><span class="nam">self</span><span class="op">,</span> <span class="nam">dL_dy</span><span class="op">:</span> <span class="nam">np</span><span class="op">.</span><span class="nam">ndarray</span><span class="op">)</span> <span class="op">-></span> <span class="nam">tuple</span><span class="op">[</span><span class="nam">np</span><span class="op">.</span><span class="nam">ndarray</span><span class="op">,</span> <span class="nam">np</span><span class="op">.</span><span class="nam">ndarray</span><span class="op">]</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t391" href="#t391">391</a></span><span class="t">        <span class="str">"""Performs backward pass to compute gradients for parameters and inputs.</span>&nbsp;</span><span class="r"></span></p>
@@ -568,7 +568,7 @@
     <p class="pln"><span class="n"><a id="t484" href="#t484">484</a></span><span class="t">        <span class="com"># Weighted sum over rules -> logits (b, k)</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t485" href="#t485">485</a></span><span class="t">        <span class="nam">logits</span> <span class="op">=</span> <span class="nam">np</span><span class="op">.</span><span class="nam">einsum</span><span class="op">(</span><span class="str">"br,brk->bk"</span><span class="op">,</span> <span class="nam">norm_w</span><span class="op">,</span> <span class="nam">f</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t486" href="#t486">486</a></span><span class="t">        <span class="nam">self</span><span class="op">.</span><span class="nam">last</span> <span class="op">=</span> <span class="op">{</span><span class="str">"X_aug"</span><span class="op">:</span> <span class="nam">X_aug</span><span class="op">,</span> <span class="str">"norm_w"</span><span class="op">:</span> <span class="nam">norm_w</span><span class="op">,</span> <span class="str">"f"</span><span class="op">:</span> <span class="nam">f</span><span class="op">}</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t487" href="#t487">487</a></span><span class="t">        <span class="key">return</span> <span class="nam">logits</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t487" href="#t487">487</a></span><span class="t">        <span class="key">return</span> <span class="nam">cast</span><span class="op">(</span><span class="nam">np</span><span class="op">.</span><span class="nam">ndarray</span><span class="op">,</span> <span class="nam">logits</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t488" href="#t488">488</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t489" href="#t489">489</a></span><span class="t">    <span class="key">def</span> <span class="nam">backward</span><span class="op">(</span><span class="nam">self</span><span class="op">,</span> <span class="nam">dL_dlogits</span><span class="op">:</span> <span class="nam">np</span><span class="op">.</span><span class="nam">ndarray</span><span class="op">)</span> <span class="op">-></span> <span class="nam">tuple</span><span class="op">[</span><span class="nam">np</span><span class="op">.</span><span class="nam">ndarray</span><span class="op">,</span> <span class="nam">np</span><span class="op">.</span><span class="nam">ndarray</span><span class="op">]</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t490" href="#t490">490</a></span><span class="t">        <span class="str">"""Computes the backward pass for the classification consequent layer."""</span>&nbsp;</span><span class="r"></span></p>
@@ -603,8 +603,8 @@
             <a class="nav" href="index.html">&Hat; index</a> &nbsp; &nbsp;
             <a class="nav" href="z_3e1e53d9a7a383e4_logging_config_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
-            <a class="nav" href="https://coverage.readthedocs.io/en/7.13.0">coverage.py v7.13.0</a>,
-            created at 2025-12-24 00:58 +0000
+            <a class="nav" href="https://coverage.readthedocs.io/en/7.13.3">coverage.py v7.13.3</a>,
+            created at 2026-02-04 14:15 +0000
         </p>
     </div>
 </footer>

@@ -3,9 +3,9 @@
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <title>Coverage for anfis_toolbox/membership.py: 100%</title>
-    <link rel="icon" sizes="32x32" href="favicon_32_cb_58284776.png">
-    <link rel="stylesheet" href="style_cb_a5a05ca4.css" type="text/css">
-    <script src="coverage_html_cb_bcae5fc4.js" defer></script>
+    <link rel="icon" sizes="32x32" href="favicon_32_cb_c827f16f.png">
+    <link rel="stylesheet" href="style_cb_9ff733b0.css" type="text/css">
+    <script src="coverage_html_cb_dd2e7eb5.js" defer></script>
 </head>
 <body class="pyfile">
 <header>
@@ -17,7 +17,7 @@
         <aside id="help_panel_wrapper">
             <input id="help_panel_state" type="checkbox">
             <label for="help_panel_state">
-                <img id="keyboard_icon" src="keybd_closed_cb_ce680311.png" alt="Show/hide keyboard shortcuts">
+                <img id="keyboard_icon" src="keybd_closed_cb_900cfef5.png" alt="Show/hide keyboard shortcuts">
             </label>
             <div id="help_panel">
                 <p class="legend">Shortcuts on this page</p>
@@ -66,8 +66,8 @@
             <a id="indexLink" class="nav" href="index.html">&Hat; index</a> &nbsp; &nbsp;
             <a id="nextFileLink" class="nav" href="z_3e1e53d9a7a383e4_metrics_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
-            <a class="nav" href="https://coverage.readthedocs.io/en/7.13.0">coverage.py v7.13.0</a>,
-            created at 2025-12-24 00:58 +0000
+            <a class="nav" href="https://coverage.readthedocs.io/en/7.13.3">coverage.py v7.13.3</a>,
+            created at 2026-02-04 14:15 +0000
         </p>
         <aside class="hidden">
             <button type="button" class="button_next_chunk" data-shortcut="j"></button>
@@ -228,8 +228,8 @@
     <p class="run"><span class="n"><a id="t144" href="#t144">144</a></span><span class="t">        <span class="key">if</span> <span class="nam">self</span><span class="op">.</span><span class="nam">last_input</span> <span class="key">is</span> <span class="key">None</span> <span class="key">or</span> <span class="nam">self</span><span class="op">.</span><span class="nam">last_output</span> <span class="key">is</span> <span class="key">None</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t145" href="#t145">145</a></span><span class="t">            <span class="key">raise</span> <span class="nam">RuntimeError</span><span class="op">(</span><span class="str">"forward must be called before backward."</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t146" href="#t146">146</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t147" href="#t147">147</a></span><span class="t">        <span class="nam">x</span> <span class="op">=</span> <span class="nam">cast</span><span class="op">(</span><span class="nam">np</span><span class="op">.</span><span class="nam">ndarray</span><span class="op">,</span> <span class="nam">self</span><span class="op">.</span><span class="nam">last_input</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t148" href="#t148">148</a></span><span class="t">        <span class="nam">y</span> <span class="op">=</span> <span class="nam">cast</span><span class="op">(</span><span class="nam">np</span><span class="op">.</span><span class="nam">ndarray</span><span class="op">,</span> <span class="nam">self</span><span class="op">.</span><span class="nam">last_output</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t147" href="#t147">147</a></span><span class="t">        <span class="nam">x</span> <span class="op">=</span> <span class="nam">self</span><span class="op">.</span><span class="nam">last_input</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t148" href="#t148">148</a></span><span class="t">        <span class="nam">y</span> <span class="op">=</span> <span class="nam">self</span><span class="op">.</span><span class="nam">last_output</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t149" href="#t149">149</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t150" href="#t150">150</a></span><span class="t">        <span class="nam">z</span> <span class="op">=</span> <span class="op">(</span><span class="nam">x</span> <span class="op">-</span> <span class="nam">mean</span><span class="op">)</span> <span class="op">/</span> <span class="nam">sigma</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t151" href="#t151">151</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
@@ -473,7 +473,7 @@
     <p class="run"><span class="n"><a id="t389" href="#t389">389</a></span><span class="t">            <span class="nam">output</span><span class="op">[</span><span class="nam">right_mask</span><span class="op">]</span> <span class="op">=</span> <span class="op">(</span><span class="nam">c</span> <span class="op">-</span> <span class="nam">x</span><span class="op">[</span><span class="nam">right_mask</span><span class="op">]</span><span class="op">)</span> <span class="op">/</span> <span class="op">(</span><span class="nam">c</span> <span class="op">-</span> <span class="nam">b</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t390" href="#t390">390</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t391" href="#t391">391</a></span><span class="t">        <span class="com"># Clip for numerical stability</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t392" href="#t392">392</a></span><span class="t">        <span class="nam">output</span> <span class="op">=</span> <span class="nam">np</span><span class="op">.</span><span class="nam">clip</span><span class="op">(</span><span class="nam">output</span><span class="op">,</span> <span class="num">0.0</span><span class="op">,</span> <span class="num">1.0</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t392" href="#t392">392</a></span><span class="t">        <span class="nam">output</span> <span class="op">=</span> <span class="nam">cast</span><span class="op">(</span><span class="nam">np</span><span class="op">.</span><span class="nam">ndarray</span><span class="op">,</span> <span class="nam">np</span><span class="op">.</span><span class="nam">clip</span><span class="op">(</span><span class="nam">output</span><span class="op">,</span> <span class="num">0.0</span><span class="op">,</span> <span class="num">1.0</span><span class="op">)</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t393" href="#t393">393</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t394" href="#t394">394</a></span><span class="t">        <span class="nam">self</span><span class="op">.</span><span class="nam">last_output</span> <span class="op">=</span> <span class="nam">output</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t395" href="#t395">395</a></span><span class="t">        <span class="key">return</span> <span class="nam">output</span>&nbsp;</span><span class="r"></span></p>
@@ -794,8 +794,8 @@
     <p class="run"><span class="n"><a id="t710" href="#t710">710</a></span><span class="t">        <span class="key">if</span> <span class="nam">self</span><span class="op">.</span><span class="nam">last_input</span> <span class="key">is</span> <span class="key">None</span> <span class="key">or</span> <span class="nam">self</span><span class="op">.</span><span class="nam">last_output</span> <span class="key">is</span> <span class="key">None</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t711" href="#t711">711</a></span><span class="t">            <span class="key">raise</span> <span class="nam">RuntimeError</span><span class="op">(</span><span class="str">"forward must be called before backward."</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t712" href="#t712">712</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t713" href="#t713">713</a></span><span class="t">        <span class="nam">x</span> <span class="op">=</span> <span class="nam">cast</span><span class="op">(</span><span class="nam">np</span><span class="op">.</span><span class="nam">ndarray</span><span class="op">,</span> <span class="nam">self</span><span class="op">.</span><span class="nam">last_input</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t714" href="#t714">714</a></span><span class="t">        <span class="nam">y</span> <span class="op">=</span> <span class="nam">cast</span><span class="op">(</span><span class="nam">np</span><span class="op">.</span><span class="nam">ndarray</span><span class="op">,</span> <span class="nam">self</span><span class="op">.</span><span class="nam">last_output</span><span class="op">)</span>  <span class="com"># This is &#956;(x)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t713" href="#t713">713</a></span><span class="t">        <span class="nam">x</span> <span class="op">=</span> <span class="nam">self</span><span class="op">.</span><span class="nam">last_input</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t714" href="#t714">714</a></span><span class="t">        <span class="nam">y</span> <span class="op">=</span> <span class="nam">self</span><span class="op">.</span><span class="nam">last_output</span>  <span class="com"># This is &#956;(x)</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t715" href="#t715">715</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t716" href="#t716">716</a></span><span class="t">        <span class="com"># Intermediate calculations</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t717" href="#t717">717</a></span><span class="t">        <span class="nam">normalized</span> <span class="op">=</span> <span class="op">(</span><span class="nam">x</span> <span class="op">-</span> <span class="nam">c</span><span class="op">)</span> <span class="op">/</span> <span class="nam">a</span>&nbsp;</span><span class="r"></span></p>
@@ -967,8 +967,8 @@
     <p class="run"><span class="n"><a id="t883" href="#t883">883</a></span><span class="t">        <span class="key">if</span> <span class="nam">self</span><span class="op">.</span><span class="nam">last_input</span> <span class="key">is</span> <span class="key">None</span> <span class="key">or</span> <span class="nam">self</span><span class="op">.</span><span class="nam">last_output</span> <span class="key">is</span> <span class="key">None</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t884" href="#t884">884</a></span><span class="t">            <span class="key">raise</span> <span class="nam">RuntimeError</span><span class="op">(</span><span class="str">"forward must be called before backward."</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t885" href="#t885">885</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t886" href="#t886">886</a></span><span class="t">        <span class="nam">x</span> <span class="op">=</span> <span class="nam">cast</span><span class="op">(</span><span class="nam">np</span><span class="op">.</span><span class="nam">ndarray</span><span class="op">,</span> <span class="nam">self</span><span class="op">.</span><span class="nam">last_input</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t887" href="#t887">887</a></span><span class="t">        <span class="nam">y</span> <span class="op">=</span> <span class="nam">cast</span><span class="op">(</span><span class="nam">np</span><span class="op">.</span><span class="nam">ndarray</span><span class="op">,</span> <span class="nam">self</span><span class="op">.</span><span class="nam">last_output</span><span class="op">)</span>  <span class="com"># This is &#956;(x)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t886" href="#t886">886</a></span><span class="t">        <span class="nam">x</span> <span class="op">=</span> <span class="nam">self</span><span class="op">.</span><span class="nam">last_input</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t887" href="#t887">887</a></span><span class="t">        <span class="nam">y</span> <span class="op">=</span> <span class="nam">self</span><span class="op">.</span><span class="nam">last_output</span>  <span class="com"># This is &#956;(x)</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t888" href="#t888">888</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t889" href="#t889">889</a></span><span class="t">        <span class="com"># For sigmoid: &#8706;&#956;/&#8706;z = &#956;(1-&#956;) where z = -a(x-c)</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t890" href="#t890">890</a></span><span class="t">        <span class="com"># This is a fundamental property of the sigmoid function</span>&nbsp;</span><span class="r"></span></p>
@@ -1756,8 +1756,8 @@
             <a class="nav" href="index.html">&Hat; index</a> &nbsp; &nbsp;
             <a class="nav" href="z_3e1e53d9a7a383e4_metrics_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
-            <a class="nav" href="https://coverage.readthedocs.io/en/7.13.0">coverage.py v7.13.0</a>,
-            created at 2025-12-24 00:58 +0000
+            <a class="nav" href="https://coverage.readthedocs.io/en/7.13.3">coverage.py v7.13.3</a>,
+            created at 2026-02-04 14:15 +0000
         </p>
     </div>
 </footer>
