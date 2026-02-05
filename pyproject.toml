@@ -58,14 +58,15 @@ dependencies = [
   "bandit[toml]",
   "mypy",
   "pre-commit",
+  "coverage"
 ]
 [tool.hatch.envs.default.scripts]
 security = "bandit -c pyproject.toml -r anfis_toolbox/"
 typing = "mypy anfis_toolbox"
 install = "pre-commit install && pre-commit autoupdate"
-all = [
-    "pre-commit run --all-files",
-]
+html-report = "coverage html -d docs/assets/cov/"
+all = "pre-commit run --all-files"
+
 [tool.hatch.envs.docs]
 installer = "uv"
 dependencies = [
@@ -89,7 +90,7 @@ include = ["docs/assets/logo.svg", "LICENSE"]
 only-include = ["anfis_toolbox", "docs/assets/logo.svg", "LICENSE"]
 
 [tool.hatch.build.targets.sdist]
-include = ["/README.md", "/Makefile", "/anfis_toolbox", "/tests", "/docs/assets/logo.svg", "/LICENSE"]
+include = ["/README.md", "/anfis_toolbox", "/tests", "/docs/assets/logo.svg", "/LICENSE"]
 
 [tool.hatch.envs.hatch-test]
 installer = "uv"
