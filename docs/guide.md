@@ -327,7 +327,8 @@ scikit-learn-like patterns. New features should include corresponding tests.
 - Keep pull requests focused; tie them to an issue when possible.
 - Update or add documentation (including this guide) when behavior changes.
 - Ensure `hatch test -c --all` and `hatch run all` pass before submitting.
-- Include demo snippets or notebooks if the feature benefits from examples.
+- For more information, see [contributing.md](contributing.md).
+
 
 Thanks for contributing to ANFIS Toolbox! If you have questions, open a
 discussion or issue on GitHub.
