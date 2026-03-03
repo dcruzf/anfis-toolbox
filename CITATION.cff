@@ -50,3 +50,53 @@ keywords:
   - Regression
   - Classification
 license: MIT
+preferred-citation:
+  authors:
+    - family-names: França
+      given-names: Daniel
+      orcid: https://orcid.org/0009-0007-3932-9849
+    - family-names: Aschoff
+      given-names: Manuella
+      orcid: https://orcid.org/0000-0001-8119-7914
+    - family-names: França
+      given-names: Tiago
+      orcid: https://orcid.org/0000-0002-1682-4587
+    - family-names: Macedo
+      given-names: Danniel
+      orcid: https://orcid.org/0009-0004-8491-4113
+    - family-names: França
+      given-names: Vitor
+      orcid: https://orcid.org/0009-0001-3825-2401
+    - family-names: Cabral
+      given-names: Lucidio
+      orcid: https://orcid.org/0000-0002-6117-5571
+    - family-names: Brito
+      given-names: Alisson
+      orcid: https://orcid.org/0000-0001-5215-443X
+    - family-names: Siebra
+      given-names: Clauirton
+      orcid: https://orcid.org/0000-0002-9742-2175
+    - family-names: Araujo
+      given-names: Tiago
+      orcid: https://orcid.org/0000-0002-5953-5435
+  doi: 10.5334/jors.638
+  identifiers:
+    - type: doi
+      value: 10.5334/jors.638
+    - type: url
+      value: http://dx.doi.org/10.5334/jors.638
+    - type: other
+      value: urn:issn:2049-9647
+  title: 'ANFIS-Toolbox: A Python Package for Adaptive Neuro-Fuzzy Inference Systems'
+  url: http://dx.doi.org/10.5334/jors.638
+  database: Crossref
+  date-published: 2026-01-01
+  year: 2026
+  issn: 2049-9647
+  journal: Journal of Open Research Software
+  languages:
+    - en
+  publisher:
+    name: Ubiquity Press, Ltd.
+  type: article
+  volume: '14'
